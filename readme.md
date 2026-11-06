@@ -2,7 +2,7 @@
 
 > Plataforma web para registrar y consultar bitácoras laborales: qué se planea hacer, qué se hizo realmente, qué quedó pendiente y qué bloqueos hubo.
 
-**Estado de esta entrega.** Documentación técnica del producto: alcance, requisitos, historias y criterios de aceptación, arquitectura, modelo de datos, contratos de la API y tickets de implementación. **No contiene código funcional, despliegue ni pruebas ejecutadas del producto.** Los detalles viven en [docs/](docs/); este documento los resume y enlaza en lugar de copiarlos.
+**Estado.** La documentación técnica (Entrega 1) está completa y en [docs/](docs/). La **Entrega 2** añade un primer recorrido funcional de extremo a extremo, con los tres bloques conectados: cliente Flutter Web, API FastAPI y PostgreSQL. Una persona inicia sesión, abre o consulta su bitácora, **registra una actividad planificada para una fecha válida**, y esa actividad queda guardada en PostgreSQL y se vuelve a ver en Flutter. Es un subconjunto deliberado del MVP: no están implementados el resto de operaciones de M1 a M4 ni M5 (informes con IA). Ver los límites en la [sección 9](#9-decisiones-y-limitaciones-técnicas-pendientes).
 
 ## Índice
 
@@ -39,7 +39,7 @@ No hay despliegue en esta entrega: el producto aún no está publicado.
 
 ### 0.5. URL o archivo comprimido del repositorio
 
-<https://github.com/marlonbossa09/AI4Devs-finalproject>, rama `feature/entrega-1-eq`. Es el repositorio del proyecto final del curso AI4Devs, cuyas plantillas oficiales (`readme.md` y `prompts.md`) estructuran esta documentación. SMARTWORK se documenta como un producto de software profesional.
+<https://github.com/marlonbossa09/AI4Devs-finalproject>. Entrega 1 (documentación): rama `feature/entrega-1-eq`. Entrega 2 (implementación del primer recorrido): rama `feature/entrega-2-eq`. Es el repositorio del proyecto final del curso AI4Devs, cuyas plantillas oficiales (`readme.md` y `prompts.md`) estructuran esta documentación. SMARTWORK se documenta como un producto de software profesional.
 
 ---
 
@@ -96,25 +96,188 @@ Este flujo cubre M1 a M4 con prioridad máxima. M5 se implementa después (indic
 
 ### **1.3. Diseño y experiencia de usuario:**
 
-Todavía no existe interfaz: la experiencia se implementa en la entrega siguiente. El recorrido previsto de una persona es:
+Interfaz web en Flutter, en español, con el diseño aprobado en el prototipo `smartwork_design_proposal.html`: barra lateral oscura, barra superior con la fecha del servidor, tarjetas, indicadores, calendario y formularios, con tipografías DM Sans y Manrope. Es responsive: escritorio, tableta (hasta 1100 px) y móvil (hasta 700 px, donde la barra lateral pasa a ser un menú desplegable).
 
 ```mermaid
 flowchart LR
-    A[Inicia sesión] --> B[Mi jornada de hoy]
-    B --> C[Planificar una actividad]
-    B --> D[Registrar un avance]
-    B --> E[Escribir el resumen]
-    E --> F[Cerrar la jornada]
-    A --> G{Rol}
-    G -->|Supervisor| H[Vista de mi equipo]
-    G -->|Colaborador| I[Bitácoras de mis compañeros<br/>solo lectura]
+    A[Acceso] --> B[Panel principal]
+    B --> C[Mi bitácora]
+    B --> D[Nueva planificación]
+    C --> D
+    D --> E[Se guarda en PostgreSQL<br/>y se consulta de nuevo]
+    E --> C
 ```
 
-Las capturas o el vídeo de la experiencia se añadirán cuando haya interfaz. Los criterios de aceptación describen el comportamiento observable de cada pantalla.
+| Pantalla | Qué muestra, con datos reales |
+|---|---|
+| Acceso | Panel de marca y formulario de usuario y contraseña. Un error de credenciales no dice cuál de los dos falló |
+| Panel principal | Saludo, indicadores (registradas, pendientes, en progreso, completadas) y lista de actividades de la fecha elegida, calendario del mes y progreso de completadas |
+| Mi bitácora | Estado de la bitácora con sus tres fechas por separado (laboral, registro y modificación), actividades planificadas y selector de fecha. Si no existe, lo indica y permite abrirla |
+| Nueva planificación | Título, fecha, estado inicial (siempre pendiente) y descripción |
+
+Capturas reales con datos ficticios. Los indicadores y la lista salen de lo que el servidor guarda para la fecha elegida:
+
+![Pantalla de acceso](docs/evidencia/01-acceso.jpg)
+
+![Panel principal con una actividad persistida](docs/evidencia/02-panel-principal.jpg)
+
+![Nueva planificación](docs/evidencia/03-nueva-planificacion.jpg)
+
+![Mi bitácora tras guardar la actividad](docs/evidencia/04-mi-bitacora.jpg)
+
+Tableta y móvil (el móvil con su menú desplegable):
+
+![Tableta](docs/evidencia/05-tableta.jpg)
+
+![Móvil](docs/evidencia/06-movil.jpg)
+
+![Móvil con el menú abierto](docs/evidencia/07-movil-menu.jpg)
+
+**Diferencias respecto al prototipo.** Se aplicaron porque el prototipo usaba datos simulados o elementos que no existen todavía:
+
+- Los iconos son Material, no los glifos Unicode del prototipo, que en Flutter Web se dibujan como cuadrados vacíos si falta la fuente.
+- Los indicadores y el progreso se calculan sobre la jornada elegida, no sobre un «historial»: la API devuelve una fecha por consulta. El calendario no marca los días con actividad por el mismo motivo; marca el día elegido y el de hoy, y sus flechas cambian de mes.
+- La barra lateral muestra solo el rol («Colaborador»), no el equipo, porque la API de sesión no lo devuelve.
+- Se omiten el aviso «Prototipo visual», el texto de vista conceptual y los valores precargados del acceso.
+- El botón de notificaciones aparece deshabilitado con una explicación, porque no hay notificaciones.
+- «Mi bitácora» añade lo que ya es real: estado, tres fechas y apertura de la bitácora.
+- En móvil, las acciones del formulario de planificación se apilan a ancho completo.
+- Las tipografías se cargan desde Google Fonts al abrir la aplicación, como hacía el prototipo. Es una petición externa de solo fuentes, sin datos de las bitácoras; servirlas desde el propio origen queda como mejora.
+
+No hay vídeo. El resto del recorrido previsto (avances, resumen, cierre, supervisión) se describe en los criterios de aceptación y en los [tickets](docs/backlog/tickets/indice.md).
 
 ### **1.4. Instrucciones de instalación:**
 
-No aplica en esta entrega: no hay código que instalar. Cuando exista, el stack aprobado es Flutter Web, FastAPI (Python) y PostgreSQL ([ADR-001](docs/arquitectura/adr/ADR-001-stack-tecnologico.md)). Las instrucciones de puesta en marcha local, las migraciones y las semillas de datos ficticios (ticket [DB-07](docs/backlog/tickets/base-de-datos.md)) se documentarán al implementarlas.
+**Requisitos.** Git, PostgreSQL 16 o superior (probado con 18.4), [uv](https://docs.astral.sh/uv/) (descarga Python 3.13 por su cuenta, así que hace falta conexión a Internet), Flutter 3.35.3 con Dart 3.9.2 y un navegador moderno. Probado en Windows 11 con Git Bash.
+
+**Convenciones de este apartado.**
+
+- Las órdenes están escritas para **Bash** (en Windows, Git Bash). En PowerShell no sirven `&&` ni la barra invertida `\` de continuación de línea: escribir cada orden en una sola línea y por separado.
+- **Cada bloque parte de la raíz del repositorio** y termina de vuelta en ella (`cd ..`).
+- En Windows el instalador de PostgreSQL **no añade `psql` al `PATH`**. O se añade la carpeta `bin` (por ejemplo `C:\Program Files\PostgreSQL\18\bin`) al `PATH`, o se invoca con la ruta completa.
+
+**0. Obtener el código.** La rama de la Entrega 2 es `feature/entrega-2-eq`:
+
+```bash
+git clone https://github.com/marlonbossa09/AI4Devs-finalproject.git
+cd AI4Devs-finalproject
+git switch feature/entrega-2-eq
+```
+
+**1. Roles y bases de datos.** El script crea dos roles con privilegios mínimos (`smartwork_owner` para las migraciones y `smartwork_app` para la API, sin DDL) y dos bases separadas (`smartwork_dev` y `smartwork_test`). No contiene secretos: las contraseñas se pasan como variables. Se ejecuta una vez como superusuario; `psql` pide su contraseña de forma interactiva. Si PostgreSQL no escucha en el puerto 5432, cambiar el valor de `-p`.
+
+**Elegir contraseñas que solo usen letras, números y `-`, `_`, `.` o `~`.** Irán dentro de una URL en el paso 2: un `@`, `/`, `:` o `%` la rompe, salvo que se escriba codificado (`@` → `%40`). El síntoma de una contraseña mal codificada es que la API arranca pero `/health/ready` responde 503.
+
+```bash
+psql -h 127.0.0.1 -p 5432 -U postgres -d postgres \
+     -v owner_password='ELEGIR-UNA' -v app_password='ELEGIR-OTRA' \
+     -f backend/scripts/provision_db.sql
+```
+
+**2. Configuración.** Copiar `backend/.env.example` a `backend/.env` (no se versiona) y editarlo:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+- Sustituir `CAMBIAR` por las contraseñas elegidas: la de `smartwork_app` en `DATABASE_URL` y `TEST_DATABASE_URL`, y la de `smartwork_owner` en `MIGRATIONS_DATABASE_URL` y `TEST_MIGRATIONS_DATABASE_URL`.
+- Si PostgreSQL no usa el puerto 5432, cambiarlo en esas **cuatro** URL.
+- No tocar los nombres de las bases: la de pruebas debe llamarse exactamente `smartwork_test` (ver más abajo).
+
+Los parámetros marcados «local» (duración de sesión, longitudes máximas de texto, ventana de idempotencia, mínimo de contraseña) son valores de desarrollo configurables: **no son reglas del producto**.
+
+**3. Backend: dependencias, migraciones y datos ficticios.**
+
+```bash
+cd backend
+uv sync
+uv run alembic upgrade head
+uv run python -m scripts.seed_dev
+cd ..
+```
+
+La semilla crea una organización, un equipo y tres personas ficticias (`supervisor.demo`, `colaborador1.demo` y `colaborador2.demo`). Sus contraseñas se generan al ejecutarla y **se muestran una sola vez**: hay que anotarlas en ese momento, porque no se guardan ni se versionan. La semilla se niega a ejecutarse fuera de un servidor local, contra una base que no termine en `_dev` o `_test`, o si la base ya tiene datos.
+
+**4. Cliente web.** Los archivos generados (`*.g.dart`) están versionados, así que no hace falta ejecutar `build_runner`:
+
+```bash
+cd frontend
+flutter pub get
+flutter build web --release
+cd ..
+```
+
+Para regenerarlos tras cambiar modelos o proveedores: `dart run build_runner build --delete-conflicting-outputs`.
+
+**5. Arrancar.** FastAPI sirve la API y el cliente compilado en el mismo origen (como pide [ADR-002](docs/arquitectura/adr/ADR-002-autenticacion-y-acceso.md)). La orden no termina: deja el servidor en marcha en esa terminal.
+
+```bash
+cd backend
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+**6. Probar el flujo principal.**
+
+1. Comprobar el servidor: <http://localhost:8000/health> debe responder `{"status":"ok"}` y <http://localhost:8000/health/ready> debe confirmar la base de datos.
+2. Abrir <http://localhost:8000> e iniciar sesión con `colaborador1.demo` y la contraseña que mostró la semilla.
+3. En **Panel principal** pulsar **Nueva planificación**, escribir un título y **Guardar planificación**.
+4. La aplicación lleva a **Mi bitácora**, que muestra la actividad guardada. Recargar la página: la sesión y la actividad siguen ahí, porque están en PostgreSQL.
+5. Cerrar sesión e iniciar con `supervisor.demo`: no ve la bitácora del colaborador (cada persona solo consulta la suya).
+
+La documentación interactiva de la API (`/docs`) solo existe en desarrollo (`APP_ENV=development`). Si tras recompilar el cliente el navegador sigue mostrando una versión antigua, es la caché del *service worker* de Flutter: borrar los datos del sitio desde las herramientas de desarrollo del navegador (Application → Storage → Clear site data).
+
+**Una base con otro nombre (opcional).** Si ya existe una base, por ejemplo `smartwork_app`, se puede usar sin renombrarla ni cambiar su propietario. Como superusuario, conectado a la base `postgres` (omitir un `CREATE ROLE` si ese rol ya existe):
+
+```sql
+CREATE ROLE smartwork_owner LOGIN PASSWORD 'ELEGIR-UNA'  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
+CREATE ROLE smartwork_app   LOGIN PASSWORD 'ELEGIR-OTRA' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
+GRANT CONNECT ON DATABASE smartwork_app TO smartwork_owner, smartwork_app;
+\connect smartwork_app
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+GRANT USAGE, CREATE ON SCHEMA public TO smartwork_owner;
+GRANT USAGE ON SCHEMA public TO smartwork_app;
+```
+
+Después, en `backend/.env` apuntar `DATABASE_URL` y `MIGRATIONS_DATABASE_URL` a esa base. La semilla se niega a escribir en una base cuyo nombre no termine en `_dev` o `_test`, salvo que se autorice **por su nombre exacto en esa ejecución**: `SMARTWORK_SEED_DATABASE=smartwork_app uv run python -m scripts.seed_dev` (en PowerShell: `$env:SMARTWORK_SEED_DATABASE='smartwork_app'` y luego la orden).
+
+**Cuentas locales de prueba (opcional).** `backend/scripts/crear_cuentas.py` crea personas con su identidad y su pertenencia a un equipo, de forma idempotente y sin borrar ni modificar nada existente. Es genérico y no contiene datos personales: lee las cuentas de `backend/.local/cuentas.json` y la contraseña de `backend/.local/contrasena`. La carpeta `backend/.local/` no existe al clonar y git la ignora; hay que crearla.
+
+1. Crear `backend/.local/cuentas.json`. Los roles posibles son `colaborador` y `supervisor` (no existe un rol de administrador), y un equipo admite un solo supervisor. La organización puede ser una existente (la de la semilla se llama «Organización Demo») o nueva, en cuyo caso hace falta `zona_horaria`:
+
+   ```json
+   {
+     "organizacion": "Organización Demo",
+     "zona_horaria": "America/Bogota",
+     "equipo": "Equipo de prueba",
+     "cuentas": [
+       {"nombre": "Ana Supervisora", "usuario": "ana@example.test", "rol": "supervisor"},
+       {"nombre": "Beto Colaborador", "usuario": "beto@example.test", "rol": "colaborador"}
+     ]
+   }
+   ```
+
+2. Crear `backend/.local/contrasena` con un editor: una sola línea con la contraseña inicial, de al menos 10 caracteres (parámetro `PASSWORD_MIN_LENGTH`, ADR-002). No puede ir en `cuentas.json`, que la rechaza. Se guarda con Argon2id y no se imprime ni se registra. También se admite la variable `SMARTWORK_CUENTAS_PASSWORD` o, en una terminal, se pide sin eco.
+3. Ejecutar, con la base y el puerto **exactos** de `backend/.env` (el script comprueba con el propio servidor que son los indicados, que el servidor es local y que el rol no es administrador). `--simular` valida todo y deshace la transacción:
+
+   ```bash
+   cd backend
+   uv run python -m scripts.crear_cuentas --base smartwork_dev --puerto 5432 --simular
+   uv run python -m scripts.crear_cuentas --base smartwork_dev --puerto 5432 --archivo-contrasena .local/contrasena
+   cd ..
+   ```
+
+**Pruebas.** Necesitan `TEST_DATABASE_URL` y `TEST_MIGRATIONS_DATABASE_URL` de `backend/.env` apuntando a `smartwork_test`; si no, abortan antes de tocar nada.
+
+```bash
+cd backend
+uv run pytest
+cd ../frontend
+flutter test
+flutter analyze
+cd ..
+```
+
+**La base de pruebas es aparte y debe llamarse exactamente `smartwork_test`.** Las pruebas son destructivas (vacían tablas y revierten migraciones), así que nunca se apuntan a la base de desarrollo ni a una base compartida: ver la sección 2.6.
 
 ---
 
@@ -168,23 +331,34 @@ flowchart TB
 
 ### **2.3. Descripción de alto nivel del proyecto y estructura de ficheros**
 
-Estructura actual del repositorio (solo documentación):
-
 ```text
 .
-├── readme.md                  Este documento
-├── prompts.md                 Registro del uso de IA en el desarrollo
-├── CLAUDE.md                  Reglas de trabajo para asistentes de código
-└── docs/
-    ├── producto/              Alcance del MVP y requisitos (PRD)
-    ├── backlog/               33 historias, 301 criterios y tickets de implementación
-    │   └── tickets/           Base de datos, backend y frontend
-    ├── arquitectura/          Arquitectura general y ADR (stack, autenticación, IA)
-    ├── modelo-datos/          Modelo de datos
-    └── api/                   Contratos de la API
+├── readme.md  prompts.md  CLAUDE.md
+├── docs/                        Especificación (alcance, PRD, historias, ADR, modelo, API, tickets)
+│   └── evidencia/               Capturas de la aplicación en ejecución
+├── backend/                     FastAPI + SQLAlchemy 2.0 + Alembic (monolito modular)
+│   ├── app/
+│   │   ├── main.py              Aplicación, prefijo /api/v1, errores y servicio del cliente
+│   │   ├── config.py            Parámetros configurables (nada fijado en el código)
+│   │   ├── db.py  errores.py  salud.py   Salud y disponibilidad (/health, /health/ready)
+│   │   ├── seguridad/           Argon2id, sesiones y token CSRF, verificación del origen
+│   │   ├── compartido/          Política de acceso, auditoría, idempotencia, fechas, dependencias
+│   │   └── modulos/
+│   │       ├── acceso/          M1-01a/b/c: iniciar, cerrar y consultar la sesión
+│   │       └── bitacoras/       M2-01a/b y M2-03: consultar, abrir y planificar
+│   ├── migrations/versions/     0001 a 0005 (SQL escrito a mano)
+│   ├── scripts/                 provision_db.sql, seed_dev.py, crear_cuentas.py, verificar_datos.py
+│   └── tests/                   Integración sobre PostgreSQL real y extremo a extremo
+└── frontend/                    Flutter Web, Riverpod y Dio
+    └── lib/
+        ├── config/              Configuración (URL de la API)
+        ├── core/                network, errors, utils, theme, layout (barra lateral y superior) y widgets reutilizables
+        └── features/
+            ├── auth/            data (models, remote, repository), domain, presentation (login)
+            └── logbook/         data, domain, presentation (providers, pages: dashboard, logbook, planning)
 ```
 
-El código se organizará como monolito modular (un módulo por funcionalidad) con el cliente web en una carpeta aparte; esa estructura se definirá al implementar y no existe todavía.
+El frontend sigue una arquitectura limpia por funcionalidad: `presentation` depende de `domain`, `data` implementa el contrato de `domain`, y `domain` no importa Flutter ni Dio. El código y los identificadores del frontend están en inglés; los campos JSON conservan los nombres en español de los contratos mediante su mapeo. El backend conserva el vocabulario del modelo de datos (tablas, columnas y códigos de error en español) para mantener la trazabilidad con la especificación.
 
 ### **2.4. Infraestructura y despliegue**
 
@@ -199,28 +373,46 @@ flowchart LR
     B -.->|"pendiente de decidir"| I["Servicio de IA"]
 ```
 
-No se ha realizado ningún despliegue.
+No se ha realizado ningún despliegue. En local, FastAPI sirve el cliente compilado y la API desde un único origen, que es la condición que el diseño exige al proxy inverso.
 
 ### **2.5. Seguridad**
 
-Prácticas diseñadas (ninguna implementada todavía):
+**Implementado y comprobado en la Entrega 2:**
 
-- **Autorización centralizada en el backend** y respuestas idénticas ante un registro inexistente y uno no autorizado, para no revelar su existencia.
-- **Autenticación propia** con contraseñas protegidas con Argon2id, sesiones revocables en el servidor, cookies `HttpOnly`, `Secure` y `SameSite`, protección CSRF y HTTPS ([ADR-002](docs/arquitectura/adr/ADR-002-autenticacion-y-acceso.md)).
-- **Códigos de un solo uso** para el primer acceso y la recuperación; desactivación inmediata del acceso con revocación de sesiones.
-- **Auditoría de solo anexado**, atómica con cada cambio; ninguna credencial se registra.
-- **Idempotencia** de las operaciones no repetibles frente a reintentos.
-- **IA con datos mínimos:** solo registros autorizados, personas seudonimizadas, sin el resumen libre, y el texto libre tratado siempre como dato ([ADR-003](docs/arquitectura/adr/ADR-003-integracion-de-ia.md)).
+- **Contraseñas con Argon2id** (19 MiB, 2 iteraciones, paralelismo 1, configurables). Solo se guarda el hash; ninguna tabla contiene la contraseña en claro (comprobado recorriendo todas las tablas).
+- **Sesiones revocables en el servidor**, guardadas en PostgreSQL. La cookie lleva un secreto aleatorio de 256 bits y la base solo guarda su hash SHA-256. Caduca por inactividad y por duración absoluta. Cerrar la sesión la revoca en el servidor, aunque se conserve la cookie.
+- **Cookie `__Host-`** con `Secure`, `HttpOnly`, `SameSite=Strict` y sin `Domain`. Se comprobó en Chrome real que la acepta en `localhost` y que JavaScript no puede leerla.
+- **CSRF:** token en una cabecera propia, derivado con HMAC del secreto de la sesión, más verificación del `Origin` (o `Referer`). Una petición que modifica sin token o desde otro origen se rechaza sin cambiar nada. En Chrome real, una petición entre sitios llegó sin cookie y las peticiones CORS previas fueron rechazadas.
+- **Errores uniformes:** un identificador inexistente y una contraseña incorrecta dan la misma respuesta, con un coste de verificación comparable; un recurso inexistente y uno ajeno son indistinguibles.
+- **Orden de evaluación** de las convenciones (identidad, acceso, formato, permiso, reglas) en una política de acceso única.
+- **Privilegios mínimos en la base de datos:** la API no puede crear objetos, no borra nada, no edita planificaciones, y solo inserta y lee en la auditoría. La **auditoría es de solo anexado**: ni la aplicación ni el propietario pueden actualizarla o borrarla.
+- **Idempotencia** de la planificación mediante `Idempotency-Key`, y escrituras de una jornada pasada auditadas en la misma transacción.
+- **Datos de prueba protegidos:** la semilla se niega fuera de un servidor local y de una base `_dev` o `_test`; las pruebas abortan si no usan una base `_test`; no hay ninguna suplantación de identidad ni cabecera de elusión de la autenticación.
+- Sin secretos en el repositorio: `backend/.env` está ignorado y solo se versiona `.env.example`.
+
+**Diseñado y todavía no implementado:** códigos de un solo uso para el primer acceso y la recuperación, desactivación inmediata de accesos mediante órdenes de provisión, limitación de intentos fallidos del inicio de sesión (sus parámetros están pendientes, ADR-002 A9) y la IA con datos mínimos ([ADR-003](docs/arquitectura/adr/ADR-003-integracion-de-ia.md)).
 
 ### **2.6. Tests**
 
-No se ha ejecutado ninguna prueba del producto porque no existe. Lo que sí se ha comprobado son los documentos, con scripts de trabajo que no forman parte del repositorio:
+Resultado de la última ejecución, con las dos suites completas y sobre PostgreSQL real (no simulado):
 
-- Los 301 criterios de aceptación cumplen el formato DADO / CUANDO / ENTONCES.
-- Todos los requisitos confirmados están cubiertos por algún criterio, y cada regla de negocio llega a un criterio.
-- Los 35 contratos de la API citan historias, requisitos y reglas que existen, y cubren los criterios de las historias (ver [índice de la API](docs/api/indice.md)).
+| Suite | Resultado | Qué cubre |
+|---|---|---|
+| Backend (`pytest`) | **242 superadas, 1 omitida a propósito** (suite completa, sobre `smartwork_test` en el PostgreSQL local del puerto 5432) | Esquema y restricciones de la base de datos (DB-01 a DB-05 y DB-07), autenticación, CSRF y origen, consulta, apertura y planificación, concurrencia, idempotencia, auditoría, extremo a extremo, salud y disponibilidad (incluido un 503 real con la base inalcanzable), creación de cuentas y aislamiento de las propias pruebas |
+| Frontend (`flutter test`) | **64 superadas** | Modelos, cliente HTTP, repositorios, pantallas con repositorios falsos inyectados y diseño responsive (escritorio, tableta y móvil, con la fuente real para detectar desbordamientos) |
+| Frontend (`flutter analyze`) | Sin incidencias | Análisis estático |
 
-Plan para la implementación: los criterios se convierten en pruebas de aceptación, con una matriz de permisos por rol y equipo, pruebas de seguridad ([ADR-002](docs/arquitectura/adr/ADR-002-autenticacion-y-acceso.md), sección 13) y una evaluación de la IA en español ([ADR-003](docs/arquitectura/adr/ADR-003-integracion-de-ia.md), sección 13).
+Puntos que las pruebas comprueban de verdad:
+
+- **Restricciones de la base de datos con intentos reales:** solapes de pertenencias, dos supervisores a la vez, título vacío, avance bloqueado sin motivo, y que el rol de la API no pueda borrar ni alterar la auditoría.
+- **Concurrencia:** ocho aperturas simultáneas de la misma fecha dejan una sola bitácora; seis peticiones con la misma clave de idempotencia crean una sola actividad.
+- **Atomicidad:** si falla la entrada de auditoría, no queda ni la actividad, ni la bitácora, ni la clave.
+- **Extremo a extremo:** un servidor real en otro proceso recorre inicio de sesión, consulta, apertura, planificación y consulta, se **reinicia**, y comprueba que la sesión y los datos persisten y que un reintento no duplica.
+- **Las pruebas detectan fallos:** se rompió el código a propósito en tres puntos (auditoría, idempotencia y conflicto de apertura) y las pruebas fallaron; restaurado, vuelven a pasar.
+- **Aislamiento de las pruebas:** solo pueden tocar la base `smartwork_test`, en un servidor local, con un rol que no sea administrador y distinta de la de desarrollo. Se comprueba antes de importar la aplicación, al abrir la sesión (el servidor confirma `current_database()`, el rol y el puerto) y antes de cada limpieza; si algo no cuadra, se aborta sin ejecutar nada. 24 pruebas lo verifican, entre ellas el rechazo de `smartwork_app`, de otras bases del servicio (también las que terminan en `_test`), de servidores remotos y del puerto 5433. Una ejecución con la configuración de pruebas apuntada a propósito a `smartwork_app` abortó antes de tocarla, y tras la suite completa `smartwork_app` conservaba exactamente sus datos y su versión de migración.
+- **Verificación manual en Chrome real** del flujo completo, de las cookies, el CSRF y el origen, y de la persistencia tras recargar y reiniciar.
+
+**No hay prueba automatizada de la interfaz en un navegador** (por ejemplo, `integration_test` con `chromedriver`): no se instaló esa herramienta. El recorrido en el navegador se comprobó a mano, con las capturas de la sección 1.3. Antes de la Entrega 2 se comprobó la documentación con scripts de trabajo ajenos al repositorio (301 criterios con formato estricto y 35 contratos con trazabilidad completa).
 
 ---
 
@@ -291,7 +483,7 @@ Atributos, tipos conceptuales, restricciones y las 39 reglas de integridad: [mod
 
 ## 4. Especificación de la API
 
-La especificación completa son 35 contratos (propuestos): [docs/api/](docs/api/indice.md). Extracto de tres operaciones principales en formato OpenAPI:
+La especificación completa son 35 contratos (propuestos): [docs/api/](docs/api/indice.md). **Implementados en la Entrega 2:** M1-01a, M1-01b, M1-01c, M2-01a, M2-01b y M2-03. Extracto de tres operaciones principales en formato OpenAPI:
 
 ```yaml
 openapi: 3.0.3
@@ -368,6 +560,23 @@ paths:
 ```
 
 Ejemplo de petición a `POST /api/v1/mi/actividades/{actividad_id}/avances` (datos ficticios): `{"fecha_laboral": "2026-11-09", "estado": "En progreso", "descripcion": "Revisión de los requisitos del módulo de acceso"}`.
+
+### Salud y disponibilidad
+
+Dos comprobaciones de infraestructura, en la raíz (sin `/api/v1`) y fuera de los contratos de negocio. No requieren autenticación, devuelven JSON mínimo y nunca incluyen credenciales, cadenas de conexión, nombres de servidor, datos de personas ni mensajes de error de la base de datos (ante un fallo solo se registra el tipo de excepción).
+
+| Endpoint | Para qué sirve | Respuesta |
+|---|---|---|
+| `GET /health` | **Vivacidad:** el proceso de FastAPI atiende peticiones. No usa la base de datos | `200` `{"status": "ok"}` |
+| `GET /health/ready` | **Disponibilidad:** ejecuta `SELECT 1` en PostgreSQL | `200` `{"status": "ok", "checks": {"database": "ok"}}`, o `503` `{"status": "unavailable", "checks": {"database": "unavailable"}}` |
+
+La espera máxima a PostgreSQL la fija `DB_CONNECT_TIMEOUT_SECONDS` (3 s por defecto), de modo que una base caída responde 503 en pocos segundos en vez de colgarse. Las respuestas llevan `Cache-Control: no-store`.
+
+Diseñados para AWS ECS (el despliegue no está hecho ni probado allí). Separar las dos comprobaciones evita que una caída de PostgreSQL haga que el orquestador reinicie en bucle contenedores que no tienen la culpa:
+
+- **Comprobación de salud del contenedor:** `/health`, por ejemplo `curl -f http://localhost:8000/health` (la imagen necesitaría `curl` o un equivalente).
+- **Comprobación del grupo de destino del balanceador:** `/health/ready`. Un 503 saca la tarea de la rotación sin matarla. Conviene que su tiempo de espera sea mayor que `DB_CONNECT_TIMEOUT_SECONDS`, y dar un periodo de gracia al arrancar.
+
 
 ---
 
@@ -459,7 +668,7 @@ Ejemplo de petición a `POST /api/v1/mi/actividades/{actividad_id}/avances` (dat
 
 ## 7. Pull Requests
 
-En esta entrega no hay pull requests: el trabajo está en la rama `feature/entrega-1-eq`, todavía sin publicar. Las pull requests se documentarán al implementar el flujo principal.
+Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entrega-1-eq` y el de la Entrega 2 en `feature/entrega-2-eq`, creada desde la anterior sin modificarla.
 
 ---
 
@@ -467,9 +676,9 @@ En esta entrega no hay pull requests: el trabajo está en la rama `feature/entre
 
 | Entrega | Contenido |
 |---|---|
-| **Entrega 1 (esta)** | Documentación técnica: alcance, requisitos, historias y criterios, arquitectura y decisiones, modelo de datos, contratos de la API, tickets, README y registro del uso de IA |
-| **Entrega 2 (prevista)** | Implementar el flujo principal FP-1 (tickets P0: esquema de datos, autorización, sesiones, provisión, bitácoras, actividades, avances, cierre, auditoría y vista de supervisión), con pruebas de aceptación de sus criterios |
-| **Posteriores (previstas)** | Completar el núcleo del MVP (tickets P1: reapertura, correcciones, marca de error, consulta de equipo e histórico, códigos de acceso e idempotencia), informes con IA una vez decidido el proveedor (tickets P2), despliegue y pruebas de seguridad |
+| **Entrega 1** | Documentación técnica: alcance, requisitos, historias y criterios, arquitectura y decisiones, modelo de datos, contratos de la API, tickets, README y registro del uso de IA |
+| **Entrega 2 (esta)** | Andamiaje de Flutter Web, FastAPI y PostgreSQL conectados, con un recorrido real de extremo a extremo: sesión, apertura y consulta de la bitácora, y registro de una actividad planificada con persistencia en PostgreSQL |
+| **Posteriores (previstas)** | Completar el flujo principal FP-1 (avances, resumen, cierre y vista de supervisión), reapertura, correcciones, marca de error, consulta de equipo e histórico, provisión y códigos de acceso, informes con IA una vez decidido el proveedor, despliegue y pruebas de seguridad |
 
 Las prioridades y dependencias están en el [índice de tickets](docs/backlog/tickets/indice.md).
 
@@ -486,7 +695,21 @@ Las prioridades y dependencias están en el [índice de tickets](docs/backlog/ti
 | Retención de la auditoría (PA-06); objetivos de rendimiento y volumen (PA-13); métricas de éxito (PA-11) | Valores de parámetros configurables | [Alcance](docs/producto/alcance-mvp.md), sección 6.3 |
 | Reincorporación de personas (PA-24); ajustes históricos de pertenencia (PA-25) | Fuera del MVP | Alcance |
 
-**Limitaciones.** No hay código, interfaz, despliegue ni pruebas del producto. Flutter Web conserva riesgos conocidos de accesibilidad, carga inicial y pruebas. Todo contenido marcado `[PROPUESTO]` no es un requisito hasta que la persona responsable lo apruebe.
+**Límites de la Entrega 2.** Solo están implementadas las operaciones M1-01a, M1-01b, M1-01c, M2-01a, M2-01b y M2-03. No hay avances, resumen, cierre, reapertura, supervisión, consulta de compañeros ni informes con IA. No hay provisión: las personas ficticias las crea la semilla de desarrollo, que inserta directamente en la base y por eso no deja entradas de auditoría de provisión. No hay despliegue ni prueba automatizada de la interfaz en un navegador.
+
+**Decisiones de implementación que no están en los contratos** (técnicas, sin cambiar ningún requisito):
+
+- **M1-01c** (consultar la sesión) estaba como propuesta; la persona responsable la aprobó para que el cliente reciba el rol y la fecha actual del servidor.
+- **Limitación de intentos fallidos del inicio de sesión:** el contrato la pide, pero sus parámetros están pendientes (ADR-002 A9). No está implementada.
+- **El token CSRF no se almacena:** se deriva con HMAC del secreto de la sesión, porque M1-01c debe poder devolverlo. ADR-002 describía guardar su hash.
+- **Rechazo por CSRF u origen:** el catálogo de errores no tiene un código para ello; se responde `SOLICITUD_INVALIDA` (400) con el motivo en `detalles`.
+- **La planificación no renueva `modificada_en`** de la bitácora: el contrato M2-03 no lo dice (M2-02 sí lo dice para el resumen).
+- **El esquema de `avance` no incluye `modificado_en`**, que el contrato de M2-05 prevé; se añadirá con la corrección de avances. La tabla existe sin operaciones que la escriban.
+- **Política de contraseñas:** mínimo de **10 caracteres** (ADR-002, A8), decidido por la persona responsable. Se aparta a propósito de los 15 que recomienda NIST SP 800-63B-4, una referencia y no una obligación para SMARTWORK; el riesgo y sus mitigaciones constan en ADR-002 (Argon2id y almacenamiento solo del hash; la limitación de intentos fallidos todavía no está implementada). Hoy solo la aplica el script de cuentas, porque los flujos que fijan contraseñas (primer acceso y recuperación) no están implementados; el inicio de sesión no impone mínimo.
+- **Valores locales** (zona horaria `America/Bogota` de la semilla, duración de sesión, longitudes máximas de texto, ventana de idempotencia): configurables y sin valor de requisito.
+- **Pertenencias de la semilla:** empiezan 60 días atrás para poder demostrar jornadas pasadas; IR-30 lo impide por la vía ordinaria pero el modelo permite representar períodos históricos.
+
+Flutter Web conserva riesgos conocidos de accesibilidad, carga inicial y pruebas. Todo contenido marcado `[PROPUESTO]` no es un requisito hasta que la persona responsable lo apruebe.
 
 ## Mapa de la documentación
 
@@ -500,4 +723,6 @@ Las prioridades y dependencias están en el [índice de tickets](docs/backlog/ti
 | [docs/arquitectura/adr/](docs/arquitectura/adr/) | ADR-001 (stack), ADR-002 (autenticación), ADR-003 (IA) |
 | [docs/modelo-datos/modelo-datos.md](docs/modelo-datos/modelo-datos.md) | Modelo de datos y reglas de integridad |
 | [docs/api/indice.md](docs/api/indice.md) | Contratos de la API |
+| [docs/evidencia/](docs/evidencia/) | Capturas de la aplicación en ejecución |
+| [backend/](backend/) y [frontend/](frontend/) | Código de la Entrega 2 |
 | [prompts.md](prompts.md) | Uso de IA en el desarrollo |

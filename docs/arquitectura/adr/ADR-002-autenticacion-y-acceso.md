@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Estado** | **PROPUESTO** hasta resolver el mecanismo operativo de la provisión. La **arquitectura técnica de referencia** (sección 2) está aprobada por la persona responsable |
-| **Versión** | 0.3 |
+| **Versión** | 0.4 |
 | **Fecha** | 2026-11-06 |
 | **Relacionado con** | PA-12, RN-33 a RN-35, RN-38, RN-61, RN-64, RN-96 a RN-99, RN-102, RNF-08, IR-34, IR-37, IR-38, DM-07, DD-04, DD-05; ADR-001 |
 | **Documentos complementarios** | `docs/modelo-datos/modelo-datos.md`, `docs/api/indice.md`, `docs/api/m1-m5-dependencias.md` |
@@ -145,7 +145,7 @@ erDiagram
 | **Código de un solo uso: entropía** | NIST §4.2.1.1: obligatorio al menos 64 bits en un código de recuperación guardado. §4.2.1.2: obligatorio al menos seis dígitos decimales en uno emitido, con limitación de intentos | Cada sección describe un caso de recuperación de cuenta concreto; el código de SMARTWORK se asimila por analogía | **128 bits**, con 64 como mínimo si la usabilidad lo desaconsejara |
 | **Código: validez** | NIST §3.1.3.2: obligatorio como máximo 10 minutos para un secreto fuera de banda, de un solo uso. §4.1.2: 10 minutos y un solo uso para un código de vinculación. §4.2.1.2: máximos de 10 minutos por texto o voz, 24 horas por correo y 21 o 30 días por correo postal | Cada máximo corresponde a un canal; no se aplican en bloque | **10 minutos** con la entrega directa de la sección 8. Si se adoptara un canal asíncrono, el máximo de referencia es 24 horas |
 | **Código: intentos de canje** | NIST §4.2.1.2: la verificación de un código emitido queda sujeta a la limitación de §3.2.2. §3.2.10 fija 10 intentos para secretos de activación | §3.2.10 es una referencia indirecta, no un requisito para este código | Invalidar el código tras **10** canjes fallidos |
-| **Contraseña** | NIST §3.1.1.2: obligatorio un mínimo de 15 caracteres si es el único factor; recomendado admitir al menos 64; obligatorio **no** imponer reglas de composición y **no** exigir cambios periódicos (salvo evidencia de compromiso); obligatorio compararla con una lista de contraseñas conocidas o comprometidas | Las cifras de longitud cambian si la contraseña es un factor entre varios | **15 caracteres**, hasta 64 o más, sin composición ni caducidad. La lista de contraseñas comprometidas es una dependencia que hay que decidir (A8) |
+| **Contraseña** | NIST §3.1.1.2: obligatorio un mínimo de 15 caracteres si es el único factor; recomendado admitir al menos 64; obligatorio **no** imponer reglas de composición y **no** exigir cambios periódicos (salvo evidencia de compromiso); obligatorio compararla con una lista de contraseñas conocidas o comprometidas | Las cifras de longitud cambian si la contraseña es un factor entre varios | **10 caracteres** como mínimo, hasta 64 o más, sin composición ni caducidad. **Decisión de la persona responsable (versión 0.4):** se aparta a propósito de los 15 de NIST para simplificar la política. NIST es una referencia y no una obligación de SMARTWORK (ver arriba). El riesgo asumido es que una contraseña corta es más fácil de adivinar si es el único factor; lo mitigan Argon2id, el almacenamiento solo del hash y la ausencia de reglas de composición, pero la limitación de intentos fallidos (NIST §3.2.2) **todavía no está implementada**, y su importancia crece con una contraseña más corta. El mínimo es el parámetro `PASSWORD_MIN_LENGTH`. La lista de contraseñas comprometidas sigue siendo una dependencia por decidir (A8) |
 | **Hash** | OWASP Password Storage Cheat Sheet: Argon2id con un mínimo de 19 MiB de memoria, 2 iteraciones y paralelismo 1 (recomendación) | Buena práctica, a calibrar en el entorno real | Parámetros no inferiores a ese mínimo |
 | **Identificador de sesión** | OWASP Session Management Cheat Sheet: al menos 64 bits de entropía (recomendación) | Buena práctica | **128 bits** |
 
@@ -268,7 +268,7 @@ Se propone además un registro técnico de eventos de autenticación (éxito, fa
 | A5 | Verificación de identidad al recuperar (sección 8.2) | Fuera de banda por la persona operadora; dos personas cuando haya dos o más |
 | A6 | Medio de entrega (sección 8.1) | Entrega directa en el momento de emitir |
 | A7 | Quién es la primera persona operadora y cómo se identifica | Registro `OPERADOR` con credencial propia (sección 9, opción C) |
-| A8 | Política de contraseñas y lista de contraseñas comprometidas | 15 caracteres, sin composición; lista a incorporar |
+| A8 | Política de contraseñas y lista de contraseñas comprometidas | **10 caracteres** como mínimo (decidido por la persona responsable en la versión 0.4), sin composición; lista a incorporar |
 | A9 | Duración e inactividad de la sesión, y espera e intentos del inicio de sesión | 24 horas, 1 hora, espera de 30 segundos a 1 hora y tope de 100 |
 | A10 | Regla (RN) de la reactivación administrativa | Sí, con las condiciones de la sección 11 |
 | A11 | Registro técnico de eventos de autenticación, sin secretos | Sí |
@@ -312,12 +312,13 @@ La organización dispone de un proveedor de identidad; se exige autenticación m
 - OWASP Session Management Cheat Sheet: <https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html>
 - OWASP Cross-Site Request Forgery Prevention Cheat Sheet: <https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html>
 
-Valores confirmados en esas fuentes: 15 caracteres mínimos y aceptar al menos 64 (NIST); Argon2id con 19 MiB, 2 iteraciones y paralelismo 1 como mínimo (OWASP); al menos 64 bits de entropía en el identificador de sesión, `SameSite=Strict` preferido y prefijo `__Host-` (OWASP). Los tiempos de sesión proceden de NIST. Las cifras de OWASP sobre tiempos de sesión y limitación de intentos no se pudieron verificar y no se usan.
+Valores confirmados en esas fuentes: 15 caracteres mínimos (SMARTWORK adopta 10, sección 7) y aceptar al menos 64 (NIST); Argon2id con 19 MiB, 2 iteraciones y paralelismo 1 como mínimo (OWASP); al menos 64 bits de entropía en el identificador de sesión, `SameSite=Strict` preferido y prefijo `__Host-` (OWASP). Los tiempos de sesión proceden de NIST. Las cifras de OWASP sobre tiempos de sesión y limitación de intentos no se pudieron verificar y no se usan.
 
 ## 19. Historial
 
 | Versión | Cambios |
 |---|---|
+| 0.4 | La persona responsable fija en **10 caracteres** la longitud mínima de contraseña (antes se proponían 15) y se documenta como desviación consciente de la referencia de NIST, con su riesgo (sección 7, A8). El mínimo pasa a ser el parámetro `PASSWORD_MIN_LENGTH`. Se mantienen Argon2id y el resto de medidas |
 | 0.3 | Se distingue en la sección 7 la fuerza de cada cifra (obligatorio, recomendado u opcional), su alcance y que NIST SP 800-63B-4 y OWASP son referencias y no obligaciones de SMARTWORK. Se añade la sección 14.1 con riesgos, parámetros y dependencias para la implementación |
 | 0.2 | La persona responsable aprueba la arquitectura técnica de referencia (sección 2). Se añaden los parámetros con fuentes de NIST (sección 7), la entrega del código y la verificación de identidad (sección 8), la identificación y autorización de la persona operadora separadas del acceso al servidor (sección 9), la reactivación controlada (sección 11) y la estructura `OPERADOR`. Se actualizan las decisiones pendientes |
 | 0.1 | Primera propuesta |

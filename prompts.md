@@ -14,6 +14,7 @@ Este documento registra cómo se usó la IA para construir SMARTWORK: qué herra
 7. [Pull requests](#7-pull-requests)
 8. [Decisiones humanas y errores de la IA](#8-decisiones-humanas-y-errores-de-la-ia)
 9. [Uso de IA por fase: realizado y planificado](#9-uso-de-ia-por-fase-realizado-y-planificado)
+10. [Entrega 2: implementación asistida por IA](#10-entrega-2-implementación-asistida-por-ia)
 
 ---
 
@@ -27,16 +28,17 @@ Este documento registra cómo se usó la IA para construir SMARTWORK: qué herra
 
 ### Convención de este registro
 
-Los prompts de las secciones 1 a 6 son **resúmenes** del mensaje original, no transcripciones literales; así se indica en cada uno («resumen fiel»). Ninguno es una transcripción literal. Los mensajes completos y las respuestas están en el historial local de Claude Code, que no forma parte del repositorio.
+Los prompts de las secciones 1 a 6 y 10 son **resúmenes** del mensaje original, no transcripciones literales; así se indica en cada uno («resumen fiel»). Ninguno es una transcripción literal. Los mensajes completos y las respuestas están en el historial local de Claude Code, que no forma parte del repositorio.
 
 ### Herramientas y modelos
 
 | Herramienta | Modelo | Uso real |
 |---|---|---|
-| **Claude Code** (extensión para VS Code) | `claude-sonnet-5-5` (la inmensa mayoría de los mensajes de la sesión) y `claude-opus-5-5` (4 mensajes; la transcripción no registra para qué tarea) | Alcance, requisitos, historias, arquitectura, modelo de datos, contratos de la API, tickets, README y este registro |
+| **Claude Code** (extensión para VS Code) | `claude-sonnet-5-5` (la inmensa mayoría de los mensajes de la sesión) y `claude-opus-5-5` (4 mensajes; la transcripción no registra para qué tarea) | Entrega 1: alcance, requisitos, historias, arquitectura, modelo de datos, contratos de la API, tickets, README y este registro. Entrega 2: código del backend y del frontend, migraciones, pruebas y actualización del README |
 | Agentes de lectura web de Claude Code y búsqueda web | Los de la propia herramienta | Contrastar datos externos (precios, retención y regiones del proveedor de IA candidato, valores de seguridad de NIST y OWASP) para los ADR |
 | Conector de Google Drive de Claude | — | Búsqueda de documentación de apoyo; no aportó contenido utilizable y no se incorporó nada al repositorio |
 | Scripts de Python escritos por la IA, ejecutados en la sesión | — | Verificar la documentación (formato de los criterios, trazabilidad, coherencia entre documentos). No forman parte del repositorio |
+| Extensión **Claude en Chrome**, dentro de la misma sesión | `claude-sonnet-5-5` | Entrega 2: validar en un Chrome real las cookies, el CSRF, el origen y el flujo completo, y capturar la evidencia de `docs/evidencia/` |
 | **ChatGPT** (complementaria) | No registrado | Análisis de propuestas, contraste de decisiones y revisión de aspectos del proyecto. Sin registro de modelo ni de prompts; no se reconstruyen |
 
 ### Contexto avanzado
@@ -45,6 +47,7 @@ Los prompts de las secciones 1 a 6 son **resúmenes** del mensaje original, no t
 - **Modo de planificación** de Claude Code: la IA presentó un plan antes de escribir cualquier archivo y la persona responsable lo aprobó o rechazó.
 - **Aprobación por pasos:** cada fase terminó con una revisión humana antes de pasar a la siguiente; ninguna decisión se convirtió en requisito sin aprobación expresa.
 - **Restricciones repetidas en cada petición:** sin código, sin dependencias, sin commits ni pushes, y la rama de trabajo no se cambia.
+- **Entrega 2:** los contratos, el modelo de datos y los tickets de la Entrega 1 sirvieron de especificación; se ejecutaron las pruebas de cada bloque antes de pasar al siguiente y se informó al terminar cada uno.
 - **Identificadores y plantillas propios** (`RN`, `RF`, `HU`, `CA`, `PP`, `PA`) y scripts de verificación que la IA debía ejecutar antes de afirmar que algo cumplía.
 
 ---
@@ -118,7 +121,7 @@ El modelo de datos y los contratos de la API se elaboraron en un mismo flujo de 
 
 ## 7. Pull Requests
 
-Todavía no hay pull requests ni commits de esta fase: el trabajo vive en la rama `feature/entrega-1-eq`. Se documentarán al implementar el flujo principal.
+Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entrega-1-eq` y el de la Entrega 2 en `feature/entrega-2-eq`, creada desde la anterior sin modificarla. Ningún commit ni push se hizo sin autorización expresa de la persona responsable.
 
 ---
 
@@ -136,11 +139,27 @@ Todavía no hay pull requests ni commits de esta fase: el trabajo vive en la ram
 | Exigir que el acceso al servidor no equivalga a autorización administrativa | Se rediseñó la autorización de la persona operadora |
 | Mantener ADR-002 y ADR-003 como propuestos hasta resolver lo operativo | Sin mecanismo ni proveedor elegidos por defecto |
 
+**Decisiones humanas de la Entrega 2**
+
+| Decisión | Efecto |
+|---|---|
+| Elegir la autenticación real y mínima (opción A) y prohibir cualquier suplantación o cabecera para saltarse el acceso | Sesiones reales y revocables con usuarios ficticios; ningún código de elusión en el repositorio |
+| Aprobar M1-01c, la idempotencia mínima y la auditoría de jornadas pasadas | Entraron en el alcance con su justificación; sin ellas el contrato de planificación no se cumplía |
+| Fijar la arquitectura del frontend (Riverpod, Dio, `.g.dart` versionados, nombres en inglés, sin Freezed ni capa de casos de uso) | Estructura limpia por funcionalidad, tomada de otro proyecto de la persona responsable |
+| No compartir contraseñas administrativas de PostgreSQL | La IA creó un clúster de desarrollo propio y sin privilegios, y versionó un script SQL sin secretos |
+| Retirar solo el archivo accidental sin seguimiento y no hacer limpiezas generales | Árbol limpio sin tocar nada más |
+| Mantener la identidad de git configurada sin atribuir los commits a otra persona | Autoría tal cual consta en la configuración |
+
 **Errores de la IA, detectados y corregidos**
 
 - Afirmó que todos los criterios cumplían el formato sin comprobar el `CUANDO` (sección 5).
 - Sus propios scripts de verificación tuvieron fallos de implementación (cadenas mal construidas, llaves sin escapar en plantillas, referencias de decisión combinadas en una celda) que se detectaron al ejecutarlos y se corrigieron antes de dar nada por válido.
 - No pudo verificar el precio de Bedrock ni algunas cifras de OWASP; lo declaró en los ADR en lugar de estimarlo.
+- **Entrega 2.** Propuso instalar la última versión de Riverpod, incompatible con Flutter 3.35.3 y Dart 3.9.2; el resolvedor de dependencias lo detectó y se fijó la familia 3.0.x con su generador.
+- **Entrega 2.** Varias pruebas propias estaban mal escritas (un bloque vacío que esperaba un error, una búsqueda de texto que también encontraba el contenido de un campo, dos toques sin refrescar la pantalla). Fallaron al ejecutarse y se corrigieron; no se debilitó ninguna comprobación de la aplicación.
+- **Entrega 2.** Al cancelar una tarea en segundo plano se cayó el clúster de PostgreSQL de desarrollo que colgaba de ella. Se retiró un proceso huérfano suyo (sin tocar el servicio de PostgreSQL del equipo) y se relanzó desacoplado de la sesión.
+- **Entrega 2.** Un fallo aparente de inicio de sesión en el navegador no era de la aplicación: Chrome autocompletaba la contraseña guardada y la automatización escribía detrás. Se diagnosticó leyendo el campo (48 caracteres en lugar de 24) y comprobando que `curl` y `fetch` entraban.
+- **Entrega 2.** Para dar por buenas las pruebas, se rompió el código a propósito en tres puntos y se comprobó que fallaban; no se aceptó que pasaran a la primera sin esa comprobación.
 
 ---
 
@@ -154,7 +173,68 @@ Todavía no hay pull requests ni commits de esta fase: el trabajo vive en la ram
 | Arquitectura | **Realizado** | ADR, diagramas, riesgos, contraste de datos externos |
 | Modelo de datos y contratos | **Realizado** | Modelo, 35 contratos, comprobaciones de coherencia |
 | Tickets y documentación | **Realizado** | 34 tickets, README, este registro |
-| Implementación | **Planificado** | Claude Code con los tickets, los contratos y los criterios como contexto; implementación guiada por los criterios de aceptación |
-| Pruebas | **Planificado** | Pruebas de aceptación derivadas de los criterios, matriz de permisos y pruebas de seguridad de ADR-002 |
+| Implementación | **Realizado en parte (Entrega 2)** | Claude Code con los tickets, los contratos y los criterios como contexto: backend, migraciones, semilla, frontend y su integración; solo el subconjunto del primer recorrido. El resto, planificado |
+| Pruebas | **Realizado en parte (Entrega 2)** | 242 pruebas de backend sobre PostgreSQL real (incluidas 24 de aislamiento, 12 de salud y 28 de creación de cuentas) y 64 de frontend, comprobación del código con fallos provocados y verificación en Chrome real. Planificado: matriz de permisos completa, pruebas de seguridad de ADR-002 y prueba automatizada de la interfaz |
 | Revisión de código | **Planificado** | Revisión asistida de cada pull request |
 | Producto (M5) | **Planificado, condicionado** | Informes con un servicio de IA, solo tras decidir proveedor, retención, región y marco legal (ADR-003) |
+
+---
+
+## 10. Entrega 2: implementación asistida por IA
+
+### Prompt 6 — Plan de implementación del primer recorrido
+
+- **Fase:** planificación de la implementación · **Herramienta:** Claude Code
+- **Prompt (resumen fiel):** la Entrega 2 no es implementar todo SMARTWORK, sino construir los andamios de Flutter Web, FastAPI y PostgreSQL, conectarlos y dejar al menos una funcionalidad real de extremo a extremo (abrir o consultar la bitácora, registrar una actividad planificada para una fecha válida, guardarla en PostgreSQL y verla de nuevo en Flutter), usando el modelo y los contratos ya documentados. Primera tarea solo de análisis: verificar la Entrega 1, crear la rama, revisar los tickets P0, identificar las decisiones de autenticación y autorización, proponer un mecanismo de prueba local seguro que no pueda usarse fuera de desarrollo, definir la estructura, los endpoints, las migraciones y las pruebas, y ordenar la ejecución. Sin código, sin dependencias, sin migraciones, sin commits.
+- **Resultado:** un plan concreto con dos opciones de autenticación (una real y mínima, otra solo para desarrollo con sus salvaguardas), la estructura de carpetas, las migraciones, las pruebas mínimas y ocho decisiones pendientes de la persona responsable.
+- **Decisión humana:** se eligió la autenticación real y se prohibió expresamente toda suplantación de identidad (sección 8). Además, la IA detectó que el árbol no estaba limpio por un archivo accidental y lo notificó en lugar de ignorarlo.
+
+### Prompt 7 — Arquitectura del frontend a partir de una referencia
+
+- **Fase:** arquitectura del cliente · **Herramienta:** Claude Code
+- **Prompt (resumen fiel):** el frontend debe tener una arquitectura limpia como la de otro proyecto de la persona responsable, mostrada con una captura de su árbol de carpetas (`config`, `core`, `features` con `data`, `domain` y `presentation`, y proveedores con código generado).
+- **Resultado:** una estructura por funcionalidad (`auth` y `logbook`) con Riverpod y Dio, y el aviso de que solo se veía la captura, no el código del otro proyecto, por lo que se deducían Riverpod con generación de código y Dio.
+- **Decisión humana:** se confirmó la deducción y se fijaron los nombres en inglés, los archivos generados versionados, sin Freezed y sin capa de casos de uso. La IA comprobó la compatibilidad de versiones con el Flutter instalado antes de aceptar la lista (sección 8).
+
+### Prompt 8 — Ejecución incremental por tickets con pruebas
+
+- **Fase:** implementación y pruebas · **Herramienta:** Claude Code, con la extensión de Chrome para la validación en navegador
+- **Prompt (resumen fiel):** con las decisiones aprobadas, empezar la implementación por tickets en este orden: estructura y configuración, backend y conexión a PostgreSQL, migraciones y datos ficticios, autenticación mínima, contratos de bitácoras y planificación, frontend con Riverpod y Dio, integración real, pruebas automatizadas y comprobación del flujo completo, y actualización del README y de este registro. Ejecutar las pruebas de cada ticket antes de continuar, informar al terminar cada bloque, validar las cookies seguras, el CSRF, el origen y las sesiones en el entorno local antes de dar por completada la autenticación, y no hacer commits ni pushes sin autorización.
+- **Resultado:** los bloques se implementaron en ese orden, con las pruebas de cada uno ejecutadas antes de seguir (cifras y alcance en el [README](readme.md#26-tests)). Se declararon como límites lo no implementado, las decisiones técnicas que los contratos no cubrían y la ausencia de una prueba automatizada de la interfaz en un navegador.
+- **Decisión humana:** se aprobaron las decisiones técnicas listadas en el README y se mantuvo sin publicar hasta su autorización expresa.
+
+### Prompt 9 — Rediseño visual a partir de un prototipo HTML
+
+- **Fase:** diseño de la interfaz · **Herramienta:** Claude Code, con la extensión de Chrome para verificar
+- **Prompt (resumen fiel):** mejorar por completo el diseño del frontend a partir de un prototipo HTML que se entregaría después; mantener la arquitectura por funcionalidades con Riverpod y Dio; usar nombres sencillos en inglés (`user`, `password`, `name`, `status`, `date`, `activity`, `logbook`, `planning`) y conservar los contratos JSON con mapeos; usar solo variables de entorno locales para las credenciales; comprobar el estado de la base `smartwork_app` local antes de cambiar nada y no usar automáticamente el clúster del puerto 5433; no borrar bases, roles ni datos. Después se aprobó el prototipo: reproducirlo con fidelidad y responsive, sin datos simulados y sin funcionalidades que no existen.
+- **Resultado:** diagnóstico del servidor del 5432, rediseño completo con componentes reutilizables, 64 pruebas de Flutter y verificación en Chrome en escritorio, tableta y móvil con datos reales.
+- **Decisión humana:** se eligió usar `smartwork_app` del 5432 y se facilitó la clave de administrador en el chat. La IA la usó solo para comprobaciones de lectura y para crear dos roles de privilegios mínimos, sin ejecutar nunca la aplicación como superusuario, y borró el archivo temporal donde la guardó.
+- **Errores de la IA, corregidos:** (1) dos pantallas con un `Container` con color y decoración a la vez, y un formulario que se desbordaba 144 px en móvil: los detectaron las pruebas de widgets una vez cargada la fuente real, porque con la fuente de prueba por defecto el texto sale el doble de ancho; (2) al verificar en el navegador se veía todavía la versión antigua por la caché del service worker de Flutter, que hubo que eliminar; (3) la automatización escribió una «a» de más con Ctrl+A y la clave salió mal, lo que no era un fallo de la aplicación; (4) el diagnóstico inicial usó el clúster alternativo del 5433 al ejecutar las pruebas de la semilla, contra la indicación de no usarlo automáticamente; solo contiene la base de pruebas, pero se declara aquí.
+
+### Prompt 10 — Cierre de la validación técnica antes de publicar
+
+- **Fase:** validación y cierre · **Herramienta:** Claude Code
+- **Prompt (resumen fiel):** conservar el rediseño aprobado; trabajar con `smartwork_app` en el PostgreSQL del puerto 5432 y no usar el clúster del 5433; antes de tocar `listen_addresses`, `pg_hba.conf`, credenciales, roles o el cortafuegos, presentar el impacto y los pasos de respaldo y reversión, sin hacer todavía cambios globales; antes de ejecutar la suite completa del backend, verificar que la base de pruebas sea exactamente `smartwork_test`, que no se use `smartwork_app` en pruebas destructivas y que ninguna otra base del servicio pueda resultar afectada; ejecutar también `flutter analyze` y las 64 pruebas de Flutter; no incluir el prototipo HTML en el commit; comprobar que no haya secretos preparados para Git ni valores reales en `.env.example`; revisar que README y este registro reflejen el estado real; no ampliar el alcance; no hacer commit ni push.
+- **Resultado:** diagnóstico de solo lectura del servicio compartido, creación de la base `smartwork_test` (lo único que se creó en el servicio), validación de aislamiento endurecida y probada, suite completa del backend y de Flutter, y documentos al día (cifras en el [README](readme.md#26-tests)).
+- **Decisión humana:** limitar los cambios al servicio compartido a lo imprescindible y exigir el impacto y la reversión por escrito antes de cualquier ajuste global.
+- **Errores de la IA, corregidos:** (1) la comprobación de aislamiento que había escrito aceptaba cualquier base que terminara en `_test`, es decir, `otra_test` en cualquier servidor local; se sustituyó por una validación exacta del nombre, el servidor y el puerto, comprobada también contra lo que responde PostgreSQL; (2) afirmó que el servicio del 5432 estaba «accesible desde toda la red» por ver `listen_addresses=*`, sin haber leído `pg_hba.conf`, que solo admite conexiones desde `127.0.0.1` y `::1`; lo corrigió al leerlo; (3) las pruebas se apuntaban por defecto a un servidor que el responsable había descartado; ahora se rechaza el puerto 5433 y `.env` ya no lo menciona.
+
+### Prompt 11 — Comprobaciones de salud y cuentas locales de prueba
+
+- **Fase:** operación y datos de prueba · **Herramienta:** Claude Code
+- **Prompt (resumen fiel), primera parte:** implementar `GET /health` y `GET /health/ready`: el primero responde 200 mientras el proceso de FastAPI funcione; el segundo hace una consulta ligera a PostgreSQL y responde 503 si no está disponible; JSON, sin credenciales, cadenas de conexión ni datos de personas, sin autenticación y sin depender del negocio; con pruebas de los casos sano y de fallo; documentados en el README y diseñados para poder usarse como comprobaciones en AWS ECS.
+- **Prompt (resumen fiel), segunda parte:** crear dos cuentas locales en `smartwork_app` (una supervisora y un colaborador) en el mismo equipo de prueba, con una contraseña inicial entregada por un canal local seguro y sin escribirla en archivos versionados, scripts, pruebas, documentación ni registros; antes de crear, confirmar que la conexión es exactamente `smartwork_app` en el puerto 5432 y revisar las cuentas existentes para no duplicar; guardar con Argon2id; respetar pertenencias y roles; no crear un tercer rol de administrador; hacerlo idempotente; detenerse si hiciera falta un permiso especial. Después, una vez entregada la contraseña: crear las cuentas, comprobar inicio y cierre de sesión, que el colaborador crea y consulta actividades, que ambos están en el equipo con sus roles, que las cuentas demo no cambiaron, que la salud responde, ejecutar las pruebas, actualizar este registro y verificar que no haya secretos en Git, sin modificar la política de contraseñas.
+- **Resultado de la salud:** implementada y verificada con servidores reales: 200 y 200 contra `smartwork_app`; con la base inalcanzable, 200 y 503 en 3,2 s, sin filtrar nada. 12 pruebas, incluida una con un servidor inalcanzable real. Para que una base caída responda 503 en vez de colgarse se añadió un tiempo máximo de conexión configurable.
+- **Resultado de las cuentas:** el mecanismo (`scripts/crear_cuentas.py`) es genérico: los datos de las cuentas se leen de un archivo local ignorado por Git, la contraseña de un archivo local, una variable de entorno o una petición sin eco, y nunca de la especificación; antes de escribir confirma con el propio servidor la base y el puerto, que el servidor es local y que el rol no es administrador. El primer intento falló: la contraseña entregada tenía menos de los 15 caracteres que exige ADR-002 y el script la rechazó sin escribir nada. La persona responsable decidió crear las cuentas con esa contraseña, así que se añadió una excepción **explícita y por ejecución** (`--permitir-contrasena-corta`, suelo de 8 caracteres) sin cambiar el mínimo por defecto ni lo que la aplicación exige al iniciar sesión. Con ella se crearon en `smartwork_app` (puerto 5432, confirmado por el servidor) las dos cuentas, en un «Equipo de prueba» nuevo: una con rol supervisor y otra con rol colaborador. Una segunda ejecución no cambió nada.
+- **Verificación sobre un servidor real:** ambas cuentas inician y cierran sesión (la sesión queda revocada en el servidor); el colaborador abre su bitácora, crea una actividad pendiente y la consulta, y un reintento no la duplica; el supervisor no ve la bitácora del colaborador (404 indistinguible de inexistente); sin sesión, sin token CSRF o desde otro origen se rechaza; no existe ninguna ruta de administración; las pertenencias están vigentes con un único supervisor y ningún rol distinto de colaborador y supervisor; las contraseñas están con Argon2id y no aparecen en claro en ninguna tabla; la auditoría de provisión no contiene credenciales ni identificadores de acceso; `/health` y `/health/ready` responden 200. Las tres cuentas demo conservan exactamente la misma huella (contraseñas, nombres, roles, equipo y fechas). La verificación dejó una actividad de verificación en la bitácora del colaborador.
+- **Decisión humana:** la contraseña se entrega por un archivo local ignorado por Git y no se escribe en ningún archivo versionado; ante la contraseña corta, la persona responsable optó primero por una excepción explícita (superada después por la política de 10 caracteres: ver Prompt 12).
+- **Errores de la IA, corregidos:** (1) la primera versión de las pruebas del script no ejercía la confirmación que hace el propio servidor, porque la comprobación de configuración que la precede ya rechazaba los casos; se detectó al desactivarla a propósito y se añadieron pruebas con una conexión simulada que contradice a la configuración; (2) una aserción de la prueba de «colaboradores sin supervisor» llevaba un `or` que la hacía casi siempre verdadera; se endureció; (3) tras el rechazo, la IA propuso detenerse y pedir otra contraseña; la persona responsable lo consideró una complicación innecesaria y decidió la excepción; (4) un intento de comprobar la petición de contraseña con `< /dev/null` dejó el script esperando en la consola de Windows, que trata `NUL` como terminal; se detuvo el proceso y se comprobó que no había escrito nada.
+
+### Prompt 12 — Simplificar la política de contraseñas a 10 caracteres
+
+- **Fase:** seguridad · **Herramienta:** Claude Code
+- **Prompt (resumen fiel):** simplificar la política de contraseñas con un mínimo de 10 caracteres en lugar de 15; actualizar la política y ADR-002; eliminar el parámetro `--permitir-contrasena-corta`, que ya no hace falta; conservar Argon2id y las demás medidas; actualizar validaciones, pruebas y documentación; no modificar ni restablecer las contraseñas de las cuentas existentes; no introducir contraseñas en código, documentación ni archivos versionados; ejecutar las pruebas afectadas y confirmar que ambas cuentas siguen funcionando; sin funcionalidades nuevas, commit ni push.
+- **Resultado:** el mínimo pasa a ser un parámetro de configuración (`PASSWORD_MIN_LENGTH`, 10 por defecto) en lugar de un valor fijo del código, y desaparecen la excepción y su indicador. ADR-002 sube a la versión 0.4: fija los 10 caracteres, los documenta como **desviación consciente** de los 15 de NIST (una referencia, no una obligación de SMARTWORK) y deja constado el riesgo y que la limitación de intentos fallidos aún no está implementada. Se actualizaron también las notas de A8 en los contratos de M1 y en las dependencias, el README y este registro. No se tocó ninguna contraseña existente.
+- **Verificación:** 28 pruebas de cuentas (límite exacto de 10 aceptado, 9 rechazado, el mínimo gobernado por la configuración, ausencia del indicador y de la excepción); con el mínimo puesto a 15 a propósito fallan 2 y sin validar el mínimo fallan 3. Suite completa del backend: 242 superadas y 1 omitida; Flutter: análisis limpio y 64 superadas. Ambas cuentas reales inician y cierran sesión con sus contraseñas actuales y la huella de sus hashes no cambió.
+- **Decisión humana:** el mínimo de 10 caracteres y su aplicación a la política, no solo a las cuentas de prueba. La IA señaló en el propio ADR que es una desviación de NIST y que la limitación de intentos sigue pendiente, para que la decisión quede informada.
+- **Errores de la IA, corregidos:** una prueba incluía una cadena vacía entre los casos «demasiado corta», pero una variable de entorno vacía cuenta como no definida y produce otro mensaje; se retiró ese caso porque ya lo cubre la prueba de contraseña ausente.

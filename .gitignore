@@ -1,0 +1,26 @@
+# Entorno local y secretos: nunca se versionan. Solo se versiona .env.example
+.env
+.env.*
+!.env.example
+
+# Datos del servidor PostgreSQL local de desarrollo
+.pgdata/
+
+# Datos locales de cuentas de prueba y su contraseña inicial (nunca se versionan)
+.local/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Salida de compilaciones
+backend/dist/
+frontend/build/
+
+# Editores y sistema operativo
+.idea/
+.DS_Store
+Thumbs.db

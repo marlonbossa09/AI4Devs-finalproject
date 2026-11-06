@@ -82,7 +82,7 @@ Reglas comunes de las órdenes de provisión:
 | **Errores** | `CODIGO_NO_VALIDO` · `CONTRASENA_NO_VALIDA` · `DEMASIADAS_SOLICITUDES` · `SOLICITUD_INVALIDA` |
 | **Auditoría y transacción** | Entrada de auditoría del canje, sin el código ni la contraseña, con la persona como autora |
 | **Criterios vinculados** | CA-05, CA-23, CA-24, CA-25 |
-| **Pendientes** | Caducidad e intentos del código (A4) y política de contraseñas (A8) |
+| **Pendientes** | Caducidad e intentos del código (A4) y lista de contraseñas conocidas (A8); la longitud mínima está decidida: 10 caracteres (ADR-002, versión 0.4) |
 
 ## M1-09b — Completar la recuperación del acceso
 

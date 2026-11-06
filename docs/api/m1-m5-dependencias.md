@@ -17,7 +17,7 @@ Este documento sustituye a la versión 0.1, que solo identificaba operaciones. L
 | A5 | Procedimiento de verificación de identidad al recuperar | M1-09a |
 | A6 | Medio de entrega de los códigos | M1-03a, M1-09a |
 | A7 | Quién es la persona operadora y cómo se identifica | Todas las órdenes |
-| A8 | Política de contraseñas y lista de contraseñas conocidas | M1-03b, M1-09b |
+| A8 | Lista de contraseñas conocidas (la longitud mínima está decidida: 10 caracteres, ADR-002 versión 0.4) | M1-03b, M1-09b |
 | A9 | Duración de la sesión y límites de intentos de inicio | M1-01a |
 | A10 | Regla (RN) de la reactivación administrativa | M1-10 |
 | A11 | Registro técnico de eventos de autenticación | M1-01a |
