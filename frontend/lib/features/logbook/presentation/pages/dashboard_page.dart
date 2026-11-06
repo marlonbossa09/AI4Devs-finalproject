@@ -86,6 +86,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       onFilter: (value) => setState(() => _filter = value),
       onRetry: () => ref.invalidate(logbookProvider(date)),
       onOpenLogbook: () => ref.read(currentPageProvider.notifier).go(AppPage.logbook),
+      onRegisterProgress: (activity) {
+        ref.read(progressTargetProvider.notifier).select(activity.summary);
+        ref.read(currentPageProvider.notifier).go(AppPage.progress);
+      },
+      onOpenActivity: (activity) {
+        ref.read(activityNavProvider.notifier).open(activity.id, back: AppPage.dashboard);
+        ref.read(currentPageProvider.notifier).go(AppPage.activityDetail);
+      },
     );
     final side = _SidePanel(day: day, today: widget.session.today);
 
@@ -97,11 +105,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           title: 'Buen día, $firstName',
           titleTrailing: const Icon(Icons.wb_sunny_outlined, size: 24, color: Color(0xFFE0A526)),
           subtitle: 'Revisa lo que tienes planeado y registra tus avances con claridad.',
-          action: PrimaryButton(
-            key: const Key('dashboard-new-planning'),
-            label: 'Nueva planificación',
-            icon: Icons.add,
-            onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.planning),
+          action: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SecondaryButton(
+                key: const Key('dashboard-new-unplanned'),
+                label: 'Actividad no planificada',
+                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.unplanned),
+              ),
+              PrimaryButton(
+                key: const Key('dashboard-new-planning'),
+                label: 'Nueva planificación',
+                icon: Icons.add,
+                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.planning),
+              ),
+            ],
           ),
         ),
         stats,
@@ -136,6 +155,8 @@ class _ActivitiesPanel extends StatelessWidget {
     required this.onFilter,
     required this.onRetry,
     required this.onOpenLogbook,
+    required this.onRegisterProgress,
+    required this.onOpenActivity,
   });
 
   final AsyncValue<LogbookDay?> view;
@@ -144,6 +165,8 @@ class _ActivitiesPanel extends StatelessWidget {
   final ValueChanged<_Filter> onFilter;
   final VoidCallback onRetry;
   final VoidCallback onOpenLogbook;
+  final ValueChanged<Activity> onRegisterProgress;
+  final ValueChanged<Activity> onOpenActivity;
 
   @override
   Widget build(BuildContext context) {
@@ -176,6 +199,9 @@ class _ActivitiesPanel extends StatelessWidget {
               key: Key('activity-${shown[i].id}'),
               activity: shown[i],
               planning: day?.planningOf(shown[i]),
+              progress: day?.progressOf(shown[i]) ?? const [],
+              onRegisterProgress: () => onRegisterProgress(shown[i]),
+              onOpen: () => onOpenActivity(shown[i]),
               first: i == 0,
             ),
         ],

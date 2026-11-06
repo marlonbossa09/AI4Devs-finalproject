@@ -32,6 +32,14 @@ PlanningType _planningType(String value) => switch (value) {
   _ => throw FormatException('Unknown planning type: $value'),
 };
 
+/// Wire value of a status (the contract uses these exact Spanish names).
+String statusToWire(ActivityStatus status) => switch (status) {
+  ActivityStatus.pending => 'Pendiente',
+  ActivityStatus.inProgress => 'En progreso',
+  ActivityStatus.blocked => 'Bloqueada',
+  ActivityStatus.completed => 'Completada',
+};
+
 /// Wire formats of the API. The JSON field names are Spanish (the public contract) and are
 /// mapped here, so the rest of the app only sees simple English names.
 @JsonSerializable(createToJson: false)
@@ -121,6 +129,7 @@ class ActivityModel {
     date: parseDate(date),
     createdAt: createdAt,
     marked: mark != null,
+    markReason: mark?['motivo'] as String?,
   );
 }
 
@@ -159,11 +168,58 @@ class PlanningModel {
   );
 }
 
-/// Response of M2-01a. The `avances` list is not read in this stage (no operation writes
-/// progress entries yet).
+@JsonSerializable(createToJson: false)
+class ProgressModel {
+  const ProgressModel({
+    required this.id,
+    required this.activityId,
+    required this.date,
+    required this.status,
+    required this.description,
+    required this.createdAt,
+    this.blockReason,
+    this.isReactivation = false,
+  });
+
+  factory ProgressModel.fromJson(Map<String, dynamic> json) => _$ProgressModelFromJson(json);
+
+  final String id;
+  @JsonKey(name: 'actividad_id')
+  final String activityId;
+  @JsonKey(name: 'fecha_laboral')
+  final String date;
+  @JsonKey(name: 'estado')
+  final String status;
+  @JsonKey(name: 'descripcion')
+  final String description;
+  @JsonKey(name: 'registrado_en')
+  final DateTime createdAt;
+  @JsonKey(name: 'motivo_bloqueo')
+  final String? blockReason;
+  @JsonKey(name: 'es_reactivacion', defaultValue: false)
+  final bool isReactivation;
+
+  Progress toEntity() => Progress(
+    id: id,
+    activityId: activityId,
+    date: parseDate(date),
+    status: _status(status),
+    description: description,
+    createdAt: createdAt,
+    blockReason: blockReason,
+    isReactivation: isReactivation,
+  );
+}
+
+/// Response of M2-01a.
 @JsonSerializable(createToJson: false)
 class LogbookDayModel {
-  const LogbookDayModel({required this.logbook, required this.plannings, required this.activities});
+  const LogbookDayModel({
+    required this.logbook,
+    required this.plannings,
+    required this.activities,
+    this.progress = const [],
+  });
 
   factory LogbookDayModel.fromJson(Map<String, dynamic> json) => _$LogbookDayModelFromJson(json);
 
@@ -173,11 +229,14 @@ class LogbookDayModel {
   final List<PlanningModel> plannings;
   @JsonKey(name: 'actividades')
   final List<ActivityModel> activities;
+  @JsonKey(name: 'avances', defaultValue: <ProgressModel>[])
+  final List<ProgressModel> progress;
 
   LogbookDay toEntity() => LogbookDay(
     logbook: logbook.toEntity(),
     plannings: plannings.map((p) => p.toEntity()).toList(),
     activities: activities.map((a) => a.toEntity()).toList(),
+    progress: progress.map((p) => p.toEntity()).toList(),
   );
 }
 
@@ -218,5 +277,102 @@ class PlanResultModel {
     activity: activity.toEntity(),
     planning: planning.toEntity(),
     logbookCreated: logbookCreated,
+  );
+}
+
+/// Response of M2-05.
+@JsonSerializable(createToJson: false)
+class ProgressResultModel {
+  const ProgressResultModel({
+    required this.progress,
+    required this.activity,
+    required this.logbookCreated,
+  });
+
+  factory ProgressResultModel.fromJson(Map<String, dynamic> json) => _$ProgressResultModelFromJson(json);
+
+  @JsonKey(name: 'avance')
+  final ProgressModel progress;
+  @JsonKey(name: 'actividad')
+  final ActivityModel activity;
+  @JsonKey(name: 'bitacora_creada')
+  final bool logbookCreated;
+
+  ProgressResult toEntity() => ProgressResult(
+    progress: progress.toEntity(),
+    activity: activity.toEntity(),
+    logbookCreated: logbookCreated,
+  );
+}
+
+/// One element of the M2-08 list.
+@JsonSerializable(createToJson: false)
+class ActivitySummaryModel {
+  const ActivitySummaryModel({
+    required this.id,
+    required this.title,
+    required this.origin,
+    required this.status,
+  });
+
+  factory ActivitySummaryModel.fromJson(Map<String, dynamic> json) => _$ActivitySummaryModelFromJson(json);
+
+  final String id;
+  @JsonKey(name: 'titulo')
+  final String title;
+  @JsonKey(name: 'origen')
+  final String origin;
+  @JsonKey(name: 'estado_actual')
+  final String status;
+
+  ActivitySummary toEntity() =>
+      ActivitySummary(id: id, title: title, origin: _origin(origin), status: _status(status));
+}
+
+/// Response of M2-08.
+@JsonSerializable(createToJson: false)
+class ActivityListModel {
+  const ActivityListModel({required this.items, this.next});
+
+  factory ActivityListModel.fromJson(Map<String, dynamic> json) => _$ActivityListModelFromJson(json);
+
+  @JsonKey(name: 'elementos')
+  final List<ActivitySummaryModel> items;
+  @JsonKey(name: 'siguiente')
+  final String? next;
+
+  ActivityListPage toEntity() => ActivityListPage(items: items.map((i) => i.toEntity()).toList(), next: next);
+}
+
+/// Response of M2-07.
+@JsonSerializable(createToJson: false)
+class ActivityDetailModel {
+  const ActivityDetailModel({
+    required this.activity,
+    required this.progress,
+    required this.plannedContinuations,
+    required this.status,
+    this.originalPlanning,
+  });
+
+  factory ActivityDetailModel.fromJson(Map<String, dynamic> json) => _$ActivityDetailModelFromJson(json);
+
+  @JsonKey(name: 'actividad')
+  final ActivityModel activity;
+  @JsonKey(name: 'planificacion_original')
+  final PlanningModel? originalPlanning;
+  @JsonKey(name: 'continuaciones_planificadas')
+  final List<PlanningModel> plannedContinuations;
+  @JsonKey(name: 'avances')
+  final List<ProgressModel> progress;
+  @JsonKey(name: 'estado_actual')
+  final String status;
+
+  ActivityDetail toEntity() => ActivityDetail(
+    activity: activity.toEntity(),
+    originalPlanning: originalPlanning?.toEntity(),
+    plannedContinuations: plannedContinuations.map((p) => p.toEntity()).toList(),
+    progress: progress.map((p) => p.toEntity()).toList(),
+    status: _status(status),
   );
 }

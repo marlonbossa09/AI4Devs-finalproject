@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/errors/api_error.dart';
 import '../../../auth/presentation/providers/auth.dart';
 import '../../domain/entities/logbook_entities.dart';
+import 'activity_detail.dart';
+import 'activity_list.dart';
 import 'logbook_repository.dart';
 
 part 'logbook_notifier.g.dart';
@@ -41,6 +43,65 @@ class LogbookNotifier extends _$LogbookNotifier {
     );
     await _reload();
     return result;
+  }
+
+  /// Records a progress entry (M2-05) on [activityId] for this notifier date. Throws `ApiError`
+  /// when the server rejects it.
+  ///
+  /// The server recalculates the activity status, and that status is visible in every day where
+  /// the activity appears (and in the indicators built from it), so ALL cached days, and the
+  /// activity detail and list, are reloaded from the API, not only this one.
+  Future<ProgressResult> registerProgress({
+    required String activityId,
+    required ActivityStatus status,
+    required String description,
+    String? blockReason,
+    required String key,
+  }) async {
+    final result = await _guard(
+      () => ref.read(logbookRepositoryProvider).registerProgress(
+        activityId: activityId,
+        date: date,
+        status: status,
+        description: description,
+        blockReason: blockReason,
+        key: key,
+      ),
+    );
+    await _reloadEverything();
+    return result;
+  }
+
+  /// Records work that was not planned (M2-06) for this notifier date: the activity and its first
+  /// progress entry are created by ONE server operation. Throws `ApiError` when the server rejects it.
+  Future<ProgressResult> registerUnplanned({
+    required String title,
+    required ActivityStatus status,
+    required String description,
+    String? blockReason,
+    required String key,
+  }) async {
+    final result = await _guard(
+      () => ref.read(logbookRepositoryProvider).registerUnplanned(
+        date: date,
+        title: title,
+        status: status,
+        description: description,
+        blockReason: blockReason,
+        key: key,
+      ),
+    );
+    await _reloadEverything();
+    return result;
+  }
+
+  /// A new activity or progress entry changes what EVERY cached day, the activity list and any open
+  /// detail show (status, indicators, history), so all of them are reloaded from the API.
+  Future<void> _reloadEverything() async {
+    ref.invalidate(logbookProvider);
+    ref.invalidate(activityDetailProvider);
+    ref.invalidate(activityListProvider);
+    await future;
   }
 
   Future<void> _reload() async {

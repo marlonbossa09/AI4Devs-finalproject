@@ -41,6 +41,9 @@ class PageHeader extends StatelessWidget {
   final Widget? titleTrailing;
   final Widget? action;
 
+  /// Content width from which the action fits beside the title.
+  static const double _sideBySideMinWidth = 760;
+
   @override
   Widget build(BuildContext context) {
     final mobile = ScreenSize.ofContext(context).isMobile;
@@ -59,23 +62,30 @@ class PageHeader extends StatelessWidget {
     );
     return Padding(
       padding: const EdgeInsets.only(bottom: 29),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Eyebrow(eyebrow),
-          if (action == null)
-            heading
-          else if (mobile)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [heading, const SizedBox(height: 16), action!],
-            )
-          else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [Expanded(child: heading), const SizedBox(width: 15), action!],
-            ),
-        ],
+      // The action goes beside the title only when there is room for both; with less than
+      // [_sideBySideMinWidth] (a tablet with the sidebar open, or a phone) it goes under it.
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stacked = mobile || constraints.maxWidth < _sideBySideMinWidth;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Eyebrow(eyebrow),
+              if (action == null)
+                heading
+              else if (stacked)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [heading, const SizedBox(height: 16), action!],
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [Expanded(child: heading), const SizedBox(width: 15), action!],
+                ),
+            ],
+          );
+        },
       ),
     );
   }

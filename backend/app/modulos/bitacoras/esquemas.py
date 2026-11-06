@@ -1,4 +1,4 @@
-"""Esquemas de M2-01a, M2-01b y M2-03 (docs/api/m2-bitacoras.md y convenciones, sección 7)."""
+"""Esquemas de M2 (docs/api/m2-bitacoras.md y convenciones, sección 7)."""
 
 from datetime import date, datetime, timezone
 
@@ -20,6 +20,34 @@ class PlanificarEntrada(BaseModel):
 
     titulo: str | None = None
     descripcion: str | None = None
+
+
+class AvanceEntrada(BaseModel):
+    """M2-05. Sin ``actividad_id`` en el cuerpo (va en la ruta: es la selección explícita de la
+    actividad que se continúa) ni campos desconocidos. Estado, descripción y motivo se validan en el
+    servicio para devolver ESTADO_INVALIDO, DESCRIPCION_OBLIGATORIA y MOTIVO_BLOQUEO_OBLIGATORIO."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fecha_laboral: str
+    estado: str | None = None
+    descripcion: str | None = None
+    motivo_bloqueo: str | None = None
+
+
+class NoPlanificadaEntrada(BaseModel):
+    """M2-06. Crea la actividad y su primer avance en una sola operación. No admite ``origen``,
+    ``propietaria_id`` ni una planificación (campos desconocidos): el origen lo fija el endpoint. El
+    título, el estado, la descripción y el motivo se validan en el servicio para devolver
+    CAMPO_OBLIGATORIO, ESTADO_INVALIDO, DESCRIPCION_OBLIGATORIA y MOTIVO_BLOQUEO_OBLIGATORIO."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fecha_laboral: str
+    titulo: str | None = None
+    estado: str | None = None
+    descripcion: str | None = None
+    motivo_bloqueo: str | None = None
 
 
 def momento(valor: datetime | None) -> str | None:
@@ -88,4 +116,7 @@ def avance_a_dict(fila, fecha_laboral: date) -> dict:
         "motivo_bloqueo": fila.motivo_bloqueo,
         "es_reactivacion": fila.es_reactivacion,
         "registrado_en": momento(fila.registrado_en),
+        # Los avances no se editan en esta entrega: nunca se han modificado, así que su última
+        # modificación coincide con su registro (CA-62). La corrección (M3-03) la hará diferir.
+        "modificado_en": momento(fila.registrado_en),
     }

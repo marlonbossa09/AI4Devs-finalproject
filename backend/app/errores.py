@@ -16,6 +16,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 logger = logging.getLogger("smartwork")
 
 # Código -> (estado HTTP, mensaje fijo). Solo los códigos que usan las operaciones implementadas.
+# OPERACION_NO_PERMITIDA (403) no se emite todavía: mientras no exista la visibilidad histórica
+# del equipo (BE-02, M4), una actividad o bitácora ajena se responde siempre con
+# RECURSO_NO_DISPONIBLE (404), sin revelar si existe. Es una diferencia provisional respecto a los
+# contratos de M2 y M3, que distinguen 403 (recurso visible) de 404 (no visible).
 CATALOGO: dict[str, tuple[int, str]] = {
     "SOLICITUD_INVALIDA": (400, "La solicitud no es válida."),
     "CLAVE_IDEMPOTENCIA_OBLIGATORIA": (400, "Falta la cabecera Idempotency-Key."),
@@ -25,8 +29,18 @@ CATALOGO: dict[str, tuple[int, str]] = {
     "SIN_PERTENENCIA_VIGENTE": (403, "No tiene una pertenencia vigente."),
     "RECURSO_NO_DISPONIBLE": (404, "El recurso solicitado no está disponible"),
     "BITACORA_CERRADA": (409, "La bitácora está cerrada; hay que reabrirla antes de modificarla."),
+    "BITACORA_NO_CERRADA": (409, "La bitácora no está cerrada."),
+    "ACTIVIDAD_COMPLETADA": (409, "La actividad está Completada; hay que reactivarla antes de continuarla."),
+    "ACTIVIDAD_MARCADA_POR_ERROR": (409, "La actividad está marcada como registrada por error."),
+    "CONDICIONES_DE_CIERRE_NO_CUMPLIDAS": (409, "La jornada no cumple las condiciones de cierre."),
     "OPERACION_EN_CURSO": (409, "Otra petición con la misma clave sigue en curso."),
     "FECHA_NO_CUBIERTA": (422, "La fecha laboral no está cubierta por una pertenencia."),
+    "FECHA_FUTURA_NO_PERMITIDA": (422, "No se puede registrar ejecución ni cerrar una jornada de fecha futura."),
+    "FECHA_NO_FUTURA": (422, "La continuación planificada exige una fecha posterior a la actual."),
+    "ESTADO_INVALIDO": (422, "El estado no es uno de los cuatro permitidos."),
+    "DESCRIPCION_OBLIGATORIA": (422, "La descripción es obligatoria."),
+    "MOTIVO_BLOQUEO_OBLIGATORIO": (422, "Una actividad Bloqueada exige indicar el motivo."),
+    "MOTIVO_OBLIGATORIO": (422, "Falta el motivo."),
     "CAMPO_OBLIGATORIO": (422, "Falta un campo obligatorio."),
     "TEXTO_DEMASIADO_LARGO": (422, "El texto supera el máximo permitido."),
     "CLAVE_IDEMPOTENCIA_REUTILIZADA": (422, "La clave ya se usó con otra petición distinta."),

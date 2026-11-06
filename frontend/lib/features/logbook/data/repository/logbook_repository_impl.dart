@@ -37,4 +37,54 @@ class LogbookRepositoryImpl implements LogbookRepository {
     );
     return model.toEntity();
   }
+
+  @override
+  Future<ActivityDetail> getActivity(String id) async => (await _remote.getActivity(id)).toEntity();
+
+  @override
+  Future<ActivityListPage> listActivities({
+    List<ActivityStatus> statuses = const [],
+    int? limit,
+    String? cursor,
+  }) async => (await _remote.listActivities(statuses: statuses, limit: limit, cursor: cursor)).toEntity();
+
+  @override
+  Future<ProgressResult> registerUnplanned({
+    required DateTime date,
+    required String title,
+    required ActivityStatus status,
+    required String description,
+    String? blockReason,
+    required String key,
+  }) async {
+    final model = await _remote.registerUnplanned(
+      date: date,
+      title: title,
+      status: status,
+      description: description,
+      blockReason: blockReason,
+      key: key,
+    );
+    return model.toEntity();
+  }
+
+  @override
+  Future<ProgressResult> registerProgress({
+    required String activityId,
+    required DateTime date,
+    required ActivityStatus status,
+    required String description,
+    String? blockReason,
+    required String key,
+  }) async {
+    final model = await _remote.registerProgress(
+      activityId: activityId,
+      date: date,
+      status: status,
+      description: description,
+      blockReason: blockReason,
+      key: key,
+    );
+    return model.toEntity();
+  }
 }

@@ -17,6 +17,26 @@ String errorMessage(ApiError error) {
       return 'Esa fecha no está cubierta por tu pertenencia a un equipo.';
     case 'BITACORA_CERRADA':
       return 'La bitácora de esa fecha está cerrada. Hay que reabrirla antes de modificarla.';
+    case 'BITACORA_NO_CERRADA':
+      return 'La bitácora de esa fecha no está cerrada.';
+    case 'ACTIVIDAD_COMPLETADA':
+      return 'La actividad está Completada. Hay que reactivarla antes de continuarla.';
+    case 'ACTIVIDAD_MARCADA_POR_ERROR':
+      return 'La actividad está marcada como registrada por error.';
+    case 'CONDICIONES_DE_CIERRE_NO_CUMPLIDAS':
+      return 'La jornada todavía no cumple las condiciones para cerrarse.';
+    case 'FECHA_FUTURA_NO_PERMITIDA':
+      return 'No se puede registrar ejecución ni cerrar una jornada de fecha futura.';
+    case 'FECHA_NO_FUTURA':
+      return 'La continuación planificada debe ser para una fecha posterior a hoy.';
+    case 'ESTADO_INVALIDO':
+      return 'El estado elegido no es válido.';
+    case 'DESCRIPCION_OBLIGATORIA':
+      return 'Describe el trabajo realizado.';
+    case 'MOTIVO_BLOQUEO_OBLIGATORIO':
+      return 'Indica el motivo del bloqueo.';
+    case 'MOTIVO_OBLIGATORIO':
+      return 'Indica el motivo.';
     case 'RECURSO_NO_DISPONIBLE':
       return 'El recurso solicitado no está disponible.';
     case 'CAMPO_OBLIGATORIO':

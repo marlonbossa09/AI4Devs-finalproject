@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../../../core/widgets/text_blocks.dart';
+import '../../domain/entities/logbook_entities.dart';
 import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
@@ -25,6 +26,16 @@ class LogbookPage extends ConsumerStatefulWidget {
 class _LogbookPageState extends ConsumerState<LogbookPage> {
   bool _opening = false;
   String? _openError;
+
+  void _registerProgress(Activity activity) {
+    ref.read(progressTargetProvider.notifier).select(activity.summary);
+    ref.read(currentPageProvider.notifier).go(AppPage.progress);
+  }
+
+  void _openDetail(Activity activity) {
+    ref.read(activityNavProvider.notifier).open(activity.id, back: AppPage.logbook);
+    ref.read(currentPageProvider.notifier).go(AppPage.activityDetail);
+  }
 
   Future<void> _open(DateTime date) async {
     setState(() {
@@ -95,6 +106,9 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
                 key: Key('activity-${day.activities[i].id}'),
                 activity: day.activities[i],
                 planning: day.planningOf(day.activities[i]),
+                progress: day.progressOf(day.activities[i]),
+                onRegisterProgress: () => _registerProgress(day.activities[i]),
+                onOpen: () => _openDetail(day.activities[i]),
                 first: i == 0,
               ),
         ],
@@ -108,11 +122,22 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
           eyebrow: 'Registro personal',
           title: 'Mi bitácora',
           subtitle: 'Consulta y organiza tus actividades por fecha laboral.',
-          action: PrimaryButton(
-            key: const Key('logbook-new-planning'),
-            label: 'Planificar actividad',
-            icon: Icons.add,
-            onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.planning),
+          action: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SecondaryButton(
+                key: const Key('logbook-new-unplanned'),
+                label: 'Actividad no planificada',
+                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.unplanned),
+              ),
+              PrimaryButton(
+                key: const Key('logbook-new-planning'),
+                label: 'Planificar actividad',
+                icon: Icons.add,
+                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.planning),
+              ),
+            ],
           ),
         ),
         AppCard(

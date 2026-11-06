@@ -53,6 +53,11 @@ class Settings(BaseSettings):
 
     idempotency_window_hours: int = Field(default=24, gt=0)
 
+    # Listados (convenciones 6.1 y 9, D-10): valor por defecto y máximo de ``limite``. Valores locales
+    # configurables; no son reglas del producto (PA-13).
+    pagination_default_limit: int = Field(default=20, gt=0)
+    pagination_max_limit: int = Field(default=100, gt=0)
+
     argon2_memory_kib: int = Field(default=19456, gt=0)
     argon2_iterations: int = Field(default=2, gt=0)
     argon2_parallelism: int = Field(default=1, gt=0)

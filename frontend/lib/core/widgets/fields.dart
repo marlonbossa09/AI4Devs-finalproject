@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../utils/dates.dart';
 
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
+/// Label above an input (`.field label`).
+class FieldLabel extends StatelessWidget {
+  const FieldLabel(this.text, {super.key});
 
   final String text;
 
@@ -34,6 +35,7 @@ class LabeledField extends StatelessWidget {
     this.autofillHints,
     this.textInputAction,
     this.onSubmitted,
+    this.onChanged,
     this.fieldKey,
   });
 
@@ -51,6 +53,7 @@ class LabeledField extends StatelessWidget {
   final Iterable<String>? autofillHints;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
 
   /// Key of the inner text field, so tests and automation can find it.
   final Key? fieldKey;
@@ -60,7 +63,7 @@ class LabeledField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel(label),
+        FieldLabel(label),
         TextField(
           key: fieldKey,
           controller: controller,
@@ -71,6 +74,7 @@ class LabeledField extends StatelessWidget {
           autofillHints: autofillHints,
           textInputAction: textInputAction,
           onSubmitted: onSubmitted,
+          onChanged: onChanged,
           style: const TextStyle(fontSize: 13, color: AppColors.fieldText),
           decoration: InputDecoration(
             hintText: hint,
@@ -95,6 +99,8 @@ class DateField extends StatelessWidget {
     required this.date,
     required this.onChanged,
     this.fieldKey,
+    this.lastDate,
+    this.errorText,
   });
 
   final String label;
@@ -102,12 +108,17 @@ class DateField extends StatelessWidget {
   final ValueChanged<DateTime> onChanged;
   final Key? fieldKey;
 
+  /// Latest date the picker offers (default: year 2100).
+  final DateTime? lastDate;
+  final String? errorText;
+
   Future<void> _pick(BuildContext context) async {
+    final last = lastDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: date,
+      initialDate: last != null && date.isAfter(last) ? last : date,
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: last ?? DateTime(2100),
       helpText: label,
     );
     if (picked != null) onChanged(dateOnly(picked));
@@ -118,7 +129,7 @@ class DateField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel(label),
+        FieldLabel(label),
         Semantics(
           button: true,
           label: '$label ${formatShortDate(date)}',
@@ -145,6 +156,72 @@ class DateField extends StatelessWidget {
                   const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF728097)),
                 ],
               ),
+            ),
+          ),
+        ),
+        if (errorText != null) ...[
+          const SizedBox(height: 6),
+          Text(errorText!, style: const TextStyle(fontSize: 12, color: AppColors.error)),
+        ],
+      ],
+    );
+  }
+}
+
+/// Dropdown with its label above it (a `select` in the design). [options] keeps its order.
+class SelectField<T> extends StatelessWidget {
+  const SelectField({
+    super.key,
+    required this.label,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+    this.hint,
+    this.errorText,
+    this.enabled = true,
+  });
+
+  final String label;
+
+  /// Option value -> label.
+  final Map<T, String> options;
+  final T? value;
+  final ValueChanged<T?> onChanged;
+  final String? hint;
+  final String? errorText;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FieldLabel(label),
+        InputDecorator(
+          isEmpty: value == null,
+          decoration: InputDecoration(
+            errorText: errorText,
+            fillColor: enabled ? AppColors.white : const Color(0xFFF3F6FA),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 2),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: value,
+              isExpanded: true,
+              hint: hint == null
+                  ? null
+                  : Text(hint!, style: const TextStyle(fontSize: 13, color: AppColors.textFaint)),
+              icon: const Icon(Icons.expand_more, size: 18, color: Color(0xFF728097)),
+              style: const TextStyle(fontSize: 13, color: AppColors.fieldText),
+              borderRadius: BorderRadius.circular(10),
+              items: [
+                for (final entry in options.entries)
+                  DropdownMenuItem<T>(
+                    value: entry.key,
+                    child: Text(entry.value, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: enabled ? onChanged : null,
             ),
           ),
         ),
