@@ -19,13 +19,17 @@ from app.config import get_settings
 from app.errores import AppError
 from app.modulos.bitacoras import repositorio, secuencia
 from app.modulos.bitacoras.esquemas import (
-    AvanceEntrada, NoPlanificadaEntrada, PlanificarEntrada, actividad_a_dict, avance_a_dict, bitacora_a_dict,
-    planificacion_a_dict,
+    AvanceEntrada, ContinuacionEntrada, NoPlanificadaEntrada, PlanificarEntrada, ReaperturaEntrada, ResumenEntrada,
+    actividad_a_dict, momento,
+    avance_a_dict, bitacora_a_dict, planificacion_a_dict,
 )
 
 OPERACION_PLANIFICAR = "M2-03"
 OPERACION_AVANCE = "M2-05"
 OPERACION_NO_PLANIFICADA = "M2-06"
+OPERACION_CONTINUACION = "M2-04"
+OPERACION_CIERRE = "M3-01"
+OPERACION_REAPERTURA = "M3-02"
 
 # Parámetros de consulta que admite M2-08. Cualquier otro se rechaza (convenciones 2: no hay búsquedas
 # ni filtros que el producto no contemple).
@@ -92,6 +96,9 @@ def planificar_actividad(
                                     maximo=settings.text_max_description)
         _exigir_fecha_cubierta(db, op, fecha)
         bitacora, creada = repositorio.obtener_o_crear_bitacora(db, op.persona_id, fecha)
+        # La fila se bloquea antes de mirar si está cerrada: un cierre simultáneo (M3-01) se serializa con
+        # esta escritura, así que nunca entra contenido en una jornada que ya se cerró (RN-108)
+        bitacora = repositorio.bloquear_bitacora(db, bitacora.id)
         if bitacora.estado == "cerrada":
             raise AppError("BITACORA_CERRADA")
         actividad = repositorio.insertar_actividad(db, op.persona_id, bitacora.id, titulo)
@@ -176,6 +183,9 @@ def registrar_avance(
             raise AppError("FECHA_FUTURA_NO_PERMITIDA", [{"campo": "fecha_laboral", "motivo": "ejecucion_futura"}])
         _exigir_fecha_cubierta(db, op, fecha)
         bitacora, creada = repositorio.obtener_o_crear_bitacora(db, op.persona_id, fecha)
+        # La fila se bloquea antes de mirar si está cerrada: un cierre simultáneo (M3-01) se serializa con
+        # esta escritura, así que nunca entra contenido en una jornada que ya se cerró (RN-108)
+        bitacora = repositorio.bloquear_bitacora(db, bitacora.id)
         if bitacora.estado == "cerrada":
             raise AppError("BITACORA_CERRADA")
         existentes = [
@@ -342,6 +352,9 @@ def registrar_no_planificada(
             raise AppError("FECHA_FUTURA_NO_PERMITIDA", [{"campo": "fecha_laboral", "motivo": "ejecucion_futura"}])
         _exigir_fecha_cubierta(db, op, fecha)
         bitacora, creada = repositorio.obtener_o_crear_bitacora(db, op.persona_id, fecha)
+        # La fila se bloquea antes de mirar si está cerrada: un cierre simultáneo (M3-01) se serializa con
+        # esta escritura, así que nunca entra contenido en una jornada que ya se cerró (RN-108)
+        bitacora = repositorio.bloquear_bitacora(db, bitacora.id)
         if bitacora.estado == "cerrada":
             raise AppError("BITACORA_CERRADA")
 
@@ -378,4 +391,214 @@ def registrar_no_planificada(
     return ejecutar_con_clave(
         db, persona_id=op.persona_id, operacion=OPERACION_NO_PLANIFICADA, clave=clave, huella=huella,
         ejecutar=ejecutar,
+    )
+
+
+# =============================== M2-02: resumen libre de la bitácora ==========================================
+
+def guardar_resumen(db: Session, op: Operador, fecha_laboral: str, entrada: ResumenEntrada) -> dict:
+    """M2-02. Guarda (reemplaza) el resumen libre de MI bitácora de una fecha.
+
+    - Es un reemplazo, naturalmente idempotente: repetirlo deja lo mismo. Por eso el contrato no exige
+      ``Idempotency-Key``.
+    - Si la bitácora no existe se crea en la misma transacción, con las condiciones de M2-01b (D-01):
+      fecha cubierta por una pertenencia, pasada sin límite de antigüedad, futura admitida.
+    - Un resumen vacío (o solo espacios) se acepta: solo impide cerrar la jornada (RN-21, M3-01).
+    - Una jornada cerrada exige reabrirla antes (RN-108, D-04): ``BITACORA_CERRADA``.
+    - ``modificada_en`` se renueva siempre (RN-18).
+    - Auditoría (RN-45, RN-49, IR-35): una única entrada, con el resumen anterior y el nuevo, si la fecha
+      es pasada o la bitácora fue reabierta; ninguna en una jornada actual o futura. Guardar un resumen
+      vacío donde no había contenido no es una escritura efectiva (D-02) y no se audita; vaciar un
+      resumen que sí tenía contenido SÍ lo es, porque cambia el registro. La creación implícita de la
+      bitácora va en la misma entrada.
+    - Todo en una transacción; la fila de la bitácora se bloquea para serializar las escrituras
+      simultáneas sobre la misma jornada."""
+    fecha = parsear_fecha_laboral(fecha_laboral)
+    resumen = validar_texto(entrada.resumen, "resumen", obligatorio=False, maximo=get_settings().text_max_summary)
+    _exigir_fecha_cubierta(db, op, fecha)
+    bitacora, creada = repositorio.obtener_o_crear_bitacora(db, op.persona_id, fecha)
+    bitacora = repositorio.bloquear_bitacora(db, bitacora.id)
+    if bitacora.estado == "cerrada":
+        raise AppError("BITACORA_CERRADA")
+
+    anterior = bitacora.resumen
+    reabierta = repositorio.bitacora_fue_reabierta(db, bitacora.id)
+    pasada = fecha < op.contexto.fecha_actual
+    actualizada = repositorio.guardar_resumen(db, bitacora.id, resumen)
+
+    efectiva = bool(anterior.strip()) or bool(resumen.strip())
+    if (pasada or reabierta) and efectiva:
+        registrar_operacion_de_persona(
+            db,
+            autor_persona_id=op.persona_id,
+            operacion="modificacion_jornada_pasada" if pasada else "correccion",
+            tipo_objeto="bitacora",
+            objeto_id=bitacora.id,
+            propietaria_registro_id=op.persona_id,
+            fecha_laboral_registro=fecha,
+            valor_anterior={"resumen": anterior, "bitacora_existia": not creada},
+            valor_nuevo={"resumen": resumen, "bitacora_creada": creada, "bitacora_id": str(bitacora.id)},
+        )
+    return {"bitacora": bitacora_a_dict(actualizada, op.contexto.fecha_actual), "bitacora_creada": creada}
+
+
+# =============================== M2-04: continuación planificada ==============================================
+
+def planificar_continuacion(
+    db: Session, op: Operador, actividad_id: UUID, entrada: ContinuacionEntrada, clave: str | None
+) -> Resultado:
+    """M2-04. Registra la continuación planificada de una actividad PROPIA para una jornada futura.
+
+    - Es una planificación: no crea otra actividad (CA-179), no crea ningún avance, no entra en la
+      secuencia y no cambia el estado actual (RN-75, CA-180, CA-181, CA-185, CA-186).
+    - La fecha debe ser posterior a la actual (``FECHA_NO_FUTURA``, RN-76) y estar cubierta por una
+      pertenencia mía (``FECHA_NO_CUBIERTA``).
+    - Una actividad Completada se rechaza con ``ACTIVIDAD_COMPLETADA`` mientras no se reactive (RN-78,
+      CA-209; la reactivación es M3-04, fuera de esta entrega). Una marcada por error, con
+      ``ACTIVIDAD_MARCADA_POR_ERROR``.
+    - Si la bitácora de esa jornada futura no existe, se crea en la misma transacción (D-01); nunca está
+      cerrada, porque no se cierran jornadas futuras (RN-46).
+    - No audita: no modifica una jornada pasada.
+    - La fila de la actividad se bloquea: un avance Completada simultáneo se serializa con esta
+      planificación, así que nunca queda una continuación planificada tras una finalización (IR-17).
+    - Dos continuaciones para la misma actividad y fecha, con claves distintas, son dos intenciones
+      distintas y se registran las dos (las continuaciones son varias, IR-16); un reintento con la misma
+      clave no duplica nada (T-04)."""
+    fecha = parsear_fecha_laboral(entrada.fecha_laboral)
+    huella = calcular_huella({
+        "actividad_id": str(actividad_id), "fecha_laboral": fecha.isoformat(), "descripcion": entrada.descripcion,
+    })
+    settings = get_settings()
+
+    def ejecutar() -> tuple[int, dict]:
+        # Visibilidad primero (T-01): una actividad ajena es indistinguible de una inexistente.
+        actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
+        if actividad is None:
+            raise AppError("RECURSO_NO_DISPONIBLE")
+        if actividad.registrada_por_error:
+            raise AppError("ACTIVIDAD_MARCADA_POR_ERROR")
+        descripcion = validar_texto(entrada.descripcion, "descripcion", obligatorio=False,
+                                    maximo=settings.text_max_description)
+        if fecha <= op.contexto.fecha_actual:
+            raise AppError("FECHA_NO_FUTURA", [{"campo": "fecha_laboral", "motivo": "no_es_posterior_a_la_actual"}])
+        _exigir_fecha_cubierta(db, op, fecha)
+        if actividad.estado_actual == secuencia.COMPLETADA:
+            raise AppError("ACTIVIDAD_COMPLETADA")
+
+        bitacora, creada = repositorio.obtener_o_crear_bitacora(db, op.persona_id, fecha)
+        planificacion = repositorio.insertar_continuacion_planificada(db, actividad.id, bitacora.id, descripcion)
+        final = repositorio.obtener_actividad_propia(db, op.persona_id, actividad.id)  # el estado no cambió
+        return 201, {
+            "planificacion": planificacion_a_dict(planificacion, fecha),
+            "actividad": actividad_a_dict(final, final.fecha_laboral_origen),
+            "bitacora_creada": creada,
+        }
+
+    return ejecutar_con_clave(
+        db, persona_id=op.persona_id, operacion=OPERACION_CONTINUACION, clave=clave, huella=huella,
+        ejecutar=ejecutar,
+    )
+
+
+# =============================== M3-01 y M3-02: cierre y reapertura de la jornada ================================
+
+def cerrar_bitacora(db: Session, op: Operador, fecha_laboral: str, clave: str | None) -> Resultado:
+    """M3-01. Cierra MI bitácora de una fecha, de forma manual (CA-89).
+
+    - No crea la bitácora: si no existe (o no es mía), ``RECURSO_NO_DISPONIBLE`` (D-01, CA-98).
+    - Una jornada futura no se cierra (``FECHA_FUTURA_NO_PERMITIDA``, CA-97); una ya cerrada devuelve
+      ``BITACORA_CERRADA``.
+    - Condiciones (RN-21, CA-90 a CA-94): un resumen con texto (ni vacío ni solo espacios) y al menos una
+      actividad válida creada en la jornada o continuada en ella con un avance de esa fecha. Una
+      continuación planificada no cuenta (CA-184) ni las actividades marcadas por error (RN-109, CA-283).
+      Si falta algo, ``CONDICIONES_DE_CIERRE_NO_CUMPLIDAS`` con TODO lo que falta en ``detalles``.
+    - Las actividades conservan su estado (CA-95): no se tocan.
+    - Una entrada de auditoría por cierre, con el estado anterior y el nuevo (RN-103, CA-266), en la misma
+      transacción. La fila de la bitácora se bloquea: las escrituras simultáneas sobre la jornada (resumen,
+      actividades, avances) se serializan con el cierre, así que no se cierra con contenido a medias ni
+      entra contenido en una jornada recién cerrada."""
+    fecha = parsear_fecha_laboral(fecha_laboral)
+    huella = calcular_huella({"fecha_laboral": fecha.isoformat()})
+
+    def ejecutar() -> tuple[int, dict]:
+        existente = repositorio.obtener_bitacora(db, op.persona_id, fecha)
+        if existente is None:
+            raise AppError("RECURSO_NO_DISPONIBLE")
+        bitacora = repositorio.bloquear_bitacora(db, existente.id)
+        if bitacora.estado == "cerrada":
+            raise AppError("BITACORA_CERRADA")
+        if fecha > op.contexto.fecha_actual:
+            raise AppError("FECHA_FUTURA_NO_PERMITIDA", [{"campo": "fecha_laboral", "motivo": "cierre_futuro"}])
+        faltan = []
+        if not bitacora.resumen.strip():
+            faltan.append({"campo": "resumen", "motivo": "vacio"})
+        if repositorio.contar_actividades_efectivas(db, op.persona_id, bitacora.id) == 0:
+            faltan.append({"campo": "actividades", "motivo": "sin_actividad_creada_ni_continuada"})
+        if faltan:
+            raise AppError("CONDICIONES_DE_CIERRE_NO_CUMPLIDAS", faltan)
+
+        cerrada = repositorio.cerrar_bitacora(db, bitacora.id)
+        registrar_operacion_de_persona(
+            db,
+            autor_persona_id=op.persona_id,
+            operacion="cierre",
+            tipo_objeto="bitacora",
+            objeto_id=bitacora.id,
+            propietaria_registro_id=op.persona_id,
+            fecha_laboral_registro=fecha,
+            valor_anterior={"estado": "abierta", "cerrada_en": None},
+            valor_nuevo={"estado": "cerrada", "cerrada_en": momento(cerrada.cerrada_en)},
+        )
+        return 200, {"bitacora": bitacora_a_dict(cerrada, op.contexto.fecha_actual)}
+
+    return ejecutar_con_clave(
+        db, persona_id=op.persona_id, operacion=OPERACION_CIERRE, clave=clave, huella=huella, ejecutar=ejecutar
+    )
+
+
+def reabrir_bitacora(
+    db: Session, op: Operador, fecha_laboral: str, entrada: ReaperturaEntrada, clave: str | None
+) -> Resultado:
+    """M3-02. Reabre MI bitácora cerrada, con un motivo obligatorio (RN-50, CA-100).
+
+    - No crea la bitácora; la de otra persona no existe para quien pregunta, tampoco para un supervisor
+      (CA-101, T-01).
+    - Debe estar cerrada (``BITACORA_NO_CERRADA``). Reabrir una jornada no obliga a reabrir otras (D-04).
+    - Una entrada de auditoría con el motivo, el autor, el momento y el estado anterior y el nuevo, en la
+      misma transacción (CA-102, CA-109). Cada cierre y cada reapertura quedan como entradas propias, así
+      que los ciclos se reconstruyen (CA-266).
+    - Desde ese momento se admiten de nuevo las operaciones sobre la jornada, y las correcciones del
+      resumen quedan auditadas (M2-02)."""
+    fecha = parsear_fecha_laboral(fecha_laboral)
+    huella = calcular_huella({"fecha_laboral": fecha.isoformat(), "motivo": entrada.motivo})
+
+    def ejecutar() -> tuple[int, dict]:
+        existente = repositorio.obtener_bitacora(db, op.persona_id, fecha)
+        if existente is None:
+            raise AppError("RECURSO_NO_DISPONIBLE")
+        motivo = entrada.motivo or ""
+        if not motivo.strip():
+            raise AppError("MOTIVO_OBLIGATORIO", [{"campo": "motivo", "motivo": "obligatorio"}])
+        motivo = validar_texto(motivo, "motivo", obligatorio=True, maximo=get_settings().text_max_description)
+        bitacora = repositorio.bloquear_bitacora(db, existente.id)
+        if bitacora.estado != "cerrada":
+            raise AppError("BITACORA_NO_CERRADA")
+
+        reabierta = repositorio.reabrir_bitacora(db, bitacora.id)
+        registrar_operacion_de_persona(
+            db,
+            autor_persona_id=op.persona_id,
+            operacion="reapertura",
+            tipo_objeto="bitacora",
+            objeto_id=bitacora.id,
+            propietaria_registro_id=op.persona_id,
+            fecha_laboral_registro=fecha,
+            motivo=motivo,
+            valor_anterior={"estado": "cerrada", "cerrada_en": momento(bitacora.cerrada_en)},
+            valor_nuevo={"estado": "abierta", "cerrada_en": None},
+        )
+        return 200, {"bitacora": bitacora_a_dict(reabierta, op.contexto.fecha_actual)}
+
+    return ejecutar_con_clave(
+        db, persona_id=op.persona_id, operacion=OPERACION_REAPERTURA, clave=clave, huella=huella, ejecutar=ejecutar
     )

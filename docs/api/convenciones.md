@@ -48,6 +48,8 @@ Estas convenciones no son requisitos del producto. Son propuestas técnicas para
 | La persona no puede operar (acceso desactivado o sin pertenencia vigente) | `ACCESO_DESACTIVADO` o `SIN_PERTENENCIA_VIGENTE` (403), que solo informan de su propia situación |
 | Un listado filtrado por persona o fechas | Devuelve solo lo autorizado. Un filtro sin resultados autorizados da una lista vacía y no un error |
 
+**Aplicación en la implementación actual (provisional, pendiente de M4).** Mientras no exista M4, ninguna persona puede conocer registros de otra, ni siquiera de su equipo: todo recurso que no es propio es «no visible» y responde `RECURSO_NO_DISPONIBLE` (404). Por eso `OPERACION_NO_PERMITIDA` (403) está definido en los contratos pero la implementación todavía no lo emite. Cuando M4 defina qué registros de un equipo son legibles, las operaciones de M2 y M3 sobre un recurso visible pero ajeno pasarán a responder 403, sin cambiar la respuesta 404 para lo que siga siendo invisible.
+
 Los mensajes de error nunca incluyen títulos, descripciones, motivos, nombres de equipo ni contenido de otros registros. No se garantiza la igualdad de tiempos de respuesta: un canal de temporización entre «inexistente» y «no autorizado» queda como riesgo residual para el diseño de seguridad.
 
 ### 3.2 Orden de evaluación
@@ -180,7 +182,7 @@ Marcar o revertir una marca de error es un **cambio lógico de validez de la act
 - Parámetros `limite` y `continuar_desde` (cursor opaco emitido por el servidor).
 - `limite` tiene un valor por defecto y un máximo configurables (PA-13). Un valor inválido o superior al máximo se rechaza con `SOLICITUD_INVALIDA`, con el máximo en `detalles`. Un cursor inválido se rechaza igual.
 - El orden es estable y determinista, definido por cada contrato, con el identificador como desempate, para que la paginación no repita ni omita elementos.
-- El filtro de autorización se aplica antes de paginar (3.3). `siguiente` es nulo cuando no hay más elementos.
+- El filtro de autorización se aplica antes de paginar (3.3). `siguiente` es nulo cuando no hay más elementos. Un listado responde con un objeto que contiene `elementos` (la colección de la página) y `siguiente` (formato aprobado para M2-08, el mismo que M4).
 - La amplitud máxima de un rango de fechas es configurable (PA-13).
 
 ### 6.2 Textos (D-03, confirmada)

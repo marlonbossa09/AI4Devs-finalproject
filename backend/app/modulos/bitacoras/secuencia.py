@@ -16,10 +16,11 @@ Reglas puras, sin acceso a la base de datos, para poder probarlas de forma aisla
   reactivar, se inserta en su posición histórica y no sustituye el estado de un avance posterior
   (CA-78).
 
-Diferencia documentada con IR-11: leída al pie de la letra, IR-11 exigiría que a un avance
-Completada siempre le siga una reactivación. CA-78 y el contrato M2-05 aceptan un avance
-retroactivo Completada anterior a otro posterior En progreso y fijan que el estado actual sigue
-siendo el del posterior. Aquí se aplica el criterio de aceptación y el contrato.
+IR-11 y CA-78 (interpretación confirmada, PA-27): al registrar un avance nuevo solo se mira el
+avance que quedaría justo antes; si es una finalización, hace falta una reactivación. Los avances
+posteriores ya existentes no se revalidan ni se modifican, así que un retroactivo Completada anterior
+a otro posterior En progreso se acepta y el estado actual sigue siendo el del posterior (el del último
+avance del orden laboral completo). La validación de una corrección (M3-03) queda pendiente (PA-29).
 """
 
 from dataclasses import dataclass

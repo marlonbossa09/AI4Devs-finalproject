@@ -27,6 +27,59 @@ def obtener_o_crear_bitacora(db: Session, persona_id: UUID, fecha: date):
     return obtener_bitacora(db, persona_id, fecha), False
 
 
+def bloquear_bitacora(db: Session, bitacora_id: UUID):
+    """Relee la bitácora bloqueando su fila: las escrituras simultáneas sobre la misma jornada se
+    serializan, así que el valor anterior que se audita es siempre el realmente reemplazado."""
+    return db.execute(text("select * from bitacora where id = :b for update"), {"b": bitacora_id}).one()
+
+
+def bitacora_fue_reabierta(db: Session, bitacora_id: UUID) -> bool:
+    """Una bitácora reabierta (M3-02) deja siempre su entrada de reapertura en la auditoría (RN-103,
+    CA-266)."""
+    return db.execute(
+        text("select exists (select 1 from auditoria where tipo_objeto = 'bitacora' and objeto_id = :b "
+             "and operacion = 'reapertura')"),
+        {"b": bitacora_id},
+    ).scalar_one()
+
+
+def contar_actividades_efectivas(db: Session, persona_id: UUID, bitacora_id: UUID) -> int:
+    """Actividades válidas que cuentan para cerrar la jornada (RN-21, RN-109): creadas en ella, o
+    continuadas en ella con al menos un AVANCE de esa fecha laboral. Una continuación planificada no
+    cuenta (CA-184) y las marcadas como registradas por error tampoco (CA-283)."""
+    return db.execute(
+        text("select count(*) from actividad a where a.propietaria_id = :p and not a.registrada_por_error "
+             "and (a.bitacora_origen_id = :b or exists "
+             "(select 1 from avance v where v.actividad_id = a.id and v.bitacora_id = :b))"),
+        {"p": persona_id, "b": bitacora_id},
+    ).scalar_one()
+
+
+def cerrar_bitacora(db: Session, bitacora_id: UUID):
+    """Estado y momento de cierre juntos (la restricción ``bitacora_cierre_coherente`` lo exige). Reloj
+    real, no el inicio de la transacción. No toca ``modificada_en``: cerrar no modifica el contenido."""
+    return db.execute(
+        text("update bitacora set estado = 'cerrada', cerrada_en = clock_timestamp() where id = :b returning *"),
+        {"b": bitacora_id},
+    ).one()
+
+
+def reabrir_bitacora(db: Session, bitacora_id: UUID):
+    return db.execute(
+        text("update bitacora set estado = 'abierta', cerrada_en = null where id = :b returning *"),
+        {"b": bitacora_id},
+    ).one()
+
+
+def guardar_resumen(db: Session, bitacora_id: UUID, resumen: str):
+    """Reemplaza el resumen y renueva ``modificada_en`` (RN-18). Usa el reloj real, no el inicio de la
+    transacción: una escritura que esperó el bloqueo queda con un momento posterior a la anterior."""
+    return db.execute(
+        text("update bitacora set resumen = :r, modificada_en = clock_timestamp() where id = :b returning *"),
+        {"r": resumen, "b": bitacora_id},
+    ).one()
+
+
 def listar_planificaciones(db: Session, bitacora_id: UUID):
     return db.execute(
         text("select * from planificacion where bitacora_id = :b order by registrada_en, id"), {"b": bitacora_id}
@@ -136,6 +189,16 @@ def insertar_actividad(db: Session, persona_id: UUID, bitacora_id: UUID, titulo:
         text("insert into actividad (propietaria_id, bitacora_origen_id, titulo, origen, estado_actual) "
              "values (:p, :b, :t, :o, :e) returning *"),
         {"p": persona_id, "b": bitacora_id, "t": titulo, "o": origen, "e": estado_actual},
+    ).one()
+
+
+def insertar_continuacion_planificada(db: Session, actividad_id: UUID, bitacora_id: UUID, descripcion: str):
+    """Una fila de ``planificacion`` de tipo continuación: no es un avance, no entra en la secuencia y no
+    toca el estado de la actividad (IR-14)."""
+    return db.execute(
+        text("insert into planificacion (actividad_id, bitacora_id, tipo, descripcion) "
+             "values (:a, :b, 'continuacion', :d) returning *"),
+        {"a": actividad_id, "b": bitacora_id, "d": descripcion},
     ).one()
 
 

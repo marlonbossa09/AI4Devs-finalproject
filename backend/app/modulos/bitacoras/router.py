@@ -10,7 +10,8 @@ from app.compartido.dependencias import Operador, operador, operador_que_modific
 from app.db import get_db
 from app.modulos.bitacoras import servicio
 from app.modulos.bitacoras.esquemas import (
-    AbrirBitacoraEntrada, AvanceEntrada, NoPlanificadaEntrada, PlanificarEntrada,
+    AbrirBitacoraEntrada, AvanceEntrada, ContinuacionEntrada, NoPlanificadaEntrada, PlanificarEntrada,
+    ReaperturaEntrada, ResumenEntrada,
 )
 
 router = APIRouter(prefix="/mi", tags=["M2 Bitácoras"])
@@ -29,6 +30,37 @@ def abrir_bitacora(
 ):
     estado, respuesta = servicio.abrir_bitacora(db, op, cuerpo.fecha_laboral)
     return JSONResponse(respuesta, status_code=estado, headers=SIN_CACHE)
+
+
+@router.put("/bitacoras/{fecha_laboral}/resumen", summary="M2-02 Guardar el resumen libre de mi bitácora")
+def guardar_resumen(
+    fecha_laboral: str,
+    cuerpo: ResumenEntrada,
+    op: Operador = Depends(operador_que_modifica),
+    db: Session = Depends(get_db),
+):
+    return JSONResponse(servicio.guardar_resumen(db, op, fecha_laboral, cuerpo), headers=SIN_CACHE)
+
+
+@router.post("/bitacoras/{fecha_laboral}/cierre", summary="M3-01 Cerrar mi jornada")
+def cerrar_bitacora(
+    fecha_laboral: str,
+    op: Operador = Depends(operador_que_modifica),
+    idempotency_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    return _respuesta_de_escritura(servicio.cerrar_bitacora(db, op, fecha_laboral, idempotency_key))
+
+
+@router.post("/bitacoras/{fecha_laboral}/reapertura", summary="M3-02 Reabrir mi bitácora cerrada")
+def reabrir_bitacora(
+    fecha_laboral: str,
+    cuerpo: ReaperturaEntrada,
+    op: Operador = Depends(operador_que_modifica),
+    idempotency_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    return _respuesta_de_escritura(servicio.reabrir_bitacora(db, op, fecha_laboral, cuerpo, idempotency_key))
 
 
 @router.post("/bitacoras/{fecha_laboral}/planificaciones", status_code=201,
@@ -54,6 +86,19 @@ def registrar_avance(
     db: Session = Depends(get_db),
 ):
     resultado = servicio.registrar_avance(db, op, actividad_id, cuerpo, idempotency_key)
+    return _respuesta_de_escritura(resultado)
+
+
+@router.post("/actividades/{actividad_id}/continuaciones-planificadas", status_code=201,
+             summary="M2-04 Planificar la continuación de una actividad propia")
+def planificar_continuacion(
+    actividad_id: UUID,
+    cuerpo: ContinuacionEntrada,
+    op: Operador = Depends(operador_que_modifica),
+    idempotency_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    resultado = servicio.planificar_continuacion(db, op, actividad_id, cuerpo, idempotency_key)
     return _respuesta_de_escritura(resultado)
 
 

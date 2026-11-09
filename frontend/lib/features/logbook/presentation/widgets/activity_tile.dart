@@ -5,6 +5,8 @@ import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/status_pill.dart';
 import '../../domain/entities/logbook_entities.dart';
+import '../../domain/rules/continuation_rules.dart';
+import 'continuation_tag.dart';
 import 'origin_tag.dart';
 
 String statusLabel(ActivityStatus status) => switch (status) {
@@ -24,26 +26,39 @@ PillKind pillKind(ActivityStatus status) => switch (status) {
 /// One activity row: icon, title, planned description, when it was planned, and its status
 /// (`.activity`). The status is the CURRENT one; the planning is shown as "Planificada" so it is
 /// not mistaken for a progress entry. The progress entries recorded in the shown day appear
-/// apart, each with the status it had when it was recorded.
+/// apart, each with the status it had when it was recorded. A planned CONTINUATION (M2-04) appears
+/// in its own block with its own tag, so it is never mistaken for the original planning or for
+/// progress.
 class ActivityTile extends StatelessWidget {
   const ActivityTile({
     super.key,
     required this.activity,
     this.planning,
+    this.continuations = const [],
     this.progress = const [],
     this.onRegisterProgress,
+    this.onPlanContinuation,
     this.onOpen,
     this.first = false,
   });
 
   final Activity activity;
+
+  /// The ORIGINAL planning of the activity in the day being shown, if it has one there.
   final Planning? planning;
+
+  /// Continuations of the activity planned for the day being shown.
+  final List<Planning> continuations;
 
   /// Progress entries of [activity] recorded in the day being shown.
   final List<Progress> progress;
 
   /// Opens the progress form for this activity. Not offered for an activity marked as an error.
   final VoidCallback? onRegisterProgress;
+
+  /// Opens the form to plan a continuation (M2-04). Not offered for an activity that is Completada
+  /// or marked as an error.
+  final VoidCallback? onPlanContinuation;
 
   /// Opens the activity detail (M2-07).
   final VoidCallback? onOpen;
@@ -58,6 +73,11 @@ class ActivityTile extends StatelessWidget {
     final description = unplanned ? 'Registrada sin planificación previa.' : (planning?.description ?? '');
     final planned = planning;
     final done = activity.status == ActivityStatus.completed;
+    // The activity is here only because a continuation was planned for this day: the original
+    // planning and its time belong to another day
+    final continuationOnly = planning == null && continuations.isNotEmpty && progress.isEmpty;
+    final canContinue =
+        onPlanContinuation != null && canPlanContinuation(status: activity.status, marked: activity.marked);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 17),
       decoration: BoxDecoration(
@@ -96,41 +116,57 @@ class ActivityTile extends StatelessWidget {
                     KeyedSubtree(key: Key('origin-${activity.id}'), child: OriginTag(origin: activity.origin)),
                   ],
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  description.isEmpty ? 'Sin descripción' : description,
-                  style: const TextStyle(fontSize: 11, height: 1.65, color: AppColors.textSoft),
-                ),
-                const SizedBox(height: 9),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 9,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.schedule, size: 12, color: AppColors.textFaint),
-                        const SizedBox(width: 4),
-                        Text(
-                          unplanned
-                              ? 'Registrada ${formatTime(activity.createdAt)}'
-                              : (planned == null ? 'Planificada' : 'Planificada ${formatTime(planned.createdAt)}'),
-                          style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
-                        ),
-                      ],
-                    ),
-                    const _Dot(),
-                    Text(
-                      formatDate(activity.date),
+                if (continuationOnly)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Text(
+                      'Jornada de origen: ${formatDate(activity.date)}',
+                      key: Key('origin-day-${activity.id}'),
                       style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
                     ),
-                  ],
-                ),
+                  )
+                else ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    description.isEmpty ? 'Sin descripción' : description,
+                    style: const TextStyle(fontSize: 11, height: 1.65, color: AppColors.textSoft),
+                  ),
+                  const SizedBox(height: 9),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 9,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule, size: 12, color: AppColors.textFaint),
+                          const SizedBox(width: 4),
+                          Text(
+                            unplanned
+                                ? 'Registrada ${formatTime(activity.createdAt)}'
+                                : (planned == null ? 'Planificada' : 'Planificada ${formatTime(planned.createdAt)}'),
+                            style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
+                          ),
+                        ],
+                      ),
+                      const _Dot(),
+                      Text(
+                        formatDate(activity.date),
+                        style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
+                      ),
+                    ],
+                  ),
+                ],
+                if (continuations.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  for (final next in continuations)
+                    ContinuationLine(key: Key('continuation-line-${next.id}'), planning: next),
+                ],
                 if (progress.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   for (final entry in progress) _ProgressLine(key: Key('progress-entry-${entry.id}'), entry: entry),
                 ],
-                if (onOpen != null || (onRegisterProgress != null && !activity.marked)) ...[
+                if (onOpen != null || (onRegisterProgress != null && !activity.marked) || canContinue) ...[
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 12,
@@ -143,6 +179,12 @@ class ActivityTile extends StatelessWidget {
                           label: '+ Registrar avance',
                           onPressed: onRegisterProgress,
                         ),
+                      if (canContinue)
+                        LinkButton(
+                          key: Key('continuation-action-${activity.id}'),
+                          label: '+ Planificar continuación',
+                          onPressed: onPlanContinuation,
+                        ),
                     ],
                   ),
                 ],
@@ -153,6 +195,39 @@ class ActivityTile extends StatelessWidget {
           KeyedSubtree(
             key: Key('status-${activity.id}'),
             child: StatusPill(label: statusLabel(activity.status), kind: pillKind(activity.status)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One planned continuation: what is foreseen for the day. It is a planning, not progress, and has
+/// its own tag and colors.
+class ContinuationLine extends StatelessWidget {
+  const ContinuationLine({super.key, required this.planning});
+
+  final Planning planning;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: ContinuationColors.background.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ContinuationColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Align(alignment: Alignment.centerLeft, child: ContinuationTag()),
+          const SizedBox(height: 6),
+          Text(
+            planning.description.isEmpty ? 'Sin descripción' : planning.description,
+            style: const TextStyle(fontSize: 11, height: 1.55, color: AppColors.textBody),
           ),
         ],
       ),

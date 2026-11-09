@@ -512,7 +512,7 @@ void main() {
       await pumpApp(tester, logbook: repo);
       await openList(tester);
       await openDetail(tester, activity);
-      expect(find.text('Continuación prevista'), findsOneWidget);
+      expect(find.text('Continuación planificada'), findsOneWidget);
       expect(find.text('Seguir el lunes'), findsOneWidget);
       expect(find.text('09/11/2026'), findsOneWidget);
       expect(find.byKey(const Key('detail-no-progress')), findsOneWidget); // still no execution

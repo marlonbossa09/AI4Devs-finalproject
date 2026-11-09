@@ -18,6 +18,7 @@ import '../../domain/rules/progress_rules.dart';
 import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
+import '../widgets/closed_date_notice.dart';
 import '../widgets/status_picker.dart';
 
 /// Form to register work that was NOT planned (M2-06): one operation that creates the activity,
@@ -183,13 +184,15 @@ class _UnplannedPageState extends ConsumerState<UnplannedPage> {
       label: 'Cancelar',
       onPressed: _saving ? null : () => ref.read(currentPageProvider.notifier).go(AppPage.dashboard),
     );
+    // A closed day takes no new content: the chosen date is looked up and, if closed, nothing is offered
+    final closedDate = ref.watch(logbookProvider(_date)).value?.logbook.closed ?? false;
     final saveButton = PrimaryButton(
       key: const Key('unplanned-submit'),
       label: 'Registrar actividad',
       icon: Icons.check,
       loading: _saving,
       expand: mobile,
-      onPressed: _submit,
+      onPressed: closedDate ? null : _submit,
     );
 
     return Column(
@@ -230,6 +233,7 @@ class _UnplannedPageState extends ConsumerState<UnplannedPage> {
                   if (_status == ActivityStatus.blocked) ...[const SizedBox(height: 14), reasonField],
                   const SizedBox(height: 14),
                   descriptionField,
+                  if (closedDate) ...[const SizedBox(height: 14), ClosedDateNotice(date: _date)],
                   if (_error != null) ...[
                     const SizedBox(height: 14),
                     Semantics(

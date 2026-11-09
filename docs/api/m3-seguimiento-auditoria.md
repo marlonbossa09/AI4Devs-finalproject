@@ -17,7 +17,7 @@ Todas las operaciones de escritura actúan sobre registros propios (RN-23). Ni e
 | **Relacionados** | HU-3.3, HU-2.3, HU-3.4 · RF-17, RF-18, RF-19, RF-44, RF-68, RF-119 · RN-10, RN-21, RN-22, RN-46, RN-23, RN-109 |
 | **Método y ruta** | `POST /api/v1/mi/bitacoras/{fecha_laboral}/cierre` |
 | **Entrada** | Ruta: `fecha_laboral`. Sin cuerpo. Cabecera `Idempotency-Key` obligatoria (T-04, decisión técnica aceptada) |
-| **Respuesta** | 200 con la Bitácora en estado `cerrada` y `cerrada_en`. Las actividades conservan su estado (CA-95) |
+| **Respuesta** | 200 con `bitacora` (la Bitácora en estado `cerrada` y `cerrada_en`, con el mismo formato que M2-01a; **formato `{"bitacora": {...}}` aprobado**). Las actividades conservan su estado (CA-95). `modificada_en` no cambia: cerrar y reabrir no modifican el contenido (**decisión aprobada**). En `CONDICIONES_DE_CIERRE_NO_CUMPLIDAS`, `detalles` lista todo lo que falta: `{campo: resumen, motivo: vacio}` y/o `{campo: actividades, motivo: sin_actividad_creada_ni_continuada}` |
 | **Validaciones** | El cierre es solo manual: ninguna condición lo dispara por el paso del tiempo (CA-89). Se exige al menos una actividad **creada en esa jornada** o **continuada en ella** (con al menos un avance de esa fecha laboral) y un resumen con texto, no vacío ni formado solo por espacios (CA-90 a CA-94). Una continuación planificada no cuenta como actividad continuada (CA-184). Se admiten actividades en cualquiera de los cuatro estados, sin modificarlas (CA-95). No se cierra una jornada de fecha futura (CA-97). Las actividades no completadas siguen disponibles para recibir avances en una jornada posterior sin copiarse (CA-96). No crea la bitácora: si no existe, `RECURSO_NO_DISPONIBLE` (D-01). Las actividades marcadas como registradas por error no cuentan para las condiciones de cierre (RN-109, D-04b aprobada). La comprobación considera todas las actividades válidas creadas o continuadas en esa fecha laboral, incluidas las iniciadas en jornadas anteriores |
 | **Autorización** | Propietaria. La jornada de otra persona no se puede cerrar (CA-98) |
 | **Errores** | `CONDICIONES_DE_CIERRE_NO_CUMPLIDAS` (con `detalles` de qué falta) · `FECHA_FUTURA_NO_PERMITIDA` · `BITACORA_CERRADA` si ya está cerrada · `RECURSO_NO_DISPONIBLE` · `OPERACION_NO_PERMITIDA` · `ACCESO_DESACTIVADO` · `SIN_PERTENENCIA_VIGENTE`. Además: los errores de idempotencia (convenciones 5.3) y, en campos de texto, `CAMPO_OBLIGATORIO` y `TEXTO_DEMASIADO_LARGO` (convenciones 6.2) |
@@ -33,11 +33,11 @@ Todas las operaciones de escritura actúan sobre registros propios (RN-23). Ni e
 | **Relacionados** | HU-3.4, HU-3.6 · RF-20, RF-21, RF-71, RF-113, RNF-02 · RN-01, RN-19, RN-23, RN-50, RN-103 |
 | **Método y ruta** | `POST /api/v1/mi/bitacoras/{fecha_laboral}/reapertura` |
 | **Entrada** | Ruta: `fecha_laboral`. Cuerpo: `motivo` (obligatorio). Cabecera `Idempotency-Key` obligatoria (T-04, decisión técnica aceptada) |
-| **Respuesta** | 200 con la Bitácora en estado `abierta` |
+| **Respuesta** | 200 con `bitacora` (la Bitácora en estado `abierta`, sin `cerrada_en`) |
 | **Validaciones** | Sin motivo no se permite (CA-100). La bitácora debe estar cerrada. Mientras no se reabra, no se corrige (`BITACORA_CERRADA` en M2-02 y M3-03). Solo opera sobre una bitácora existente; no la crea (D-01). Reabrir una jornada no obliga a reabrir otras (D-04) |
 | **Autorización** | Propietaria. La bitácora cerrada de otra persona no se reabre, tampoco por un supervisor (CA-101) |
 | **Errores** | `MOTIVO_OBLIGATORIO` · `BITACORA_NO_CERRADA` · `RECURSO_NO_DISPONIBLE` · `OPERACION_NO_PERMITIDA` · `ACCESO_DESACTIVADO` · `SIN_PERTENENCIA_VIGENTE`. Además: los errores de idempotencia (convenciones 5.3) y, en campos de texto, `CAMPO_OBLIGATORIO` y `TEXTO_DEMASIADO_LARGO` (convenciones 6.2) |
-| **Auditoría y transacción** | Una entrada con el motivo (CA-109), autor, momento, valor anterior y nuevo, en la misma transacción que el cambio de estado. Cada reapertura y cada cierre quedan reconstruibles (CA-266) |
+| **Auditoría y transacción** | Una entrada con el motivo (CA-109), autor, momento, valor anterior y nuevo, en la misma transacción que el cambio de estado. Cada reapertura y cada cierre quedan reconstruibles (CA-266): `operacion` `reapertura`, `tipo_objeto` `bitacora`, `motivo`, y en los valores el estado y `cerrada_en` anteriores y nuevos (instantes en UTC, como la respuesta; **decisión aprobada**) |
 | **Criterios vinculados** | CA-99, CA-100, CA-101, CA-102, CA-109, CA-266 |
 | **Decisiones pendientes** | D-03 y T-04 (confirmadas o aceptadas) |
 
@@ -57,7 +57,7 @@ División técnica del catálogo: el resumen se corrige con M2-02 (con la bitác
 | **Errores** | `SECUENCIA_INVALIDA` (no modifica nada: CA-237) · `ESTADO_INVALIDO` · `MOTIVO_BLOQUEO_OBLIGATORIO` · `DESCRIPCION_OBLIGATORIA` · `BITACORA_CERRADA` · `SOLICITUD_INVALIDA` (campo no modificable) · `RECURSO_NO_DISPONIBLE` · `OPERACION_NO_PERMITIDA` · `ACCESO_DESACTIVADO` · `SIN_PERTENENCIA_VIGENTE`. Además: los errores de idempotencia (convenciones 5.3) y, en campos de texto, `CAMPO_OBLIGATORIO` y `TEXTO_DEMASIADO_LARGO` (convenciones 6.2) |
 | **Auditoría y transacción** | Transacción atómica, serializada por actividad (DM-01): cambio, entrada de auditoría y recálculo del estado actual. Una única entrada con el valor anterior y el nuevo, incluido el estado actual anterior y nuevo si varía (IR-35). Toda corrección de un avance queda auditada (CA-103, CA-79). Si el avance no es el último, el estado actual no cambia pero la corrección se audita igual (CA-80) |
 | **Criterios vinculados** | CA-79, CA-80, CA-102, CA-103, CA-104, CA-105, CA-107, CA-211, CA-236, CA-237, CA-238, CA-239, CA-101, CA-284, CA-297, CA-298 |
-| **Decisiones pendientes** | D-03, D-05 y T-04 (confirmadas o aceptadas) |
+| **Decisiones pendientes** | D-03, D-05 y T-04 (confirmadas o aceptadas). **PA-29 (abierto):** cómo se valida una corrección sobre una secuencia que contiene un avance posterior a una finalización sin reactivación, admitido por una inserción retroactiva (M2-05, CA-78); y PA-28, el origen laboral de la actividad |
 
 ### Corrección según el estado de la bitácora y la fecha laboral
 

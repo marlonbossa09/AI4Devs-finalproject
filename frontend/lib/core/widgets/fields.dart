@@ -99,6 +99,7 @@ class DateField extends StatelessWidget {
     required this.date,
     required this.onChanged,
     this.fieldKey,
+    this.firstDate,
     this.lastDate,
     this.errorText,
   });
@@ -108,16 +109,22 @@ class DateField extends StatelessWidget {
   final ValueChanged<DateTime> onChanged;
   final Key? fieldKey;
 
+  /// Earliest date the picker offers (default: year 2000).
+  final DateTime? firstDate;
+
   /// Latest date the picker offers (default: year 2100).
   final DateTime? lastDate;
   final String? errorText;
 
   Future<void> _pick(BuildContext context) async {
+    final first = firstDate ?? DateTime(2000);
     final last = lastDate;
+    var initial = date.isBefore(first) ? first : date;
+    if (last != null && initial.isAfter(last)) initial = last;
     final picked = await showDatePicker(
       context: context,
-      initialDate: last != null && date.isAfter(last) ? last : date,
-      firstDate: DateTime(2000),
+      initialDate: initial,
+      firstDate: first,
       lastDate: last ?? DateTime(2100),
       helpText: label,
     );

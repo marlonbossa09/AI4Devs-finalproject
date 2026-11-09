@@ -8,12 +8,15 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
+import '../../../../core/widgets/kind_tag.dart';
 import '../../../../core/widgets/status_pill.dart';
 import '../../../../core/widgets/text_blocks.dart';
 import '../../domain/entities/logbook_entities.dart';
+import '../../domain/rules/continuation_rules.dart';
 import '../providers/activity_detail.dart';
 import '../providers/navigation.dart';
 import '../widgets/activity_tile.dart';
+import '../widgets/continuation_tag.dart';
 import '../widgets/origin_tag.dart';
 
 /// One activity with everything recorded about it (M2-07). What was PLANNED and what was DONE are
@@ -66,6 +69,11 @@ class ActivityDetailPage extends ConsumerWidget {
           ref.read(progressTargetProvider.notifier).select(activity.summary, back: AppPage.activityDetail);
           ref.read(currentPageProvider.notifier).go(AppPage.progress);
         },
+        onPlanContinuation: () {
+          final activity = view.requireValue.activity;
+          ref.read(continuationTargetProvider.notifier).select(activity.summary, back: AppPage.activityDetail);
+          ref.read(currentPageProvider.notifier).go(AppPage.continuation);
+        },
       );
     }
 
@@ -87,10 +95,11 @@ class ActivityDetailPage extends ConsumerWidget {
 }
 
 class _DetailBody extends StatelessWidget {
-  const _DetailBody({required this.detail, required this.onRegisterProgress});
+  const _DetailBody({required this.detail, required this.onRegisterProgress, required this.onPlanContinuation});
 
   final ActivityDetail detail;
   final VoidCallback onRegisterProgress;
+  final VoidCallback onPlanContinuation;
 
   @override
   Widget build(BuildContext context) {
@@ -102,11 +111,23 @@ class _DetailBody extends StatelessWidget {
           eyebrow: 'Detalle de actividad',
           title: activity.title,
           subtitle: 'Lo que se planificó, lo que se hizo y el estado en que está hoy.',
-          action: PrimaryButton(
-            key: const Key('detail-register-progress'),
-            label: 'Registrar avance',
-            icon: Icons.add,
-            onPressed: activity.marked ? null : onRegisterProgress,
+          action: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              if (canPlanContinuation(status: detail.status, marked: activity.marked))
+                SecondaryButton(
+                  key: const Key('detail-plan-continuation'),
+                  label: 'Planificar continuación',
+                  onPressed: onPlanContinuation,
+                ),
+              PrimaryButton(
+                key: const Key('detail-register-progress'),
+                label: 'Registrar avance',
+                icon: Icons.add,
+                onPressed: activity.marked ? null : onRegisterProgress,
+              ),
+            ],
           ),
         ),
         _StatusCard(detail: detail),
@@ -115,35 +136,6 @@ class _DetailBody extends StatelessWidget {
         const SizedBox(height: 18),
         _HistoryCard(progress: detail.progress),
       ],
-    );
-  }
-}
-
-/// A small uppercase tag that says which kind of record a block holds.
-class _KindTag extends StatelessWidget {
-  const _KindTag(this.text, {required this.icon, required this.color, required this.background});
-
-  final String text;
-  final IconData icon;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(7)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 5),
-          Text(
-            text.toUpperCase(),
-            style: TextStyle(fontSize: 9.5, letterSpacing: 1.1, fontWeight: FontWeight.w800, color: color),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -241,25 +233,34 @@ class _PlanningCard extends StatelessWidget {
     final mobile = ScreenSize.ofContext(context).isMobile;
     final original = detail.originalPlanning;
 
-    Widget block(Key key, String title, String date, String description, {String? registered}) {
+    Widget block(
+      Key key,
+      String title,
+      String date,
+      String description, {
+      String? registered,
+      bool continuation = false,
+    }) {
+      final accent = continuation ? ContinuationColors.foreground : const Color(0xFF276A67);
       return Container(
         key: key,
         width: double.infinity,
         margin: const EdgeInsets.only(top: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3FAF8),
+          color: continuation ? ContinuationColors.background.withValues(alpha: 0.55) : const Color(0xFFF3FAF8),
           borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: const Color(0xFFDAEEE9)),
+          border: Border.all(color: continuation ? ContinuationColors.border : const Color(0xFFDAEEE9)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (continuation) ...[const ContinuationTag(), const SizedBox(height: 8)],
             Wrap(
               spacing: 10,
               children: [
-                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF276A67))),
-                Text(date, style: const TextStyle(fontSize: 11, color: Color(0xFF276A67))),
+                Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
+                Text(date, style: TextStyle(fontSize: 11, color: accent)),
                 if (registered != null)
                   Text('Registrada $registered', style: const TextStyle(fontSize: 10, color: AppColors.textFaint)),
               ],
@@ -279,7 +280,7 @@ class _PlanningCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _KindTag('Planificación', icon: Icons.event_note_outlined, color: Color(0xFF276A67), background: Color(0xFFE5F7F3)),
+          const KindTag('Planificación', icon: Icons.event_note_outlined, color: Color(0xFF276A67), background: Color(0xFFE5F7F3)),
           const SizedBox(height: 10),
           const Text('Lo planificado', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
@@ -307,10 +308,11 @@ class _PlanningCard extends StatelessWidget {
           for (final next in detail.plannedContinuations)
             block(
               Key('detail-planning-${next.id}'),
-              'Continuación prevista',
+              'Continuación planificada',
               formatShortDate(next.date),
               next.description,
               registered: formatDateTime(next.createdAt),
+              continuation: true,
             ),
         ],
       ),
@@ -332,7 +334,7 @@ class _HistoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _KindTag('Ejecución', icon: Icons.trending_up, color: AppColors.progressText, background: AppColors.progressBackground),
+          const KindTag('Ejecución', icon: Icons.trending_up, color: AppColors.progressText, background: AppColors.progressBackground),
           const SizedBox(height: 10),
           const Text('Historial de avances', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),

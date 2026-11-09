@@ -14,6 +14,7 @@ import '../../../../core/widgets/toast.dart';
 import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
+import '../widgets/closed_date_notice.dart';
 
 /// Form to plan a new activity (M2-03).
 ///
@@ -126,13 +127,15 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
       label: 'Cancelar',
       onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.dashboard),
     );
+    // A closed day takes no new content: the chosen date is looked up and, if closed, nothing is offered
+    final closedDate = ref.watch(logbookProvider(_date)).value?.logbook.closed ?? false;
     final saveButton = PrimaryButton(
       key: const Key('plan-submit'),
       label: 'Guardar planificación',
       icon: Icons.add,
       loading: _saving,
       expand: mobile,
-      onPressed: _save,
+      onPressed: closedDate ? null : _save,
     );
 
     return Column(
@@ -173,6 +176,7 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
                     ),
                   const SizedBox(height: 14),
                   descriptionField,
+                  if (closedDate) ...[const SizedBox(height: 14), ClosedDateNotice(date: _date)],
                   if (_error != null) ...[
                     const SizedBox(height: 14),
                     Semantics(

@@ -87,6 +87,21 @@ PlanResultModel _$PlanResultModelFromJson(Map<String, dynamic> json) =>
       logbookCreated: json['bitacora_creada'] as bool,
     );
 
+LogbookResultModel _$LogbookResultModelFromJson(Map<String, dynamic> json) =>
+    LogbookResultModel(
+      logbook: LogbookModel.fromJson(json['bitacora'] as Map<String, dynamic>),
+    );
+
+ContinuationResultModel _$ContinuationResultModelFromJson(
+  Map<String, dynamic> json,
+) => ContinuationResultModel(
+  planning: PlanningModel.fromJson(
+    json['planificacion'] as Map<String, dynamic>,
+  ),
+  activity: ActivityModel.fromJson(json['actividad'] as Map<String, dynamic>),
+  logbookCreated: json['bitacora_creada'] as bool,
+);
+
 ProgressResultModel _$ProgressResultModelFromJson(Map<String, dynamic> json) =>
     ProgressResultModel(
       progress: ProgressModel.fromJson(json['avance'] as Map<String, dynamic>),
@@ -130,3 +145,9 @@ ActivityDetailModel _$ActivityDetailModelFromJson(
           json['planificacion_original'] as Map<String, dynamic>,
         ),
 );
+
+SummaryResultModel _$SummaryResultModelFromJson(Map<String, dynamic> json) =>
+    SummaryResultModel(
+      logbook: LogbookModel.fromJson(json['bitacora'] as Map<String, dynamic>),
+      logbookCreated: json['bitacora_creada'] as bool,
+    );

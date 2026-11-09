@@ -182,13 +182,19 @@ class LogbookDay {
   /// Progress entries recorded in this logbook, in the order the server sends them.
   final List<Progress> progress;
 
-  /// The original planning of [activity], if it has one in this day.
+  /// The ORIGINAL planning of [activity], if it has one in this day.
   Planning? planningOf(Activity activity) {
     for (final planning in plannings) {
-      if (planning.activityId == activity.id) return planning;
+      if (planning.activityId == activity.id && planning.type == PlanningType.original) return planning;
     }
     return null;
   }
+
+  /// The planned continuations of [activity] foreseen for this day (M2-04). They are plannings, not
+  /// progress: they never change the status.
+  List<Planning> continuationsOf(Activity activity) => plannings
+      .where((p) => p.activityId == activity.id && p.type == PlanningType.continuation)
+      .toList();
 
   /// The progress entries of [activity] recorded in this day.
   List<Progress> progressOf(Activity activity) =>
@@ -209,6 +215,25 @@ class PlanResult {
 
   final Activity activity;
   final Planning planning;
+  final bool logbookCreated;
+}
+
+/// Result of planning the continuation of an activity (M2-04): the planning and the activity with
+/// its status UNCHANGED (a continuation is not a progress entry).
+class ContinuationResult {
+  const ContinuationResult({required this.planning, required this.activity, required this.logbookCreated});
+
+  final Planning planning;
+  final Activity activity;
+  final bool logbookCreated;
+}
+
+/// Result of saving the daily summary (M2-02): the logbook as the server holds it now, and whether
+/// the call also created it (a summary can be the first thing written for a date).
+class SummaryResult {
+  const SummaryResult({required this.logbook, required this.logbookCreated});
+
+  final Logbook logbook;
   final bool logbookCreated;
 }
 

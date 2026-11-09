@@ -23,6 +23,10 @@ class LogbookRepositoryImpl implements LogbookRepository {
   Future<OpenResult> openLogbook(DateTime date) async => (await _remote.openLogbook(date)).toEntity();
 
   @override
+  Future<SummaryResult> saveSummary({required DateTime date, required String summary}) async =>
+      (await _remote.saveSummary(date: date, summary: summary)).toEntity();
+
+  @override
   Future<PlanResult> createActivity({
     required DateTime date,
     required String title,
@@ -63,6 +67,30 @@ class LogbookRepositoryImpl implements LogbookRepository {
       status: status,
       description: description,
       blockReason: blockReason,
+      key: key,
+    );
+    return model.toEntity();
+  }
+
+  @override
+  Future<Logbook> closeLogbook({required DateTime date, required String key}) async =>
+      (await _remote.closeLogbook(date: date, key: key)).toEntity();
+
+  @override
+  Future<Logbook> reopenLogbook({required DateTime date, required String reason, required String key}) async =>
+      (await _remote.reopenLogbook(date: date, reason: reason, key: key)).toEntity();
+
+  @override
+  Future<ContinuationResult> planContinuation({
+    required String activityId,
+    required DateTime date,
+    String? description,
+    required String key,
+  }) async {
+    final model = await _remote.planContinuation(
+      activityId: activityId,
+      date: date,
+      description: description,
       key: key,
     );
     return model.toEntity();

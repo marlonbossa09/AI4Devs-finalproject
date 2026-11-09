@@ -1,6 +1,6 @@
 import '../entities/logbook_entities.dart';
 
-/// Contract of the logbook operations (M2-01a, M2-01b, M2-03, M2-05, M2-06, M2-07, M2-08). Errors are thrown as `ApiError`.
+/// Contract of the logbook operations (M2-01a, M2-01b, M2-02, M2-03, M2-04, M2-05, M2-06, M2-07, M2-08, M3-01, M3-02). Errors are thrown as `ApiError`.
 abstract class LogbookRepository {
   /// Returns what is persisted for [date], or `null` when there is no logbook for it.
   /// Consulting never creates anything (D-01).
@@ -8,6 +8,10 @@ abstract class LogbookRepository {
 
   /// Opens the logbook of [date]. Idempotent: if it already exists it is returned unchanged.
   Future<OpenResult> openLogbook(DateTime date);
+
+  /// Saves (replaces) the free summary of the logbook of [date] (M2-02). An empty text is valid: it
+  /// only prevents closing the day. It is a replacement, so it needs no idempotency key.
+  Future<SummaryResult> saveSummary({required DateTime date, required String summary});
 
   /// Creates a planned activity (status pending) with its original planning. [key] identifies
   /// ONE intention and is reused when retrying it.
@@ -39,6 +43,25 @@ abstract class LogbookRepository {
     required ActivityStatus status,
     required String description,
     String? blockReason,
+    required String key,
+  });
+
+  /// Closes the logbook of [date] (M3-01). Only the owner, manually, with a summary with text and at
+  /// least one activity created or continued in it. Returns the logbook as the server holds it now.
+  /// [key] identifies ONE intention and is reused when retrying it.
+  Future<Logbook> closeLogbook({required DateTime date, required String key});
+
+  /// Reopens the closed logbook of [date] (M3-02). The [reason] is mandatory and is kept in the audit.
+  /// Returns the logbook as the server holds it now. [key] identifies ONE intention.
+  Future<Logbook> reopenLogbook({required DateTime date, required String reason, required String key});
+
+  /// Plans the continuation of an activity of the signed-in user for a later day (M2-04). It is a
+  /// planning: it creates no progress entry and does not change the status. [description] is
+  /// optional. [key] identifies ONE intention and is reused when retrying it.
+  Future<ContinuationResult> planContinuation({
+    required String activityId,
+    required DateTime date,
+    String? description,
     required String key,
   });
 

@@ -44,7 +44,7 @@ final class CurrentPageProvider
   }
 }
 
-String _$currentPageHash() => r'e8d54a149d6a05131e5ed71c98f550ff8f87f691';
+String _$currentPageHash() => r'776a6d15c5d43e1851be52d79255585e6161c0bd';
 
 /// Page being shown. It goes back to the dashboard with every new session.
 
@@ -123,6 +123,68 @@ abstract class _$ProgressTarget extends $Notifier<ProgressTargetState?> {
             as $ClassProviderElement<
               AnyNotifier<ProgressTargetState?, ProgressTargetState?>,
               ProgressTargetState?,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
+/// Activity chosen to plan a continuation of (null = none yet). It is cleared with every new session.
+
+@ProviderFor(ContinuationTarget)
+const continuationTargetProvider = ContinuationTargetProvider._();
+
+/// Activity chosen to plan a continuation of (null = none yet). It is cleared with every new session.
+final class ContinuationTargetProvider
+    extends $NotifierProvider<ContinuationTarget, ContinuationTargetState?> {
+  /// Activity chosen to plan a continuation of (null = none yet). It is cleared with every new session.
+  const ContinuationTargetProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'continuationTargetProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$continuationTargetHash();
+
+  @$internal
+  @override
+  ContinuationTarget create() => ContinuationTarget();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ContinuationTargetState? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ContinuationTargetState?>(value),
+    );
+  }
+}
+
+String _$continuationTargetHash() =>
+    r'c40cc4e1a25c3e195898a3bb672740ccefd1e8bf';
+
+/// Activity chosen to plan a continuation of (null = none yet). It is cleared with every new session.
+
+abstract class _$ContinuationTarget
+    extends $Notifier<ContinuationTargetState?> {
+  ContinuationTargetState? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref =
+        this.ref as $Ref<ContinuationTargetState?, ContinuationTargetState?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<ContinuationTargetState?, ContinuationTargetState?>,
+              ContinuationTargetState?,
               Object?,
               Object?
             >;

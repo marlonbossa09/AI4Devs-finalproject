@@ -169,6 +169,9 @@ class FakeLogbookRepository implements LogbookRepository {
       if (error != null) throw error;
     }
     final dayKey = formatDate(date);
+    if (days[dayKey]?.logbook.closed == true) {
+      throw const ApiError(code: 'BITACORA_CERRADA', message: 'x', status: 409);
+    }
     final created = days[dayKey] == null;
     seed(date, title, description: description ?? '');
     final day = days[dayKey]!;
@@ -235,10 +238,12 @@ class FakeLogbookRepository implements LogbookRepository {
     }
   }
 
-  /// Adds a planned continuation of [activityId] for [date] (a day later than its origin).
+  /// Adds a planned continuation of [activityId] for [date] (a day later than its origin). Like the
+  /// server, the day then lists the SAME activity (no copy, no progress).
   void addContinuation(String activityId, DateTime date, String description) {
     final key = formatDate(date);
     final base = days[key] ?? LogbookDay(logbook: _newLogbook(date), plannings: const [], activities: const []);
+    final activity = _find(activityId);
     days[key] = LogbookDay(
       logbook: base.logbook,
       plannings: [
@@ -252,7 +257,9 @@ class FakeLogbookRepository implements LogbookRepository {
           createdAt: DateTime.utc(2026, 11, 6, 15, 40),
         ),
       ],
-      activities: base.activities,
+      activities: activity == null || base.activities.any((a) => a.id == activityId)
+          ? base.activities
+          : [...base.activities, activity],
       progress: base.progress,
     );
   }
@@ -317,6 +324,91 @@ class FakeLogbookRepository implements LogbookRepository {
     );
   }
 
+  // ---- M2-02: daily summary ---------------------------------------------------------------
+
+  /// What `saveSummary` received, one map per call.
+  final List<Map<String, Object?>> summaryRequests = [];
+
+  /// Errors to throw, one per call, in order (null = succeed).
+  final List<ApiError?> summaryErrors = [];
+
+  /// While set, `saveSummary` waits for it (to look at the screen with the request in flight).
+  Completer<void>? summaryGate;
+
+  int _clock = 0;
+
+  /// Closes the logbook of [date] as the server would (the closing operation is not part of the app yet).
+  void closeDay(DateTime date) {
+    final key = formatDate(date);
+    final day = days[key]!;
+    final l = day.logbook;
+    days[key] = LogbookDay(
+      logbook: Logbook(
+        id: l.id,
+        userId: l.userId,
+        date: l.date,
+        dateType: l.dateType,
+        closed: true,
+        summary: l.summary,
+        createdAt: l.createdAt,
+        updatedAt: l.updatedAt,
+        closedAt: DateTime.utc(2026, 11, 6, 18),
+      ),
+      plannings: day.plannings,
+      activities: day.activities,
+      progress: day.progress,
+    );
+  }
+
+  /// Sets the summary of a day directly in the "server" (for the screen to start with one).
+  void seedSummary(DateTime date, String summary) {
+    final key = formatDate(date);
+    final base = days[key] ?? LogbookDay(logbook: _newLogbook(date), plannings: const [], activities: const []);
+    days[key] = _withSummary(base, summary, base.logbook.updatedAt);
+  }
+
+  LogbookDay _withSummary(LogbookDay day, String summary, DateTime updatedAt) {
+    final l = day.logbook;
+    return LogbookDay(
+      logbook: Logbook(
+        id: l.id,
+        userId: l.userId,
+        date: l.date,
+        dateType: l.dateType,
+        closed: l.closed,
+        summary: summary,
+        createdAt: l.createdAt,
+        updatedAt: updatedAt,
+        closedAt: l.closedAt,
+      ),
+      plannings: day.plannings,
+      activities: day.activities,
+      progress: day.progress,
+    );
+  }
+
+  @override
+  Future<SummaryResult> saveSummary({required DateTime date, required String summary}) async {
+    calls.add('summary ${formatDate(date)}');
+    summaryRequests.add({'date': formatDate(date), 'summary': summary});
+    final gate = summaryGate;
+    if (gate != null) await gate.future;
+    if (summaryErrors.isNotEmpty) {
+      final error = summaryErrors.removeAt(0);
+      if (error != null) throw error;
+    }
+    final key = formatDate(date);
+    final created = days[key] == null;
+    final base = days[key] ?? LogbookDay(logbook: _newLogbook(date), plannings: const [], activities: const []);
+    if (base.logbook.closed) {
+      throw const ApiError(code: 'BITACORA_CERRADA', message: 'x', status: 409);
+    }
+    // Every save renews the modification moment, even with the same text (RN-18)
+    final updated = _withSummary(base, summary, DateTime.utc(2026, 11, 6, 17, 0, ++_clock));
+    days[key] = updated;
+    return SummaryResult(logbook: updated.logbook, logbookCreated: created);
+  }
+
   // ---- M2-06: unplanned activities --------------------------------------------------------
 
   /// What `registerUnplanned` received, one map per call (including retries).
@@ -363,6 +455,9 @@ class FakeLogbookRepository implements LogbookRepository {
       return replay.$2; // the same intention: nothing new is created
     }
     final dayKey = formatDate(date);
+    if (days[dayKey]?.logbook.closed == true) {
+      throw const ApiError(code: 'BITACORA_CERRADA', message: 'x', status: 409);
+    }
     final logbookCreated = days[dayKey] == null;
     final base = days[dayKey] ?? LogbookDay(logbook: _newLogbook(date), plannings: const [], activities: const []);
     final activity = Activity(
@@ -391,6 +486,186 @@ class FakeLogbookRepository implements LogbookRepository {
     );
     final result = ProgressResult(progress: entry, activity: activity, logbookCreated: logbookCreated);
     _unplannedByKey[key] = (fingerprint, result);
+    return result;
+  }
+
+  // ---- M3-01 and M3-02: closing and reopening the day --------------------------------------
+
+  /// What `closeLogbook` / `reopenLogbook` received, one map per call (including retries).
+  final List<Map<String, Object?>> closeRequests = [];
+  final List<Map<String, Object?>> reopenRequests = [];
+
+  /// Errors to throw, one per call, in order (null = succeed).
+  final List<ApiError?> closeErrors = [];
+  final List<ApiError?> reopenErrors = [];
+
+  /// While set, the call waits for it (to look at the screen with the request in flight).
+  Completer<void>? closeGate;
+  Completer<void>? reopenGate;
+
+  /// The audit entries the "server" would hold: `(operation, reason, date)` in order.
+  final List<(String, String?, String)> audit = [];
+
+  final Map<String, (String, Logbook)> _closureByKey = {};
+
+  LogbookDay _withClosure(LogbookDay day, {required bool closed}) {
+    final l = day.logbook;
+    return LogbookDay(
+      logbook: Logbook(
+        id: l.id,
+        userId: l.userId,
+        date: l.date,
+        dateType: l.dateType,
+        closed: closed,
+        summary: l.summary,
+        createdAt: l.createdAt,
+        updatedAt: l.updatedAt, // closing and reopening do not touch the modification date
+        closedAt: closed ? DateTime.utc(2026, 11, 6, 18, 0, ++_clock) : null,
+      ),
+      plannings: day.plannings,
+      activities: day.activities,
+      progress: day.progress,
+    );
+  }
+
+  @override
+  Future<Logbook> closeLogbook({required DateTime date, required String key}) async {
+    final dayKey = formatDate(date);
+    calls.add('close $dayKey');
+    closeRequests.add({'date': dayKey, 'key': key});
+    final gate = closeGate;
+    if (gate != null) await gate.future;
+    if (closeErrors.isNotEmpty) {
+      final error = closeErrors.removeAt(0);
+      if (error != null) throw error;
+    }
+    final replay = _closureByKey[key];
+    if (replay != null) {
+      if (replay.$1 != 'close|$dayKey') {
+        throw const ApiError(code: 'CLAVE_IDEMPOTENCIA_REUTILIZADA', message: 'x', status: 422);
+      }
+      return replay.$2;
+    }
+    final day = days[dayKey];
+    if (day == null) throw const ApiError(code: 'RECURSO_NO_DISPONIBLE', message: 'x', status: 404);
+    if (day.logbook.closed) throw const ApiError(code: 'BITACORA_CERRADA', message: 'x', status: 409);
+    if (date.isAfter(today)) throw const ApiError(code: 'FECHA_FUTURA_NO_PERMITIDA', message: 'x', status: 422);
+    // The server's own rule, written out independently of the app's
+    final missing = <Map<String, dynamic>>[
+      if (day.logbook.summary.trim().isEmpty) {'campo': 'resumen', 'motivo': 'vacio'},
+      if (!day.activities.any(
+        (a) => !a.marked && (formatDate(a.date) == dayKey || day.progress.any((p) => p.activityId == a.id)),
+      ))
+        {'campo': 'actividades', 'motivo': 'sin_actividad_creada_ni_continuada'},
+    ];
+    if (missing.isNotEmpty) {
+      throw ApiError(code: 'CONDICIONES_DE_CIERRE_NO_CUMPLIDAS', message: 'x', status: 409, details: missing);
+    }
+    final closed = _withClosure(day, closed: true);
+    days[dayKey] = closed;
+    audit.add(('cierre', null, dayKey));
+    _closureByKey[key] = ('close|$dayKey', closed.logbook);
+    return closed.logbook;
+  }
+
+  @override
+  Future<Logbook> reopenLogbook({required DateTime date, required String reason, required String key}) async {
+    final dayKey = formatDate(date);
+    calls.add('reopen $dayKey');
+    reopenRequests.add({'date': dayKey, 'reason': reason, 'key': key});
+    final gate = reopenGate;
+    if (gate != null) await gate.future;
+    if (reopenErrors.isNotEmpty) {
+      final error = reopenErrors.removeAt(0);
+      if (error != null) throw error;
+    }
+    final replay = _closureByKey[key];
+    if (replay != null) {
+      if (replay.$1 != 'reopen|$dayKey|$reason') {
+        throw const ApiError(code: 'CLAVE_IDEMPOTENCIA_REUTILIZADA', message: 'x', status: 422);
+      }
+      return replay.$2;
+    }
+    final day = days[dayKey];
+    if (day == null) throw const ApiError(code: 'RECURSO_NO_DISPONIBLE', message: 'x', status: 404);
+    if (reason.trim().isEmpty) throw const ApiError(code: 'MOTIVO_OBLIGATORIO', message: 'x', status: 422);
+    if (!day.logbook.closed) throw const ApiError(code: 'BITACORA_NO_CERRADA', message: 'x', status: 409);
+    final reopened = _withClosure(day, closed: false);
+    days[dayKey] = reopened;
+    audit.add(('reapertura', reason, dayKey));
+    _closureByKey[key] = ('reopen|$dayKey|$reason', reopened.logbook);
+    return reopened.logbook;
+  }
+
+  // ---- M2-04: planned continuations --------------------------------------------------------
+
+  /// What `planContinuation` received, one map per call (including retries).
+  final List<Map<String, Object?>> continuationRequests = [];
+
+  /// Errors to throw, one per call, in order (null = succeed).
+  final List<ApiError?> continuationErrors = [];
+
+  /// While set, `planContinuation` waits for it (to look at the screen with the request in flight).
+  Completer<void>? continuationGate;
+
+  final Map<String, (String, ContinuationResult)> _continuationByKey = {};
+
+  @override
+  Future<ContinuationResult> planContinuation({
+    required String activityId,
+    required DateTime date,
+    String? description,
+    required String key,
+  }) async {
+    final fingerprint = '$activityId|${formatDate(date)}|${description ?? ''}';
+    calls.add('continuation ${formatDate(date)}');
+    continuationRequests.add({
+      'activityId': activityId,
+      'date': formatDate(date),
+      'description': description,
+      'key': key,
+    });
+    final gate = continuationGate;
+    if (gate != null) await gate.future;
+    if (continuationErrors.isNotEmpty) {
+      final error = continuationErrors.removeAt(0);
+      if (error != null) throw error;
+    }
+    final replay = _continuationByKey[key];
+    if (replay != null) {
+      if (replay.$1 != fingerprint) {
+        throw const ApiError(code: 'CLAVE_IDEMPOTENCIA_REUTILIZADA', message: 'x', status: 422);
+      }
+      return replay.$2; // the same intention: nothing new is created
+    }
+    final activity = _find(activityId);
+    if (activity == null) throw const ApiError(code: 'RECURSO_NO_DISPONIBLE', message: 'x', status: 404);
+    // Same order of checks as the server
+    if (activity.marked) throw const ApiError(code: 'ACTIVIDAD_MARCADA_POR_ERROR', message: 'x', status: 409);
+    if (!date.isAfter(today)) throw const ApiError(code: 'FECHA_NO_FUTURA', message: 'x', status: 422);
+    if (activity.status == ActivityStatus.completed) {
+      throw const ApiError(code: 'ACTIVIDAD_COMPLETADA', message: 'x', status: 409);
+    }
+    final dayKey = formatDate(date);
+    final logbookCreated = days[dayKey] == null;
+    final base = days[dayKey] ?? LogbookDay(logbook: _newLogbook(date), plannings: const [], activities: const []);
+    final planning = Planning(
+      id: 'pc${++_sequence}',
+      activityId: activityId,
+      date: date,
+      type: PlanningType.continuation,
+      description: description ?? '',
+      createdAt: DateTime.utc(2026, 11, 6, 16, 10),
+    );
+    days[dayKey] = LogbookDay(
+      logbook: base.logbook,
+      plannings: [...base.plannings, planning],
+      // the day lists the activity, but no progress is created and the status does not change
+      activities: base.activities.any((a) => a.id == activityId) ? base.activities : [...base.activities, activity],
+      progress: base.progress,
+    );
+    final result = ContinuationResult(planning: planning, activity: activity, logbookCreated: logbookCreated);
+    _continuationByKey[key] = (fingerprint, result);
     return result;
   }
 
@@ -468,6 +743,9 @@ class FakeLogbookRepository implements LogbookRepository {
       throw const ApiError(code: 'ACTIVIDAD_COMPLETADA', message: 'x', status: 409);
     }
     final dayKey = formatDate(date);
+    if (days[dayKey]?.logbook.closed == true) {
+      throw const ApiError(code: 'BITACORA_CERRADA', message: 'x', status: 409);
+    }
     final logbookCreated = days[dayKey] == null;
     final base = days[dayKey] ?? LogbookDay(logbook: _newLogbook(date), plannings: const [], activities: const []);
     final isLast = !_progressOf(activityId).any((p) => p.date.isAfter(date));

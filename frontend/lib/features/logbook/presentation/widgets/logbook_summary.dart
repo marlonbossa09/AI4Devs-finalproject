@@ -11,7 +11,8 @@ String _dateTypeLabel(DateType type) => switch (type) {
   DateType.future => 'Jornada futura',
 };
 
-/// Header of a persisted logbook: its state and its three dates apart (RN-18), and the summary.
+/// Header of a persisted logbook: its state and its three dates apart (RN-18). The free summary of
+/// the day is a separate block (`DailySummary`).
 class LogbookSummary extends StatelessWidget {
   const LogbookSummary({super.key, required this.logbook});
 
@@ -53,15 +54,6 @@ class LogbookSummary extends StatelessWidget {
               _DateItem(label: 'Registrada', value: formatDateTime(logbook.createdAt)),
               _DateItem(label: 'Modificada', value: formatDateTime(logbook.updatedAt)),
             ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            logbook.summary.isEmpty ? 'Sin resumen' : logbook.summary,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSoft,
-              fontStyle: logbook.summary.isEmpty ? FontStyle.italic : FontStyle.normal,
-            ),
           ),
         ],
       ),

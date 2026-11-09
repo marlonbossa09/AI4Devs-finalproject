@@ -31,6 +31,18 @@ class LogbookRemoteDataSource {
     });
   }
 
+  /// M2-02. The whole text is sent as `resumen`; it replaces the previous one. No idempotency key:
+  /// repeating a replacement leaves the same result.
+  Future<SummaryResultModel> saveSummary({required DateTime date, required String summary}) {
+    return _client.guard(() async {
+      final response = await _client.dio.put<Map<String, dynamic>>(
+        '$_base/${formatDate(date)}/resumen',
+        data: {'resumen': summary},
+      );
+      return SummaryResultModel.fromJson(response.data!);
+    });
+  }
+
   /// M2-03. `Idempotency-Key` is mandatory.
   Future<PlanResultModel> createActivity({
     required DateTime date,
@@ -99,6 +111,47 @@ class LogbookRemoteDataSource {
         options: _client.withKey(key),
       );
       return ProgressResultModel.fromJson(response.data!);
+    });
+  }
+
+  /// M3-01. No body; `Idempotency-Key` is mandatory. It never creates the logbook.
+  Future<LogbookResultModel> closeLogbook({required DateTime date, required String key}) {
+    return _client.guard(() async {
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '$_base/${formatDate(date)}/cierre',
+        options: _client.withKey(key),
+      );
+      return LogbookResultModel.fromJson(response.data!);
+    });
+  }
+
+  /// M3-02. The only body field is the mandatory `motivo`; `Idempotency-Key` is mandatory.
+  Future<LogbookResultModel> reopenLogbook({required DateTime date, required String reason, required String key}) {
+    return _client.guard(() async {
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '$_base/${formatDate(date)}/reapertura',
+        data: {'motivo': reason},
+        options: _client.withKey(key),
+      );
+      return LogbookResultModel.fromJson(response.data!);
+    });
+  }
+
+  /// M2-04. `Idempotency-Key` is mandatory. The body has only the date and the optional description:
+  /// there is no status (a continuation is a planning, not progress).
+  Future<ContinuationResultModel> planContinuation({
+    required String activityId,
+    required DateTime date,
+    String? description,
+    required String key,
+  }) {
+    return _client.guard(() async {
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '${AppConfig.apiPrefix}/mi/actividades/$activityId/continuaciones-planificadas',
+        data: {'fecha_laboral': formatDate(date), if (description != null) 'descripcion': description},
+        options: _client.withKey(key),
+      );
+      return ContinuationResultModel.fromJson(response.data!);
     });
   }
 

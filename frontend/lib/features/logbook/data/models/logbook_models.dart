@@ -280,6 +280,44 @@ class PlanResultModel {
   );
 }
 
+/// Response of M3-01 and M3-02: the logbook as the server holds it after the change.
+@JsonSerializable(createToJson: false)
+class LogbookResultModel {
+  const LogbookResultModel({required this.logbook});
+
+  factory LogbookResultModel.fromJson(Map<String, dynamic> json) => _$LogbookResultModelFromJson(json);
+
+  @JsonKey(name: 'bitacora')
+  final LogbookModel logbook;
+
+  Logbook toEntity() => logbook.toEntity();
+}
+
+/// Response of M2-04.
+@JsonSerializable(createToJson: false)
+class ContinuationResultModel {
+  const ContinuationResultModel({
+    required this.planning,
+    required this.activity,
+    required this.logbookCreated,
+  });
+
+  factory ContinuationResultModel.fromJson(Map<String, dynamic> json) => _$ContinuationResultModelFromJson(json);
+
+  @JsonKey(name: 'planificacion')
+  final PlanningModel planning;
+  @JsonKey(name: 'actividad')
+  final ActivityModel activity;
+  @JsonKey(name: 'bitacora_creada')
+  final bool logbookCreated;
+
+  ContinuationResult toEntity() => ContinuationResult(
+    planning: planning.toEntity(),
+    activity: activity.toEntity(),
+    logbookCreated: logbookCreated,
+  );
+}
+
 /// Response of M2-05.
 @JsonSerializable(createToJson: false)
 class ProgressResultModel {
@@ -375,4 +413,19 @@ class ActivityDetailModel {
     progress: progress.map((p) => p.toEntity()).toList(),
     status: _status(status),
   );
+}
+
+/// Response of M2-02.
+@JsonSerializable(createToJson: false)
+class SummaryResultModel {
+  const SummaryResultModel({required this.logbook, required this.logbookCreated});
+
+  factory SummaryResultModel.fromJson(Map<String, dynamic> json) => _$SummaryResultModelFromJson(json);
+
+  @JsonKey(name: 'bitacora')
+  final LogbookModel logbook;
+  @JsonKey(name: 'bitacora_creada')
+  final bool logbookCreated;
+
+  SummaryResult toEntity() => SummaryResult(logbook: logbook.toEntity(), logbookCreated: logbookCreated);
 }

@@ -18,6 +18,7 @@ import '../../domain/rules/progress_rules.dart';
 import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
+import '../widgets/closed_date_notice.dart';
 import '../widgets/status_picker.dart';
 
 /// Form to record a progress entry on one of the user's activities (M2-05).
@@ -213,13 +214,15 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
       label: 'Cancelar',
       onPressed: _saving ? null : () => ref.read(currentPageProvider.notifier).go(_back),
     );
+    // A closed day takes no new progress: the chosen date is looked up and, if closed, nothing is offered
+    final closedDate = ref.watch(logbookProvider(_date)).value?.logbook.closed ?? false;
     final saveButton = PrimaryButton(
       key: const Key('progress-submit'),
       label: 'Registrar avance',
       icon: Icons.check,
       loading: _saving,
       expand: mobile,
-      onPressed: () => _submit(offered),
+      onPressed: closedDate ? null : () => _submit(offered),
     );
 
     Widget form;
@@ -275,6 +278,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
           if (_status == ActivityStatus.blocked) ...[const SizedBox(height: 14), reasonField],
           const SizedBox(height: 14),
           descriptionField,
+          if (closedDate) ...[const SizedBox(height: 14), ClosedDateNotice(date: _date)],
           if (_error != null) ...[
             const SizedBox(height: 14),
             Semantics(

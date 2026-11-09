@@ -99,7 +99,7 @@ Cada ticket implementa uno o varios contratos de [docs/api/](../../api/indice.md
 - **Objetivo:** Registrar avances manteniendo una secuencia válida y el estado actual correcto.
 - **Historias y criterios:** HU-2.4, HU-2.5, HU-2.8, HU-2.9 (CA-45 a CA-52, CA-66 a CA-80, CA-185, CA-186), HU-3.8 (CA-190, CA-203 a CA-208).
 - **Contratos y documentos:** M2-05; modelo, secciones 8 y 9 (IR-09 a IR-12, DM-01, DM-02).
-- **Descripción técnica:** Orden total por fecha laboral, momento de registro e identificador; validación de la secuencia (IR-11) para altas retroactivas; recálculo de `estado_actual` en la misma transacción; serialización por actividad; solo se exige abierta la bitácora de la fecha del avance.
+- **Descripción técnica:** Orden total por fecha laboral, momento de registro e identificador; validación de la secuencia (IR-11) para altas retroactivas, mirando solo el avance anterior al punto de inserción (PA-27); recálculo de `estado_actual` en la misma transacción; serialización por actividad; solo se exige abierta la bitácora de la fecha del avance.
 - **Dependencias:** BE-07, DB-03.
 - **Terminado cuando:**
   - Un avance retroactivo anterior a una finalización se acepta sin reactivar y no altera el estado de uno posterior.

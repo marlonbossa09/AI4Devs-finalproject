@@ -35,6 +35,36 @@ class AvanceEntrada(BaseModel):
     motivo_bloqueo: str | None = None
 
 
+class ContinuacionEntrada(BaseModel):
+    """M2-04. Planifica la continuación de una actividad propia para una jornada futura. No admite
+    ``estado`` (la continuación no es un avance y no cambia el estado) ni ``titulo``, ``origen`` o
+    ``propietaria_id`` (la actividad ya existe y es la de la ruta). ``descripcion`` es opcional (D-03)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fecha_laboral: str
+    descripcion: str | None = None
+
+
+class ReaperturaEntrada(BaseModel):
+    """M3-02. Reabre mi bitácora cerrada. El motivo es obligatorio (RN-50): se valida en el servicio para
+    distinguir «falta» (``MOTIVO_OBLIGATORIO``) de un cuerpo mal formado (``SOLICITUD_INVALIDA``)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    motivo: str | None = None
+
+
+class ResumenEntrada(BaseModel):
+    """M2-02. Reemplaza el resumen libre de la bitácora. ``resumen`` es opcional al guardar (D-03): si
+    falta o es nulo equivale a un resumen vacío, que se acepta (solo impide cerrar, M3-01). No admite
+    otros campos. La longitud máxima se valida en el servicio para devolver TEXTO_DEMASIADO_LARGO."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    resumen: str | None = None
+
+
 class NoPlanificadaEntrada(BaseModel):
     """M2-06. Crea la actividad y su primer avance en una sola operación. No admite ``origen``,
     ``propietaria_id`` ni una planificación (campos desconocidos): el origen lo fija el endpoint. El

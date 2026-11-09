@@ -7,12 +7,17 @@ import '../../../../core/layout/screen_size.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
+import '../../../../core/widgets/kind_tag.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/text_blocks.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
+import '../providers/unsaved_changes.dart';
 import '../widgets/activity_tile.dart';
+import '../widgets/daily_summary.dart';
+import '../widgets/day_closure.dart';
 import '../widgets/logbook_summary.dart';
 
 /// The logbook of the selected date, exactly as persisted on the server.
@@ -30,6 +35,11 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
   void _registerProgress(Activity activity) {
     ref.read(progressTargetProvider.notifier).select(activity.summary);
     ref.read(currentPageProvider.notifier).go(AppPage.progress);
+  }
+
+  void _planContinuation(Activity activity) {
+    ref.read(continuationTargetProvider.notifier).select(activity.summary);
+    ref.read(currentPageProvider.notifier).go(AppPage.continuation);
   }
 
   void _openDetail(Activity activity) {
@@ -68,8 +78,12 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
         label: 'Fecha laboral',
         date: date,
         onChanged: (value) {
-          setState(() => _openError = null);
-          ref.read(selectedDateProvider.notifier).select(value);
+          // Another day shows another summary: unsaved text would be lost, so the user is asked first
+          ref.read(leaveRequestProvider.notifier).request(() {
+            if (!mounted) return;
+            setState(() => _openError = null);
+            ref.read(selectedDateProvider.notifier).select(value);
+          });
         },
       ),
     );
@@ -97,7 +111,26 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           LogbookSummary(logbook: day.logbook),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+          // Closing and reopening the day. A new day (new logbook) always starts with fresh state
+          DayClosure(key: ValueKey('day-closure-${day.logbook.id}'), day: day),
+          const SizedBox(height: 14),
+          // A new day (new logbook) always starts with a fresh editor
+          DailySummary(key: ValueKey('daily-summary-${day.logbook.id}'), logbook: day.logbook),
+          const SizedBox(height: 22),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: KeyedSubtree(
+              key: Key('activities-heading'),
+              child: KindTag(
+                'Actividades y avances',
+                icon: Icons.checklist_outlined,
+                color: AppColors.progressText,
+                background: AppColors.progressBackground,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
           if (day.activities.isEmpty)
             const EmptyState('No hay actividades para esta selección.')
           else
@@ -106,8 +139,11 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
                 key: Key('activity-${day.activities[i].id}'),
                 activity: day.activities[i],
                 planning: day.planningOf(day.activities[i]),
+                continuations: day.continuationsOf(day.activities[i]),
                 progress: day.progressOf(day.activities[i]),
-                onRegisterProgress: () => _registerProgress(day.activities[i]),
+                // A closed day takes no new progress: it has to be reopened first (RN-108)
+                onRegisterProgress: day.logbook.closed ? null : () => _registerProgress(day.activities[i]),
+                onPlanContinuation: () => _planContinuation(day.activities[i]),
                 onOpen: () => _openDetail(day.activities[i]),
                 first: i == 0,
               ),
