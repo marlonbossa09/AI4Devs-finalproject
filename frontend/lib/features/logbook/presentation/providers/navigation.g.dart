@@ -192,6 +192,187 @@ abstract class _$ContinuationTarget
   }
 }
 
+/// Activity chosen to reactivate (null = none yet). It is cleared with every new session.
+
+@ProviderFor(ReactivationTarget)
+const reactivationTargetProvider = ReactivationTargetProvider._();
+
+/// Activity chosen to reactivate (null = none yet). It is cleared with every new session.
+final class ReactivationTargetProvider
+    extends $NotifierProvider<ReactivationTarget, ReactivationTargetState?> {
+  /// Activity chosen to reactivate (null = none yet). It is cleared with every new session.
+  const ReactivationTargetProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'reactivationTargetProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$reactivationTargetHash();
+
+  @$internal
+  @override
+  ReactivationTarget create() => ReactivationTarget();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ReactivationTargetState? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ReactivationTargetState?>(value),
+    );
+  }
+}
+
+String _$reactivationTargetHash() =>
+    r'ecbacc405256f3559b7346985ca42464998dd567';
+
+/// Activity chosen to reactivate (null = none yet). It is cleared with every new session.
+
+abstract class _$ReactivationTarget
+    extends $Notifier<ReactivationTargetState?> {
+  ReactivationTargetState? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref =
+        this.ref as $Ref<ReactivationTargetState?, ReactivationTargetState?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<ReactivationTargetState?, ReactivationTargetState?>,
+              ReactivationTargetState?,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
+/// Entry chosen to correct (null = none yet). It is cleared with every new session.
+
+@ProviderFor(CorrectionTarget)
+const correctionTargetProvider = CorrectionTargetProvider._();
+
+/// Entry chosen to correct (null = none yet). It is cleared with every new session.
+final class CorrectionTargetProvider
+    extends $NotifierProvider<CorrectionTarget, CorrectionTargetState?> {
+  /// Entry chosen to correct (null = none yet). It is cleared with every new session.
+  const CorrectionTargetProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'correctionTargetProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$correctionTargetHash();
+
+  @$internal
+  @override
+  CorrectionTarget create() => CorrectionTarget();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CorrectionTargetState? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CorrectionTargetState?>(value),
+    );
+  }
+}
+
+String _$correctionTargetHash() => r'e9d214658fb54335007c2b37552e40289386dbd6';
+
+/// Entry chosen to correct (null = none yet). It is cleared with every new session.
+
+abstract class _$CorrectionTarget extends $Notifier<CorrectionTargetState?> {
+  CorrectionTargetState? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref =
+        this.ref as $Ref<CorrectionTargetState?, CorrectionTargetState?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<CorrectionTargetState?, CorrectionTargetState?>,
+              CorrectionTargetState?,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
+/// Record chosen to consult the audit of (null = none yet). It is cleared with every new session.
+
+@ProviderFor(AuditTarget)
+const auditTargetProvider = AuditTargetProvider._();
+
+/// Record chosen to consult the audit of (null = none yet). It is cleared with every new session.
+final class AuditTargetProvider
+    extends $NotifierProvider<AuditTarget, AuditTargetState?> {
+  /// Record chosen to consult the audit of (null = none yet). It is cleared with every new session.
+  const AuditTargetProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'auditTargetProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$auditTargetHash();
+
+  @$internal
+  @override
+  AuditTarget create() => AuditTarget();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AuditTargetState? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AuditTargetState?>(value),
+    );
+  }
+}
+
+String _$auditTargetHash() => r'dcb8ecd521b50404132b4fc394386f084cafa13d';
+
+/// Record chosen to consult the audit of (null = none yet). It is cleared with every new session.
+
+abstract class _$AuditTarget extends $Notifier<AuditTargetState?> {
+  AuditTargetState? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<AuditTargetState?, AuditTargetState?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AuditTargetState?, AuditTargetState?>,
+              AuditTargetState?,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
 @ProviderFor(ActivityNav)
 const activityNavProvider = ActivityNavProvider._();
 

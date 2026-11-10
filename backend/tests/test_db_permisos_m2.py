@@ -55,16 +55,18 @@ def test_la_aplicacion_puede_guardar_el_resumen_y_cerrar_y_reabrir_una_bitacora(
     "update actividad set titulo = 'Otro' where id = :a",
     "update actividad set propietaria_id = propietaria_id where id = :a",
     "update actividad set bitacora_origen_id = bitacora_origen_id where id = :a",
-    # La marca de error pertenece a M3-05, que no forma parte de esta entrega
-    "update actividad set registrada_por_error = true where id = :a",
-    "update actividad set motivo_error = 'x' where id = :a",
+    # El origen y la fecha de creación tampoco se tocan (la marca de error tiene su propia prueba: 0007)
+    "update actividad set origen = 'no_planificada' where id = :a",
+    "update actividad set creada_en = now() where id = :a",
     # La identidad de la bitácora: persona y fecha laboral
     "update bitacora set persona_id = persona_id where id = :b",
     "update bitacora set fecha_laboral = fecha_laboral + 1 where id = :b",
     "update bitacora set creada_en = now() where id = :b",
-    # Avances y planificaciones no se editan ni se borran (las correcciones son de M3-03)
-    "update avance set estado = 'Completada' where id = :v",
-    "update avance set descripcion = 'x' where id = :v",
+    # Del avance solo se corrigen estado, descripción y motivo (0008); nada más se edita ni se borra
+    "update avance set registrado_en = now() where id = :v",
+    "update avance set es_reactivacion = true where id = :v",
+    "update avance set bitacora_id = bitacora_id where id = :v",
+    "update avance set actividad_id = actividad_id where id = :v",
     "update planificacion set descripcion = 'x'",
     "delete from avance where id = :v",
     "delete from actividad where id = :a",

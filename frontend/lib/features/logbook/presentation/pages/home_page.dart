@@ -15,6 +15,9 @@ import 'dashboard_page.dart';
 import 'logbook_page.dart';
 import 'planning_page.dart';
 import 'progress_page.dart';
+import 'audit_page.dart';
+import 'correction_page.dart';
+import 'reactivation_page.dart';
 import 'unplanned_page.dart';
 
 /// Signed-in area: the app frame with the page chosen in the sidebar.
@@ -32,6 +35,9 @@ class HomePage extends ConsumerWidget {
     AppPage.activityDetail: 'Detalle de actividad',
     AppPage.unplanned: 'Actividad no planificada',
     AppPage.continuation: 'Planificar continuación',
+    AppPage.reactivation: 'Reactivar actividad',
+    AppPage.correction: 'Corregir avance',
+    AppPage.audit: 'Historial de auditoría',
   };
 
   @override
@@ -87,6 +93,9 @@ class HomePage extends ConsumerWidget {
           AppPage.activityDetail => const ActivityDetailPage(),
           AppPage.unplanned => const UnplannedPage(),
           AppPage.continuation => const ContinuationPage(),
+          AppPage.reactivation => const ReactivationPage(),
+          AppPage.correction => const CorrectionPage(),
+          AppPage.audit => const AuditPage(),
         },
       ),
     );

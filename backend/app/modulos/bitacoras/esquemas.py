@@ -35,6 +35,34 @@ class AvanceEntrada(BaseModel):
     motivo_bloqueo: str | None = None
 
 
+class ReactivacionEntrada(BaseModel):
+    """M3-04. Reactiva una actividad Completada con un avance nuevo de reactivación. El estado es uno de
+    los tres que admite (Pendiente, En progreso o Bloqueada); se valida en el servicio para devolver
+    ``ESTADO_INVALIDO``. No admite campos desconocidos."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fecha_laboral: str
+    estado: str | None = None
+    descripcion: str | None = None
+    motivo_bloqueo: str | None = None
+
+
+class CorreccionEntrada(BaseModel):
+    """M3-03. Corrige el estado, la descripción o el motivo de bloqueo de un avance propio. Al menos uno. No
+    admite ``fecha_laboral`` (la reubicación no está aprobada, PP-44), ni el título ni la planificación (RN-104),
+    ni identificadores ni la condición de reactivación: cualquier otro campo es ``SOLICITUD_INVALIDA``. Qué campos
+    llegaron se sabe por ``model_fields_set`` (un valor nulo explícito no es lo mismo que un campo ausente); los
+    valores se validan en el servicio para devolver ESTADO_INVALIDO, DESCRIPCION_OBLIGATORIA y
+    MOTIVO_BLOQUEO_OBLIGATORIO."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    estado: str | None = None
+    descripcion: str | None = None
+    motivo_bloqueo: str | None = None
+
+
 class ContinuacionEntrada(BaseModel):
     """M2-04. Planifica la continuación de una actividad propia para una jornada futura. No admite
     ``estado`` (la continuación no es un avance y no cambia el estado) ni ``titulo``, ``origen`` o
@@ -49,6 +77,16 @@ class ContinuacionEntrada(BaseModel):
 class ReaperturaEntrada(BaseModel):
     """M3-02. Reabre mi bitácora cerrada. El motivo es obligatorio (RN-50): se valida en el servicio para
     distinguir «falta» (``MOTIVO_OBLIGATORIO``) de un cuerpo mal formado (``SOLICITUD_INVALIDA``)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    motivo: str | None = None
+
+
+class MarcaErrorEntrada(BaseModel):
+    """M3-05. Marca una actividad propia como registrada por error. El motivo es obligatorio (RN-59): se
+    valida en el servicio para distinguir «falta» (``MOTIVO_OBLIGATORIO``) de un cuerpo mal formado
+    (``SOLICITUD_INVALIDA``). No admite campos desconocidos."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -146,7 +184,6 @@ def avance_a_dict(fila, fecha_laboral: date) -> dict:
         "motivo_bloqueo": fila.motivo_bloqueo,
         "es_reactivacion": fila.es_reactivacion,
         "registrado_en": momento(fila.registrado_en),
-        # Los avances no se editan en esta entrega: nunca se han modificado, así que su última
-        # modificación coincide con su registro (CA-62). La corrección (M3-03) la hará diferir.
-        "modificado_en": momento(fila.registrado_en),
+        # Coincide con ``registrado_en`` mientras el avance no se corrija (CA-62)
+        "modificado_en": momento(fila.modificado_en),
     }

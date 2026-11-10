@@ -160,6 +160,7 @@ Sin cadena de versiones ni edición ordinaria (IR-16).
 | actividad | Actividad a la que pertenece |
 | bitacora | Bitácora de la jornada del avance; determina la fecha laboral y la propietaria |
 | registrado_en | Momento real de registro, asignado por el servidor (RN-65, IR-09) |
+| modificado_en | Momento real de la última corrección (CA-62). Igual a `registrado_en` mientras el avance no se corrija. Solo avanza cuando cambia el contenido |
 | estado | Estado histórico: Pendiente, En progreso, Bloqueada o Completada (RN-08, RN-17) |
 | descripcion | Descripción no vacía (RN-70) |
 | motivo_bloqueo | Obligatorio si el estado es Bloqueada, también en una reactivación (RN-24, RN-69) |
@@ -391,7 +392,7 @@ Las reglas IR se comprueban en el servidor y, cuando es posible, se refuerzan co
 | IR-08 | El estado de un avance es uno de los cuatro estados. Un avance Bloqueada exige motivo, también si es una reactivación. La descripción no puede estar vacía. | RN-08, RN-24, RN-70 |
 | IR-09 | El orden de la secuencia es total: fecha laboral de la bitácora, momento real de registro e identificador estable. El servidor asigna `registrado_en` e `id`; no se modifican después. | RN-65 |
 | IR-10 | Ningún avance de ejecución tiene fecha laboral futura. | RN-27, RN-46, RN-74 |
-| IR-11 | Secuencia válida: tras un avance Completada, el siguiente avance de la secuencia, si existe, es una reactivación. Una reactivación solo sigue a un avance Completada y su estado es Pendiente, En progreso o Bloqueada. La reactivación es un avance nuevo y no modifica la finalización. Los avances anteriores a una finalización no requieren reactivación. Son válidos varios ciclos. **Aplicación a un avance nuevo (confirmada, PA-27):** se examina solo el avance que quedaría inmediatamente antes del nuevo; si es una finalización, el nuevo debe ser una reactivación. Los avances posteriores ya existentes no se revalidan ni se modifican, de modo que una inserción retroactiva (por ejemplo, un Completada con fecha anterior a un En progreso existente, CA-78) los conserva; el estado actual se deriva siempre del orden laboral completo. La validación de una corrección sobre esos pares está pendiente (PA-29). | RN-40, RN-68, RN-73, RN-77, RN-79, PV-04 |
+| IR-11 | Secuencia válida: tras un avance Completada, el siguiente avance de la secuencia, si existe, es una reactivación. Una reactivación solo sigue a un avance Completada y su estado es Pendiente, En progreso o Bloqueada. La reactivación es un avance nuevo y no modifica la finalización. Los avances anteriores a una finalización no requieren reactivación. Son válidos varios ciclos. **Aplicación a un avance nuevo (confirmada, PA-27):** se examina solo el avance que quedaría inmediatamente antes del nuevo; si es una finalización, el nuevo debe ser una reactivación. Los avances posteriores ya existentes no se revalidan ni se modifican, de modo que una inserción retroactiva (por ejemplo, un Completada con fecha anterior a un En progreso existente, CA-78) los conserva; el estado actual se deriva siempre del orden laboral completo. Una corrección se valida con la regla de PA-29 (no introducir violaciones nuevas; las preexistentes admitidas no la rechazan por sí solas). | RN-40, RN-68, RN-73, RN-77, RN-79, PV-04 |
 | IR-12 | `estado_actual` es el estado del último avance de ejecución, y Pendiente si la actividad planificada no tiene avances. Solo lo escribe el procedimiento que registra o corrige avances, dentro de la misma transacción que el cambio (IR-24). Siempre es recomputable desde la secuencia. | RN-66, RN-42 |
 | IR-13 | Una actividad no planificada se crea junto con su primer avance, y su estado inicial es el de ese avance. | RN-69 |
 | IR-14 | La planificación no es un avance: no participa en la secuencia ni en el estado actual. | RN-71, RN-75 |
@@ -503,7 +504,7 @@ Ningún concepto añade atributos ni entidades: todos se derivan de los existent
 
 **Finalización.** Es un avance con estado Completada. No tiene entidad propia.
 
-**Secuencia válida (IR-11).** Se recorre en orden. Mientras el último avance leído no sea Completada, cualquier avance de ejecución no reactivante es válido. Tras un Completada, el único válido es una reactivación con estado distinto de Completada. Una reactivación sin Completada inmediatamente anterior es inválida. Con varios ciclos la regla se aplica a cada tramo. Un avance con la misma fecha laboral que una finalización, registrado después, se ordena tras ella y exige reactivación. Este recorrido sirve para registrar un avance nuevo (RN-79) y para validar una corrección (sección 11.1). **Precisión (PA-27):** al registrar un avance nuevo se aplica la regla solo al punto de inserción, mirando el avance anterior, y no se revalida el resto de la secuencia: una inserción retroactiva admitida no elimina ni modifica los avances posteriores. Cómo se valida una corrección sobre una secuencia que contiene esos pares es una decisión pendiente (PA-29).
+**Secuencia válida (IR-11).** Se recorre en orden. Mientras el último avance leído no sea Completada, cualquier avance de ejecución no reactivante es válido. Tras un Completada, el único válido es una reactivación con estado distinto de Completada. Una reactivación sin Completada inmediatamente anterior es inválida. Con varios ciclos la regla se aplica a cada tramo. Un avance con la misma fecha laboral que una finalización, registrado después, se ordena tras ella y exige reactivación. Este recorrido sirve para registrar un avance nuevo (RN-79) y para validar una corrección (sección 11.1). **Precisión (PA-27):** al registrar un avance nuevo se aplica la regla solo al punto de inserción, mirando el avance anterior, y no se revalida el resto de la secuencia: una inserción retroactiva admitida no elimina ni modifica los avances posteriores. Una corrección sobre una secuencia que contiene esos pares se valida comparando la secuencia antes y después: se rechaza solo si introduce una violación nueva; los pares preexistentes admitidos no la rechazan por sí solos (PA-29, opción A).
 
 ## 9. Cálculo, persistencia e integridad del estado actual
 
@@ -529,6 +530,8 @@ La elección definitiva entre almacenar o derivar depende de los volúmenes y ti
 
 **Fechas.** Se distinguen la fecha laboral, la fecha real de registro (`registrado_en`, `registrada_en`, `creada_en`) y la fecha de modificación (`modificada_en`) (RN-18).
 
+**Consulta (M3-07).** La auditoría solo se lee, de un registro cada vez, en el orden de `momento` y, de desempate, de identificador. `momento` es el del reloj real al aplicar el cambio. La consulta devuelve solo entradas de personas: las de provisión administrativa permanecen aparte (D-11). Hoy la consulta la hace la propietaria; el supervisor lo hará con M4.
+
 **Una entrada por operación (IR-35).** Una corrección, una reapertura, una marca de error, un cambio de pertenencia o una cancelación generan cada uno una entrada con autor, momento, operación, motivo, valor anterior y valor nuevo (RN-49). Una operación compuesta atómica genera una sola. Las correcciones conservan el valor anterior en la auditoría sin versionar avances (PV-05).
 
 **Autoría de operaciones administrativas (IR-34).**
@@ -552,10 +555,12 @@ Procedimiento lógico, igual para toda corrección (RN-91 a RN-93):
 
 1. Se serializa el acceso a la actividad (DM-01) y se carga la secuencia completa.
 2. Se aplica la corrección sobre una copia de la secuencia.
-3. Se valida el resultado con IR-11 y las demás reglas aplicables (IR-08, IR-10, IR-18).
+3. Se valida el resultado con IR-11 y las demás reglas aplicables (IR-08, IR-10, IR-18). Una corrección es válida si **no introduce ninguna violación nueva** respecto a la secuencia anterior; las violaciones preexistentes admitidas por una inserción retroactiva (PA-27) no la rechazan automáticamente (PA-29).
 4. Si es válida, en una única transacción: se aplica el cambio, se crea la entrada con valor anterior y nuevo (IR-35) y se recalcula `estado_actual`.
 5. Si es inválida, se rechaza sin modificar avances, estado actual ni auditoría.
 6. Nunca se crea una reactivación automática (RN-93).
+
+Una violación es la ausencia de IR-11 en un punto de la secuencia, identificada por el avance afectado y el motivo (un avance ordinario tras una finalización, una reactivación que no sigue a una finalización, una reactivación Completada). Comparar «antes» y «después» es comparar esos pares. Una corrección sin cambios en el contenido no hace nada y no deja entrada. La base garantiza además que de un avance solo se corrigen su estado, su descripción y su motivo de bloqueo (el identificador, la actividad, la bitácora y por tanto la fecha laboral, el momento de registro y la condición de reactivación son inmutables), que el motivo solo existe con el estado Bloqueada, que `modificado_en` solo avanza con un cambio de contenido y que no se corrige un avance de una actividad con marca vigente.
 
 «Eliminar una finalización» equivale a una corrección que la deja sin efecto; no hay borrado físico.
 
@@ -566,6 +571,9 @@ Procedimiento lógico, igual para toda corrección (RN-91 a RN-93):
 - No cambia `estado_actual` ni crea un quinto estado. La reversión deja una entrada con la marca anterior.
 - Mientras esté vigente no se registran avances ni reactivaciones (IR-18).
 - La marca y su motivo pertenecen a la jornada de origen: solo los ve quien está autorizado sobre ella (RA-04, RA-08).
+- Con marca vigente constan siempre el motivo, quién la aplicó y cuándo; sin marca vigente no consta ninguno de los tres (la auditoría conserva la marca anterior al revertir). Una marca vigente no se reescribe: se revierte antes.
+- Antes de marcar se comprueba el cierre de **toda jornada cerrada en la que la actividad cuenta** (RN-109): la de origen y, si PA-28 admitió un avance anterior al origen, las de esas fechas. La actividad y esas bitácoras se serializan con el cierre.
+- La base garantiza también estas reglas físicamente (restricción de coherencia de la marca y disparadores que impiden marcar con avances posteriores al origen y registrar avances o continuaciones sobre una actividad marcada), además de la validación del servicio.
 
 ## 12. Autorización histórica y aislamiento entre equipos
 

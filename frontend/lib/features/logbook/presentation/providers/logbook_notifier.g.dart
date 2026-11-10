@@ -62,7 +62,7 @@ final class LogbookNotifierProvider
   }
 }
 
-String _$logbookNotifierHash() => r'd34be9f05e49e97e04a502159a79a378699919c3';
+String _$logbookNotifierHash() => r'554ad223716a2a781e80d2df15d159c181782772';
 
 /// What is persisted for one date. `null` means there is no logbook for it.
 ///

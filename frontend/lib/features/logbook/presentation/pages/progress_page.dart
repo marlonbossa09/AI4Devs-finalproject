@@ -268,8 +268,8 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               key: Key('progress-completed-notice'),
               title: 'Actividad completada',
               text:
-                  'Solo se admiten avances con fecha anterior a su finalización. Para continuarla después '
-                  'habrá que reactivarla.',
+                  'Solo se admiten avances con fecha anterior a su finalización. Para retomarla después '
+                  'hay que reactivarla (acción «Reactivar» en la actividad).',
               icon: Icons.info_outline,
             ),
           ],

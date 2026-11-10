@@ -50,7 +50,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       children: [
         StatCard(
           label: 'Actividades registradas',
-          value: day?.activities.length ?? 0,
+          value: day?.operationalActivities.length ?? 0,
           caption: 'En esta jornada',
           icon: Icons.grid_view_rounded,
           compact: size.isMobile,
@@ -89,6 +89,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       onRegisterProgress: (activity) {
         ref.read(progressTargetProvider.notifier).select(activity.summary);
         ref.read(currentPageProvider.notifier).go(AppPage.progress);
+      },
+      onReactivate: (activity) {
+        ref.read(reactivationTargetProvider.notifier).select(activity.summary, back: AppPage.dashboard);
+        ref.read(currentPageProvider.notifier).go(AppPage.reactivation);
       },
       onOpenActivity: (activity) {
         ref.read(activityNavProvider.notifier).open(activity.id, back: AppPage.dashboard);
@@ -156,6 +160,7 @@ class _ActivitiesPanel extends StatelessWidget {
     required this.onRetry,
     required this.onOpenLogbook,
     required this.onRegisterProgress,
+    required this.onReactivate,
     required this.onOpenActivity,
   });
 
@@ -166,12 +171,13 @@ class _ActivitiesPanel extends StatelessWidget {
   final VoidCallback onRetry;
   final VoidCallback onOpenLogbook;
   final ValueChanged<Activity> onRegisterProgress;
+  final ValueChanged<Activity> onReactivate;
   final ValueChanged<Activity> onOpenActivity;
 
   @override
   Widget build(BuildContext context) {
     final day = view.value;
-    final all = day?.activities ?? const <Activity>[];
+    final all = day?.operationalActivities ?? const <Activity>[];
     final shown = filter == _Filter.all
         ? all
         : all.where((a) => a.status == ActivityStatus.pending).toList();
@@ -202,6 +208,7 @@ class _ActivitiesPanel extends StatelessWidget {
               continuations: day?.continuationsOf(shown[i]) ?? const [],
               progress: day?.progressOf(shown[i]) ?? const [],
               onRegisterProgress: day?.logbook.closed == true ? null : () => onRegisterProgress(shown[i]),
+              onReactivate: () => onReactivate(shown[i]),
               onOpen: () => onOpenActivity(shown[i]),
               first: i == 0,
             ),
@@ -267,7 +274,7 @@ class _SidePanelState extends ConsumerState<_SidePanel> {
       }
     });
     final day = widget.day;
-    final total = day?.activities.length ?? 0;
+    final total = day?.operationalActivities.length ?? 0;
     final done = day?.count(ActivityStatus.completed) ?? 0;
     final mobile = ScreenSize.ofContext(context).isMobile;
     final pad = mobile ? 18.0 : 24.0;

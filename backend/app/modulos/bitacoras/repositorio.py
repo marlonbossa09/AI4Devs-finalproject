@@ -43,16 +43,59 @@ def bitacora_fue_reabierta(db: Session, bitacora_id: UUID) -> bool:
     ).scalar_one()
 
 
-def contar_actividades_efectivas(db: Session, persona_id: UUID, bitacora_id: UUID) -> int:
+def contar_actividades_efectivas(db: Session, persona_id: UUID, bitacora_id: UUID,
+                                 *, excluir: UUID | None = None) -> int:
     """Actividades válidas que cuentan para cerrar la jornada (RN-21, RN-109): creadas en ella, o
     continuadas en ella con al menos un AVANCE de esa fecha laboral. Una continuación planificada no
-    cuenta (CA-184) y las marcadas como registradas por error tampoco (CA-283)."""
+    cuenta (CA-184) y las marcadas como registradas por error tampoco (CA-283). ``excluir`` deja fuera una
+    actividad concreta: la comprobación de M3-05 («sin contar esta actividad»)."""
     return db.execute(
         text("select count(*) from actividad a where a.propietaria_id = :p and not a.registrada_por_error "
+             "and (cast(:x as uuid) is null or a.id <> cast(:x as uuid)) "
              "and (a.bitacora_origen_id = :b or exists "
              "(select 1 from avance v where v.actividad_id = a.id and v.bitacora_id = :b))"),
-        {"p": persona_id, "b": bitacora_id},
+        {"p": persona_id, "b": bitacora_id, "x": excluir},
     ).scalar_one()
+
+
+def bloquear_jornadas_de_actividad(db: Session, actividad_id: UUID, bitacora_origen_id: UUID):
+    """Bloquea, en orden de fecha laboral, todas las bitácoras en las que la actividad cuenta: la de origen
+    y las de cada fecha con un avance suyo (PA-28 admite avances anteriores al origen). Quien cierra una
+    jornada bloquea su fila antes de contar, así que marcar y cerrar se serializan (M3-01, M3-05). El orden
+    fijo evita bloqueos cruzados entre dos marcas."""
+    return db.execute(
+        text("select * from bitacora where id = :o or id in "
+             "(select bitacora_id from avance where actividad_id = :a) "
+             "order by fecha_laboral, id for update"),
+        {"o": bitacora_origen_id, "a": actividad_id},
+    ).all()
+
+
+def existe_avance_posterior_al_origen(db: Session, actividad_id: UUID, fecha_origen: date) -> bool:
+    """RN-59: algún avance en una jornada posterior a la de origen de la actividad (PA-28: el origen es la
+    fecha laboral de su bitácora de origen, no ``creada_en``). Los de la propia fecha de origen no cuentan."""
+    return db.execute(
+        text("select exists (select 1 from avance av join bitacora b on b.id = av.bitacora_id "
+             "where av.actividad_id = :a and b.fecha_laboral > :f)"),
+        {"a": actividad_id, "f": fecha_origen},
+    ).scalar_one()
+
+
+def aplicar_marca_de_error(db: Session, actividad_id: UUID, persona_id: UUID, motivo: str) -> None:
+    """La marca es lógica: no cambia el estado, el título ni ningún avance. El momento usa el reloj real."""
+    db.execute(
+        text("update actividad set registrada_por_error = true, motivo_error = :m, marcada_por = :p, "
+             "marcada_en = clock_timestamp() where id = :a"),
+        {"m": motivo, "p": persona_id, "a": actividad_id},
+    )
+
+
+def retirar_marca_de_error(db: Session, actividad_id: UUID) -> None:
+    db.execute(
+        text("update actividad set registrada_por_error = false, motivo_error = null, marcada_por = null, "
+             "marcada_en = null where id = :a"),
+        {"a": actividad_id},
+    )
 
 
 def cerrar_bitacora(db: Session, bitacora_id: UUID):
@@ -127,13 +170,13 @@ def listar_avances_de_actividad(db: Session, actividad_id: UUID):
 
 
 def insertar_avance(db: Session, actividad_id: UUID, bitacora_id: UUID, estado: str, descripcion: str,
-                    motivo_bloqueo: str | None):
+                    motivo_bloqueo: str | None, es_reactivacion: bool = False):
     """``registrado_en`` usa el reloj real (``clock_timestamp``), no el inicio de la transacción: así
     un registro que espera el bloqueo de la actividad queda después del que lo precedió."""
     return db.execute(
-        text("insert into avance (actividad_id, bitacora_id, registrado_en, estado, descripcion, motivo_bloqueo) "
-             "values (:a, :b, clock_timestamp(), :e, :d, :m) returning *"),
-        {"a": actividad_id, "b": bitacora_id, "e": estado, "d": descripcion, "m": motivo_bloqueo},
+        text("insert into avance (actividad_id, bitacora_id, registrado_en, estado, descripcion, motivo_bloqueo, "
+             "es_reactivacion) values (:a, :b, clock_timestamp(), :e, :d, :m, :r) returning *"),
+        {"a": actividad_id, "b": bitacora_id, "e": estado, "d": descripcion, "m": motivo_bloqueo, "r": es_reactivacion},
     ).one()
 
 
@@ -207,4 +250,26 @@ def insertar_planificacion_original(db: Session, actividad_id: UUID, bitacora_id
         text("insert into planificacion (actividad_id, bitacora_id, tipo, descripcion) "
              "values (:a, :b, 'original', :d) returning *"),
         {"a": actividad_id, "b": bitacora_id, "d": descripcion},
+    ).one()
+
+
+def obtener_avance_propio(db: Session, persona_id: UUID, avance_id: UUID, *, bloquear: bool = False):
+    """El avance solo si su actividad es de la persona, con la fecha laboral y el estado de su bitácora. Un avance
+    ajeno es indistinguible de uno inexistente (T-01). ``bloquear`` toma la fila del avance (FOR UPDATE OF av)."""
+    return db.execute(
+        text("select av.*, b.fecha_laboral, b.estado as estado_bitacora from avance av "
+             "join bitacora b on b.id = av.bitacora_id join actividad a on a.id = av.actividad_id "
+             "where av.id = :v and a.propietaria_id = :p" + (" for update of av" if bloquear else "")),
+        {"v": avance_id, "p": persona_id},
+    ).one_or_none()
+
+
+def corregir_avance(db: Session, avance_id: UUID, estado: str, descripcion: str, motivo_bloqueo: str | None):
+    """Solo cambia lo corregible. ``modificado_en`` usa el reloj real (como ``registrado_en``): una corrección que
+    esperó el bloqueo queda posterior a la anterior. Ni la fecha laboral, ni el momento de registro, ni la condición
+    de reactivación se tocan (la base lo garantiza)."""
+    return db.execute(
+        text("update avance set estado = :e, descripcion = :d, motivo_bloqueo = :m, modificado_en = clock_timestamp() "
+             "where id = :v returning *"),
+        {"e": estado, "d": descripcion, "m": motivo_bloqueo, "v": avance_id},
     ).one()

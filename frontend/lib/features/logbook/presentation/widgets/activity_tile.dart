@@ -6,8 +6,11 @@ import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/status_pill.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../../domain/rules/continuation_rules.dart';
+import '../../domain/rules/reactivation_rules.dart';
 import 'continuation_tag.dart';
 import 'origin_tag.dart';
+import 'marked_tag.dart';
+import 'reactivation_tag.dart';
 
 String statusLabel(ActivityStatus status) => switch (status) {
   ActivityStatus.pending => 'Pendiente',
@@ -38,6 +41,7 @@ class ActivityTile extends StatelessWidget {
     this.progress = const [],
     this.onRegisterProgress,
     this.onPlanContinuation,
+    this.onReactivate,
     this.onOpen,
     this.first = false,
   });
@@ -60,6 +64,10 @@ class ActivityTile extends StatelessWidget {
   /// or marked as an error.
   final VoidCallback? onPlanContinuation;
 
+  /// Opens the reactivation form (M3-04). Only offered for a Completada activity that is not marked as
+  /// an error.
+  final VoidCallback? onReactivate;
+
   /// Opens the activity detail (M2-07).
   final VoidCallback? onOpen;
 
@@ -78,6 +86,8 @@ class ActivityTile extends StatelessWidget {
     final continuationOnly = planning == null && continuations.isNotEmpty && progress.isEmpty;
     final canContinue =
         onPlanContinuation != null && canPlanContinuation(status: activity.status, marked: activity.marked);
+    final canReactivateIt =
+        onReactivate != null && canReactivate(status: activity.status, marked: activity.marked);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 17),
       decoration: BoxDecoration(
@@ -114,8 +124,18 @@ class ActivityTile extends StatelessWidget {
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
                     ),
                     KeyedSubtree(key: Key('origin-${activity.id}'), child: OriginTag(origin: activity.origin)),
+                    if (activity.marked) KeyedSubtree(key: Key('marked-tag-${activity.id}'), child: const MarkedTag()),
                   ],
                 ),
+                if (activity.marked && (activity.markReason ?? '').isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Text(
+                      'Motivo: ${activity.markReason}',
+                      key: Key('marked-reason-${activity.id}'),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: MarkedColors.foreground),
+                    ),
+                  ),
                 if (continuationOnly)
                   Padding(
                     padding: const EdgeInsets.only(top: 5),
@@ -166,7 +186,7 @@ class ActivityTile extends StatelessWidget {
                   const SizedBox(height: 10),
                   for (final entry in progress) _ProgressLine(key: Key('progress-entry-${entry.id}'), entry: entry),
                 ],
-                if (onOpen != null || (onRegisterProgress != null && !activity.marked) || canContinue) ...[
+                if (onOpen != null || (onRegisterProgress != null && !activity.marked) || canContinue || canReactivateIt) ...[
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 12,
@@ -184,6 +204,12 @@ class ActivityTile extends StatelessWidget {
                           key: Key('continuation-action-${activity.id}'),
                           label: '+ Planificar continuación',
                           onPressed: onPlanContinuation,
+                        ),
+                      if (canReactivateIt)
+                        LinkButton(
+                          key: Key('reactivation-action-${activity.id}'),
+                          label: 'Reactivar',
+                          onPressed: onReactivate,
                         ),
                     ],
                   ),
@@ -258,11 +284,18 @@ class _ProgressLine extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // A reactivation is told apart from an ordinary progress entry by its own tag
+                if (entry.isReactivation)
+                  Padding(
+                    key: Key('reactivation-tag-${entry.id}'),
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: const Align(alignment: Alignment.centerLeft, child: ReactivationTag()),
+                  ),
                 Text.rich(
                   TextSpan(
                     children: [
                       TextSpan(
-                        text: 'Avance · ${statusLabel(entry.status)}: ',
+                        text: '${entry.isReactivation ? 'Reactivación' : 'Avance'} · ${statusLabel(entry.status)}: ',
                         style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textBody),
                       ),
                       TextSpan(text: entry.description),

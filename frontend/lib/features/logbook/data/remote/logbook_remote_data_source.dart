@@ -1,6 +1,7 @@
 import '../../../../config/app_config.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/dates.dart';
+import '../../domain/entities/audit_entities.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../models/logbook_models.dart';
 
@@ -176,6 +177,103 @@ class LogbookRemoteDataSource {
         options: _client.withKey(key),
       );
       return ProgressResultModel.fromJson(response.data!);
+    });
+  }
+
+  /// M3-04. `Idempotency-Key` is mandatory. Same body as a progress entry; the server flags it as a
+  /// reactivation and only accepts Pendiente, En progreso or Bloqueada.
+  Future<ProgressResultModel> reactivateActivity({
+    required String activityId,
+    required DateTime date,
+    required ActivityStatus status,
+    required String description,
+    String? blockReason,
+    required String key,
+  }) {
+    return _client.guard(() async {
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '${AppConfig.apiPrefix}/mi/actividades/$activityId/reactivacion',
+        data: {
+          'fecha_laboral': formatDate(date),
+          'estado': statusToWire(status),
+          'descripcion': description,
+          if (status == ActivityStatus.blocked && blockReason != null) 'motivo_bloqueo': blockReason,
+        },
+        options: _client.withKey(key),
+      );
+      return ProgressResultModel.fromJson(response.data!);
+    });
+  }
+
+  /// M3-05. Marks an activity of the signed-in user as registered by mistake. `Idempotency-Key` is
+  /// mandatory; the reason is mandatory too.
+  Future<MarkResultModel> markActivityAsError({
+    required String activityId,
+    required String reason,
+    required String key,
+  }) {
+    return _client.guard(() async {
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '${AppConfig.apiPrefix}/mi/actividades/$activityId/marca-error',
+        data: {'motivo': reason},
+        options: _client.withKey(key),
+      );
+      return MarkResultModel.fromJson(response.data!);
+    });
+  }
+
+  /// M3-06. Removes the mark. No body (no rule asks for a reason to revert); `Idempotency-Key` is mandatory.
+  Future<MarkResultModel> revertActivityMark({required String activityId, required String key}) {
+    return _client.guard(() async {
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '${AppConfig.apiPrefix}/mi/actividades/$activityId/marca-error/reversion',
+        options: _client.withKey(key),
+      );
+      return MarkResultModel.fromJson(response.data!);
+    });
+  }
+
+  /// M3-03. `Idempotency-Key` is mandatory. Only the corrected fields travel: never the work date or an identifier.
+  /// The block reason travels only when the entry ends up blocked; correcting to another status makes the
+  /// server clear it.
+  Future<CorrectionResultModel> correctProgress({
+    required String progressId,
+    required ProgressCorrection correction,
+    required String key,
+  }) {
+    return _client.guard(() async {
+      final response = await _client.dio.patch<Map<String, dynamic>>(
+        '${AppConfig.apiPrefix}/mi/avances/$progressId',
+        data: {
+          if (correction.status != null) 'estado': statusToWire(correction.status!),
+          if (correction.description != null) 'descripcion': correction.description,
+          if (correction.blockReason != null) 'motivo_bloqueo': correction.blockReason,
+        },
+        options: _client.withKey(key),
+      );
+      return CorrectionResultModel.fromJson(response.data!);
+    });
+  }
+
+  /// M3-07. Read-only: `tipo_objeto` and `objeto_id` are mandatory (there is no global audit), plus the optional
+  /// `limite` and `continuar_desde`. The operation filter is not used by the app.
+  Future<AuditPageModel> listAudit({
+    required AuditObjectType type,
+    required String objectId,
+    int? limit,
+    String? cursor,
+  }) {
+    return _client.guard(() async {
+      final response = await _client.dio.get<Map<String, dynamic>>(
+        '${AppConfig.apiPrefix}/auditoria',
+        queryParameters: {
+          'tipo_objeto': auditTypeToWire(type),
+          'objeto_id': objectId,
+          'limite': ?limit,
+          'continuar_desde': ?cursor,
+        },
+      );
+      return AuditPageModel.fromJson(response.data!);
     });
   }
 }

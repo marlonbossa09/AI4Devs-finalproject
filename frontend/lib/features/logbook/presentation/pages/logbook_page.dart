@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
+import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../../../core/widgets/kind_tag.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/text_blocks.dart';
+import '../../domain/entities/audit_entities.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
@@ -19,6 +21,7 @@ import '../widgets/activity_tile.dart';
 import '../widgets/daily_summary.dart';
 import '../widgets/day_closure.dart';
 import '../widgets/logbook_summary.dart';
+import '../widgets/marked_tag.dart';
 
 /// The logbook of the selected date, exactly as persisted on the server.
 class LogbookPage extends ConsumerStatefulWidget {
@@ -40,6 +43,11 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
   void _planContinuation(Activity activity) {
     ref.read(continuationTargetProvider.notifier).select(activity.summary);
     ref.read(currentPageProvider.notifier).go(AppPage.continuation);
+  }
+
+  void _reactivate(Activity activity) {
+    ref.read(reactivationTargetProvider.notifier).select(activity.summary);
+    ref.read(currentPageProvider.notifier).go(AppPage.reactivation);
   }
 
   void _openDetail(Activity activity) {
@@ -114,7 +122,25 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
           const SizedBox(height: 14),
           // Closing and reopening the day. A new day (new logbook) always starts with fresh state
           DayClosure(key: ValueKey('day-closure-${day.logbook.id}'), day: day),
-          const SizedBox(height: 14),
+          const SizedBox(height: 6),
+          // The audit of the day (M3-07): the closings, reopenings and changes made to it, apart from its work
+          Align(
+            alignment: Alignment.centerLeft,
+            child: LinkButton(
+              key: const Key('logbook-audit'),
+              label: 'Ver auditoría de la jornada',
+              onPressed: () {
+                ref.read(auditTargetProvider.notifier).select(
+                  type: AuditObjectType.logbook,
+                  objectId: day.logbook.id,
+                  title: 'Jornada del ${formatShortDate(day.logbook.date)}',
+                  back: AppPage.logbook,
+                );
+                ref.read(currentPageProvider.notifier).go(AppPage.audit);
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
           // A new day (new logbook) always starts with a fresh editor
           DailySummary(key: ValueKey('daily-summary-${day.logbook.id}'), logbook: day.logbook),
           const SizedBox(height: 22),
@@ -131,22 +157,56 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
             ),
           ),
           const SizedBox(height: 4),
-          if (day.activities.isEmpty)
+          if (day.operationalActivities.isEmpty)
             const EmptyState('No hay actividades para esta selección.')
           else
-            for (var i = 0; i < day.activities.length; i++)
+            for (var i = 0; i < day.operationalActivities.length; i++)
               ActivityTile(
-                key: Key('activity-${day.activities[i].id}'),
-                activity: day.activities[i],
-                planning: day.planningOf(day.activities[i]),
-                continuations: day.continuationsOf(day.activities[i]),
-                progress: day.progressOf(day.activities[i]),
+                key: Key('activity-${day.operationalActivities[i].id}'),
+                activity: day.operationalActivities[i],
+                planning: day.planningOf(day.operationalActivities[i]),
+                continuations: day.continuationsOf(day.operationalActivities[i]),
+                progress: day.progressOf(day.operationalActivities[i]),
                 // A closed day takes no new progress: it has to be reopened first (RN-108)
-                onRegisterProgress: day.logbook.closed ? null : () => _registerProgress(day.activities[i]),
-                onPlanContinuation: () => _planContinuation(day.activities[i]),
-                onOpen: () => _openDetail(day.activities[i]),
+                onRegisterProgress: day.logbook.closed ? null : () => _registerProgress(day.operationalActivities[i]),
+                onPlanContinuation: () => _planContinuation(day.operationalActivities[i]),
+                onReactivate: () => _reactivate(day.operationalActivities[i]),
+                onOpen: () => _openDetail(day.operationalActivities[i]),
                 first: i == 0,
               ),
+          // Activities marked as registered by mistake are not part of the day's work, but they are not
+          // hidden either: they stay consultable here, apart, and their mark can be reverted from the detail
+          if (day.markedActivities.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: KeyedSubtree(
+                key: const Key('marked-heading'),
+                child: KindTag(
+                  'Registradas por error (${day.markedActivities.length})',
+                  icon: Icons.report_gmailerrorred_outlined,
+                  color: MarkedColors.foreground,
+                  background: MarkedColors.background,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'No cuentan en tus vistas ni recuentos y no admiten avances. Su historial se conserva.',
+              key: Key('marked-note'),
+              style: TextStyle(fontSize: 11, color: AppColors.textSoft),
+            ),
+            for (var i = 0; i < day.markedActivities.length; i++)
+              ActivityTile(
+                key: Key('activity-${day.markedActivities[i].id}'),
+                activity: day.markedActivities[i],
+                planning: day.planningOf(day.markedActivities[i]),
+                continuations: day.continuationsOf(day.markedActivities[i]),
+                progress: day.progressOf(day.markedActivities[i]),
+                onOpen: () => _openDetail(day.markedActivities[i]),
+                first: i == 0,
+              ),
+          ],
         ],
       );
     }

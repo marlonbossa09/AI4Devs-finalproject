@@ -109,7 +109,8 @@ def test_la_bitacora_cerrada_exige_el_momento_de_cierre(esc):
 
 @pytest.mark.parametrize("sentencia", [
     "delete from avance", "delete from planificacion", "delete from actividad", "delete from bitacora",
-    "update planificacion set descripcion = 'x'", "update avance set descripcion = 'x'",
+    "update planificacion set descripcion = 'x'", "update avance set registrado_en = now()",
+    "update avance set es_reactivacion = true",
 ])
 def test_la_aplicacion_no_borra_avances_ni_edita_planificaciones(esc, sentencia):
     with pytest.raises(ProgrammingError) as e, get_engine().begin() as c:

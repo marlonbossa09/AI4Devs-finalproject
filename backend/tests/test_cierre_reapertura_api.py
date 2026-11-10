@@ -216,12 +216,15 @@ def test_una_actividad_marcada_por_error_no_cuenta(sesion):
 
 
 def test_un_avance_sobre_una_actividad_marcada_por_error_no_cuenta_como_continuada(sesion):
+    """La marca solo procede sin avances POSTERIORES al origen (M3-05), así que el avance que cuenta como
+    «continuada» es uno retroactivo, anterior a la jornada de origen (PA-28 provisional)."""
     cliente, csrf = sesion
-    a = planificar_actividad(cliente, csrf, iso(-3))
-    avanzar(cliente, csrf, a, iso(0))
-    guardar(cliente, csrf, iso(0))
+    a = planificar_actividad(cliente, csrf, iso(0))
+    assert avanzar(cliente, csrf, a, iso(-2)).status_code == 201
+    guardar(cliente, csrf, iso(-2))
     marcar_por_error(a)
-    assert cerrar(cliente, csrf).status_code == 409
+    r = cerrar(cliente, csrf, iso(-2))
+    assert r.status_code == 409 and detalles(r) == {("actividades", "sin_actividad_creada_ni_continuada")}
 
 
 def test_no_cuenta_la_actividad_de_otra_jornada_sin_avances_en_esta(sesion):

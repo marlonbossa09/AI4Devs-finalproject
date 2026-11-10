@@ -10,8 +10,8 @@ from app.compartido.dependencias import Operador, operador, operador_que_modific
 from app.db import get_db
 from app.modulos.bitacoras import servicio
 from app.modulos.bitacoras.esquemas import (
-    AbrirBitacoraEntrada, AvanceEntrada, ContinuacionEntrada, NoPlanificadaEntrada, PlanificarEntrada,
-    ReaperturaEntrada, ResumenEntrada,
+    AbrirBitacoraEntrada, AvanceEntrada, ContinuacionEntrada, CorreccionEntrada, MarcaErrorEntrada,
+    NoPlanificadaEntrada, PlanificarEntrada, ReactivacionEntrada, ReaperturaEntrada, ResumenEntrada,
 )
 
 router = APIRouter(prefix="/mi", tags=["M2 Bitácoras"])
@@ -87,6 +87,50 @@ def registrar_avance(
 ):
     resultado = servicio.registrar_avance(db, op, actividad_id, cuerpo, idempotency_key)
     return _respuesta_de_escritura(resultado)
+
+
+@router.patch("/avances/{avance_id}", summary="M3-03 Corregir un avance ya registrado")
+def corregir_avance(
+    avance_id: UUID,
+    cuerpo: CorreccionEntrada,
+    op: Operador = Depends(operador_que_modifica),
+    idempotency_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    return _respuesta_de_escritura(servicio.corregir_avance(db, op, avance_id, cuerpo, idempotency_key))
+
+
+@router.post("/actividades/{actividad_id}/reactivacion", status_code=201,
+             summary="M3-04 Reactivar una actividad Completada")
+def reactivar_actividad(
+    actividad_id: UUID,
+    cuerpo: ReactivacionEntrada,
+    op: Operador = Depends(operador_que_modifica),
+    idempotency_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    return _respuesta_de_escritura(servicio.reactivar_actividad(db, op, actividad_id, cuerpo, idempotency_key))
+
+
+@router.post("/actividades/{actividad_id}/marca-error", summary="M3-05 Marcar una actividad como registrada por error")
+def marcar_actividad_por_error(
+    actividad_id: UUID,
+    cuerpo: MarcaErrorEntrada,
+    op: Operador = Depends(operador_que_modifica),
+    idempotency_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    return _respuesta_de_escritura(servicio.marcar_actividad_por_error(db, op, actividad_id, cuerpo, idempotency_key))
+
+
+@router.post("/actividades/{actividad_id}/marca-error/reversion", summary="M3-06 Revertir la marca de error")
+def revertir_marca_de_error(
+    actividad_id: UUID,
+    op: Operador = Depends(operador_que_modifica),
+    idempotency_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    return _respuesta_de_escritura(servicio.revertir_marca_de_error(db, op, actividad_id, idempotency_key))
 
 
 @router.post("/actividades/{actividad_id}/continuaciones-planificadas", status_code=201,

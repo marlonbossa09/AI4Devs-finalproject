@@ -16,7 +16,15 @@ class StatusPicker extends StatelessWidget {
     this.enabled = true,
     this.errorText,
     this.keyPrefix = 'progress-status',
+    this.statuses = ActivityStatus.values,
+    this.label = 'Estado en que queda la actividad *',
   });
+
+  /// The options offered. A reactivation offers only the three that are not Completada.
+  final List<ActivityStatus> statuses;
+
+  /// The question the options answer.
+  final String label;
 
   final ActivityStatus? selected;
   final ValueChanged<ActivityStatus> onChanged;
@@ -31,12 +39,12 @@ class StatusPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FieldLabel('Estado en que queda la actividad *'),
+        FieldLabel(label),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final status in ActivityStatus.values)
+            for (final status in statuses)
               StatusChoice(
                 key: Key('$keyPrefix-${status.name}'),
                 label: statusLabel(status),

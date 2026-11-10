@@ -150,12 +150,15 @@ class Progress {
     required this.createdAt,
     this.blockReason,
     this.isReactivation = false,
+    this.modifiedAt,
   });
 
   final String id;
   final String activityId;
 
   /// Work date of the logbook it belongs to.
+  ///
+  /// It never changes: a correction (M3-03) does not move an entry to another day.
   final DateTime date;
   final ActivityStatus status;
   final String description;
@@ -164,6 +167,36 @@ class Progress {
   /// Only present when [status] is blocked (RN-24).
   final String? blockReason;
   final bool isReactivation;
+
+  /// Real moment of the last correction (CA-62). It equals [createdAt] while the entry was never corrected.
+  final DateTime? modifiedAt;
+
+  /// Whether the entry was corrected after it was recorded.
+  bool get corrected => modifiedAt != null && modifiedAt!.isAfter(createdAt);
+}
+
+/// What a correction changes (M3-03). A null field is left as it is; an empty correction changes nothing.
+/// The work date and the identifiers are not here: they cannot be corrected.
+class ProgressCorrection {
+  const ProgressCorrection({this.status, this.description, this.blockReason});
+
+  final ActivityStatus? status;
+  final String? description;
+
+  /// Only meaningful for the blocked status.
+  final String? blockReason;
+
+  bool get isEmpty => status == null && description == null && blockReason == null;
+}
+
+/// Result of correcting a progress entry (M3-03): the entry, the activity with its recalculated status and
+/// whether that current status changed.
+class CorrectionResult {
+  const CorrectionResult({required this.progress, required this.activity, required this.currentStatusChanged});
+
+  final Progress progress;
+  final Activity activity;
+  final bool currentStatusChanged;
 }
 
 /// Everything persisted for one date.
@@ -200,7 +233,16 @@ class LogbookDay {
   List<Progress> progressOf(Activity activity) =>
       progress.where((p) => p.activityId == activity.id).toList();
 
-  int count(ActivityStatus status) => activities.where((a) => a.status == status).length;
+  /// The activities that take part in the day's operational views and counts (CA-119): those NOT marked
+  /// as registered by mistake.
+  List<Activity> get operationalActivities => activities.where((a) => !a.marked).toList();
+
+  /// The activities marked as registered by mistake that belong to this day. They are not deleted: the
+  /// day keeps listing them apart so they stay consultable (CA-120) and their mark can be reverted.
+  List<Activity> get markedActivities => activities.where((a) => a.marked).toList();
+
+  /// Counts only operational activities: a marked one is excluded from every count (CA-119).
+  int count(ActivityStatus status) => operationalActivities.where((a) => a.status == status).length;
 }
 
 class OpenResult {
@@ -235,6 +277,14 @@ class SummaryResult {
 
   final Logbook logbook;
   final bool logbookCreated;
+}
+
+/// Result of marking an activity as registered by mistake, or of reverting that mark (M3-05, M3-06): the
+/// activity as the server holds it now (its status is the same; only the mark changes).
+class MarkResult {
+  const MarkResult({required this.activity});
+
+  final Activity activity;
 }
 
 /// Result of recording a progress entry: the entry and the activity with its recalculated status.

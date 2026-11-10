@@ -19,7 +19,8 @@ from app.config import get_settings
 from app.errores import AppError
 from app.modulos.bitacoras import repositorio, secuencia
 from app.modulos.bitacoras.esquemas import (
-    AvanceEntrada, ContinuacionEntrada, NoPlanificadaEntrada, PlanificarEntrada, ReaperturaEntrada, ResumenEntrada,
+    AvanceEntrada, ContinuacionEntrada, CorreccionEntrada, MarcaErrorEntrada, NoPlanificadaEntrada, PlanificarEntrada,
+    ReactivacionEntrada, ReaperturaEntrada, ResumenEntrada,
     actividad_a_dict, momento,
     avance_a_dict, bitacora_a_dict, planificacion_a_dict,
 )
@@ -30,6 +31,10 @@ OPERACION_NO_PLANIFICADA = "M2-06"
 OPERACION_CONTINUACION = "M2-04"
 OPERACION_CIERRE = "M3-01"
 OPERACION_REAPERTURA = "M3-02"
+OPERACION_REACTIVACION = "M3-04"
+OPERACION_MARCA_ERROR = "M3-05"
+OPERACION_REVERSION_MARCA = "M3-06"
+OPERACION_CORRECCION = "M3-03"
 
 # Parámetros de consulta que admite M2-08. Cualquier otro se rechaza (convenciones 2: no hay búsquedas
 # ni filtros que el producto no contemple).
@@ -601,4 +606,366 @@ def reabrir_bitacora(
 
     return ejecutar_con_clave(
         db, persona_id=op.persona_id, operacion=OPERACION_REAPERTURA, clave=clave, huella=huella, ejecutar=ejecutar
+    )
+
+
+# =============================== M3-04: reactivar una actividad Completada ====================================
+
+def reactivar_actividad(
+    db: Session, op: Operador, actividad_id: UUID, entrada: ReactivacionEntrada, clave: str | None
+) -> Resultado:
+    """M3-04. Reactiva una actividad PROPIA Completada con un avance nuevo de reactivación.
+
+    - Es un avance de la secuencia (``es_reactivacion``), posterior a la finalización que determina el
+      estado actual (el último avance del orden laboral completo). No borra, sustituye ni reordena
+      ningún avance existente; la actividad conserva su identidad, su planificación y su historial
+      (CA-126, CA-191).
+    - La actividad debe estar Completada (``ACTIVIDAD_NO_COMPLETADA``) y no marcada por error. El estado
+      es Pendiente, En progreso o Bloqueada (Completada se rechaza con ``ESTADO_INVALIDO``); Bloqueada
+      exige motivo y la descripción es obligatoria (CA-128 a CA-129, CA-269 a CA-271).
+    - La fecha no es futura (CA-189) ni anterior a la fecha laboral F de la finalización
+      (``SECUENCIA_INVALIDA``, CA-188). Puede ser la misma F: el servidor asigna el momento de registro,
+      así que la reactivación queda después de la finalización (CA-187). Puede ser una jornada pasada
+      posterior a F (CA-192).
+    - Solo debe estar abierta la bitácora de la fecha de la reactivación (D-04): se crea si no existe
+      (D-01) y no se reabre ninguna otra. Es una ejecución nueva, no una corrección.
+    - Una única entrada de auditoría ``reactivacion`` por operación (CA-125, IR-35), atómica con el avance
+      y el recálculo del estado actual. La actividad se bloquea antes que la bitácora (el mismo orden
+      que M2-05): dos reactivaciones o una reactivación y un avance simultáneos se serializan."""
+    fecha = parsear_fecha_laboral(entrada.fecha_laboral)
+    huella = calcular_huella({
+        "actividad_id": str(actividad_id), "fecha_laboral": fecha.isoformat(), "estado": entrada.estado,
+        "descripcion": entrada.descripcion, "motivo_bloqueo": entrada.motivo_bloqueo,
+    })
+    settings = get_settings()
+
+    def ejecutar() -> tuple[int, dict]:
+        # Visibilidad primero (T-01): una actividad ajena es indistinguible de una inexistente.
+        actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
+        if actividad is None:
+            raise AppError("RECURSO_NO_DISPONIBLE")
+        if actividad.registrada_por_error:
+            raise AppError("ACTIVIDAD_MARCADA_POR_ERROR")
+        if entrada.estado == secuencia.COMPLETADA:
+            raise AppError("ESTADO_INVALIDO", [{"campo": "estado", "motivo": "no_es_uno_de_los_tres_permitidos"}])
+        estado, descripcion, motivo = _validar_avance(entrada, settings.text_max_description)
+
+        existentes = [
+            secuencia.AvanceEnSecuencia(r.id, r.fecha_laboral, r.registrado_en, r.estado, r.es_reactivacion)
+            for r in repositorio.listar_avances_de_actividad(db, actividad.id)
+        ]
+        finalizacion = secuencia.finalizacion_vigente(existentes)
+        if finalizacion is None:
+            raise AppError("ACTIVIDAD_NO_COMPLETADA")
+        if fecha > op.contexto.fecha_actual:
+            raise AppError("FECHA_FUTURA_NO_PERMITIDA", [{"campo": "fecha_laboral", "motivo": "ejecucion_futura"}])
+        if fecha < finalizacion.fecha_laboral:
+            raise AppError("SECUENCIA_INVALIDA", [
+                {"campo": "fecha_laboral", "motivo": "anterior_a_la_finalizacion",
+                 "fecha_finalizacion": finalizacion.fecha_laboral.isoformat()}])
+        _exigir_fecha_cubierta(db, op, fecha)
+
+        bitacora, creada = repositorio.obtener_o_crear_bitacora(db, op.persona_id, fecha)
+        bitacora = repositorio.bloquear_bitacora(db, bitacora.id)
+        if bitacora.estado == "cerrada":
+            raise AppError("BITACORA_CERRADA")
+
+        avance = repositorio.insertar_avance(db, actividad.id, bitacora.id, estado, descripcion, motivo,
+                                             es_reactivacion=True)
+        repositorio.actualizar_estado_actual(db, actividad.id, estado)   # queda el último de la secuencia
+        registrar_operacion_de_persona(
+            db,
+            autor_persona_id=op.persona_id,
+            operacion="reactivacion",
+            tipo_objeto="avance",
+            objeto_id=avance.id,
+            propietaria_registro_id=op.persona_id,
+            fecha_laboral_registro=fecha,
+            valor_anterior={"actividad_id": str(actividad.id), "estado_actual": actividad.estado_actual,
+                            "bitacora_existia": not creada},
+            valor_nuevo={
+                "actividad_id": str(actividad.id),
+                "estado_actual": estado,
+                "bitacora_id": str(bitacora.id),
+                "bitacora_creada": creada,
+                "finalizacion_anterior": {"avance_id": str(finalizacion.id),
+                                          "fecha_laboral": finalizacion.fecha_laboral.isoformat()},
+                "avance": {"id": str(avance.id), "estado": avance.estado, "descripcion": avance.descripcion,
+                           "motivo_bloqueo": avance.motivo_bloqueo, "es_reactivacion": True},
+            },
+        )
+        final = repositorio.obtener_actividad_propia(db, op.persona_id, actividad.id)
+        return 201, {
+            "avance": avance_a_dict(avance, fecha),
+            "actividad": actividad_a_dict(final, final.fecha_laboral_origen),
+            "bitacora_creada": creada,
+        }
+
+    return ejecutar_con_clave(
+        db, persona_id=op.persona_id, operacion=OPERACION_REACTIVACION, clave=clave, huella=huella, ejecutar=ejecutar
+    )
+
+
+# =============================== M3-05 y M3-06: marca de error y su reversión =================================
+
+def marcar_actividad_por_error(
+    db: Session, op: Operador, actividad_id: UUID, entrada: MarcaErrorEntrada, clave: str | None
+) -> Resultado:
+    """M3-05. Marca de forma LÓGICA una actividad PROPIA creada por equivocación; no se borra nada (RN-59).
+
+    - Exige motivo (``MOTIVO_OBLIGATORIO``, CA-116). Una ya marcada se rechaza con
+      ``ACTIVIDAD_MARCADA_POR_ERROR``.
+    - Solo procede sin avances en jornadas POSTERIORES a la de origen de la actividad
+      (``MARCA_NO_PROCEDE``, CA-115, CA-117). El origen es la fecha laboral de su bitácora de origen, no
+      ``creada_en`` (PA-28). Los avances de la propia jornada de origen no lo impiden.
+    - Es un cambio lógico de validez, no una corrección del contenido (RN-109, D-04b): no obliga a reabrir
+      ninguna bitácora y no renueva su ``modificada_en``.
+    - Si alguna jornada CERRADA en la que la actividad cuenta (la de origen y cualquier otra con un avance
+      suyo) perdería sus condiciones de cierre al no contarla, ``MARCA_INVALIDARIA_CIERRE`` y no cambia
+      nada (CA-288); si otra actividad válida las conserva, se aplica sin reapertura (CA-287, CA-289).
+    - Estado actual, avances y continuaciones planificadas se conservan; solo salen de las vistas
+      operativas mientras la marca esté vigente (IR-18).
+    - Una única entrada ``marca_error`` por operación, de la jornada de origen (IR-36), atómica con el
+      cambio. La actividad se bloquea antes que las bitácoras (el orden de M2-05 y M3-04) y las
+      bitácoras afectadas se bloquean en orden de fecha antes de comprobar el cierre: marcar, cerrar y
+      registrar avances sobre la misma actividad o jornada se serializan."""
+    huella = calcular_huella({"actividad_id": str(actividad_id), "motivo": entrada.motivo})
+
+    def ejecutar() -> tuple[int, dict]:
+        # Visibilidad primero (T-01): una actividad ajena es indistinguible de una inexistente.
+        actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
+        if actividad is None:
+            raise AppError("RECURSO_NO_DISPONIBLE")
+        motivo = entrada.motivo or ""
+        if not motivo.strip():
+            raise AppError("MOTIVO_OBLIGATORIO", [{"campo": "motivo", "motivo": "obligatorio"}])
+        motivo = validar_texto(motivo, "motivo", obligatorio=True, maximo=get_settings().text_max_description)
+        if actividad.registrada_por_error:
+            raise AppError("ACTIVIDAD_MARCADA_POR_ERROR")
+        if repositorio.existe_avance_posterior_al_origen(db, actividad.id, actividad.fecha_laboral_origen):
+            raise AppError("MARCA_NO_PROCEDE", [{"campo": "actividad", "motivo": "avances_en_jornadas_posteriores"}])
+
+        jornadas = repositorio.bloquear_jornadas_de_actividad(db, actividad.id, actividad.bitacora_origen_id)
+        perderian = [
+            {"campo": "actividades", "motivo": "sin_actividad_creada_ni_continuada",
+             "fecha_laboral": j.fecha_laboral.isoformat()}
+            for j in jornadas
+            if j.estado == "cerrada"
+            and repositorio.contar_actividades_efectivas(db, op.persona_id, j.id, excluir=actividad.id) == 0
+        ]
+        if perderian:
+            raise AppError("MARCA_INVALIDARIA_CIERRE", perderian)
+
+        repositorio.aplicar_marca_de_error(db, actividad.id, op.persona_id, motivo)
+        final = repositorio.obtener_actividad_propia(db, op.persona_id, actividad.id)
+        registrar_operacion_de_persona(
+            db,
+            autor_persona_id=op.persona_id,
+            operacion="marca_error",
+            tipo_objeto="actividad",
+            objeto_id=actividad.id,
+            propietaria_registro_id=op.persona_id,
+            fecha_laboral_registro=actividad.fecha_laboral_origen,
+            motivo=motivo,
+            valor_anterior={"actividad_id": str(actividad.id), "marca_error": None,
+                            "estado_actual": actividad.estado_actual},
+            valor_nuevo={
+                "actividad_id": str(actividad.id),
+                "marca_error": {"motivo": motivo, "marcada_en": momento(final.marcada_en),
+                                "marcada_por": str(op.persona_id)},
+                "estado_actual": final.estado_actual,
+            },
+        )
+        return 200, {"actividad": actividad_a_dict(final, final.fecha_laboral_origen)}
+
+    return ejecutar_con_clave(
+        db, persona_id=op.persona_id, operacion=OPERACION_MARCA_ERROR, clave=clave, huella=huella, ejecutar=ejecutar
+    )
+
+
+def revertir_marca_de_error(db: Session, op: Operador, actividad_id: UUID, clave: str | None) -> Resultado:
+    """M3-06. Retira la marca de error de una actividad PROPIA: vuelve a las vistas operativas y a los
+    recuentos (CA-122). No lleva cuerpo ni motivo: ninguna regla lo exige.
+
+    - Debe haber una marca vigente (``MARCA_NO_VIGENTE``).
+    - Cambio lógico de validez: no obliga a reabrir la bitácora de origen y no renueva su
+      ``modificada_en``. Devuelve una actividad a la jornada, así que no puede invalidar un cierre
+      (CA-290); la jornada sigue cerrada.
+    - Integridad (RN-109, IR-18): una actividad marcada no puede tener avances posteriores a su origen. No
+      se alcanza por la aplicación ni por la base (disparadores de 0007); si apareciera, se rechaza sin
+      tocar nada.
+    - Una única entrada ``reversion_marca`` de la jornada de origen, con la marca anterior (CA-122),
+      atómica con el cambio. La actividad se bloquea: dos reversiones o una reversión y una marca
+      simultáneas se serializan."""
+    huella = calcular_huella({"actividad_id": str(actividad_id)})
+
+    def ejecutar() -> tuple[int, dict]:
+        actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
+        if actividad is None:
+            raise AppError("RECURSO_NO_DISPONIBLE")
+        if not actividad.registrada_por_error:
+            raise AppError("MARCA_NO_VIGENTE")
+        if repositorio.existe_avance_posterior_al_origen(db, actividad.id, actividad.fecha_laboral_origen):
+            raise AppError("MARCA_NO_PROCEDE", [{"campo": "actividad", "motivo": "avances_en_jornadas_posteriores"}])
+
+        repositorio.retirar_marca_de_error(db, actividad.id)
+        final = repositorio.obtener_actividad_propia(db, op.persona_id, actividad.id)
+        registrar_operacion_de_persona(
+            db,
+            autor_persona_id=op.persona_id,
+            operacion="reversion_marca",
+            tipo_objeto="actividad",
+            objeto_id=actividad.id,
+            propietaria_registro_id=op.persona_id,
+            fecha_laboral_registro=actividad.fecha_laboral_origen,
+            valor_anterior={
+                "actividad_id": str(actividad.id),
+                "marca_error": {"motivo": actividad.motivo_error, "marcada_en": momento(actividad.marcada_en),
+                                "marcada_por": str(actividad.marcada_por)},
+                "estado_actual": actividad.estado_actual,
+            },
+            valor_nuevo={"actividad_id": str(actividad.id), "marca_error": None,
+                         "estado_actual": final.estado_actual},
+        )
+        return 200, {"actividad": actividad_a_dict(final, final.fecha_laboral_origen)}
+
+    return ejecutar_con_clave(
+        db, persona_id=op.persona_id, operacion=OPERACION_REVERSION_MARCA, clave=clave, huella=huella,
+        ejecutar=ejecutar,
+    )
+
+
+# =============================== M3-03: corregir un avance ya registrado ======================================
+
+def _valores_corregidos(entrada: CorreccionEntrada, actual, maximo: int) -> tuple[str, str, str | None]:
+    """Estado, descripción y motivo de bloqueo que quedarían tras la corrección, validados (IR-08). Un campo que no
+    llega conserva su valor; al corregir hacia un estado distinto de Bloqueada el motivo se limpia (decisión
+    aprobada) y, si se envía un motivo para ese estado, la solicitud no es válida."""
+    llegan = entrada.model_fields_set
+    estado = actual.estado
+    if "estado" in llegan:
+        if entrada.estado not in secuencia.ESTADOS:
+            raise AppError("ESTADO_INVALIDO", [{"campo": "estado", "motivo": "no_es_uno_de_los_cuatro"}])
+        estado = entrada.estado
+    descripcion = actual.descripcion
+    if "descripcion" in llegan:
+        if not (entrada.descripcion or "").strip():
+            raise AppError("DESCRIPCION_OBLIGATORIA", [{"campo": "descripcion", "motivo": "obligatorio"}])
+        descripcion = validar_texto(entrada.descripcion, "descripcion", obligatorio=True, maximo=maximo)
+    if estado == secuencia.BLOQUEADA:
+        motivo = actual.motivo_bloqueo
+        if "motivo_bloqueo" in llegan:
+            if not (entrada.motivo_bloqueo or "").strip():
+                raise AppError("MOTIVO_BLOQUEO_OBLIGATORIO", [{"campo": "motivo_bloqueo", "motivo": "obligatorio"}])
+            motivo = validar_texto(entrada.motivo_bloqueo, "motivo_bloqueo", obligatorio=True, maximo=maximo)
+        elif not (motivo or "").strip():
+            raise AppError("MOTIVO_BLOQUEO_OBLIGATORIO", [{"campo": "motivo_bloqueo", "motivo": "obligatorio"}])
+        return estado, descripcion, motivo
+    if entrada.motivo_bloqueo is not None:
+        raise AppError("SOLICITUD_INVALIDA", [{"campo": "motivo_bloqueo", "motivo": "solo_si_el_estado_es_bloqueada"}])
+    return estado, descripcion, None
+
+
+def corregir_avance(
+    db: Session, op: Operador, avance_id: UUID, entrada: CorreccionEntrada, clave: str | None
+) -> Resultado:
+    """M3-03. Corrige el estado, la descripción o el motivo de bloqueo de un avance PROPIO, sin crear un avance
+    nuevo ni reescribir silenciosamente el historial (RN-80, CA-103, CA-211).
+
+    - Visibilidad primero (T-01); una actividad marcada por error no admite correcciones: primero se revierte la
+      marca (D-05, CA-297, ``ACTIVIDAD_MARCADA_POR_ERROR``).
+    - Solo debe estar abierta la bitácora del propio avance (``BITACORA_CERRADA``, CA-284); no se reabren otras
+      jornadas (D-04). No se acepta la fecha laboral (PP-44): el avance conserva su identificador, su fecha, su
+      momento de registro y su condición de reactivación.
+    - **Secuencia (RN-91 a RN-93, PA-29, opción A):** se valida la secuencia COMPLETA de la actividad con el cambio
+      aplicado y se comparan las violaciones de IR-11 de antes y de después. Solo se rechaza (``SECUENCIA_INVALIDA``,
+      sin modificar nada, CA-237) la que introduce una violación nueva (CA-236); los pares admitidos por una inserción
+      retroactiva (PA-27, CA-78) no la rechazan si la corrección no los modifica ni agrava (CA-238). Nunca se crea una
+      reactivación automática (CA-239) ni se elimina o reordena un avance.
+    - Una corrección con los valores ya vigentes no hace nada: 200 sin cambios, sin entrada y sin renovar
+      ``modificado_en`` (T-04).
+    - Una única entrada ``correccion`` por operación (CA-103, IR-35), de la jornada del avance, con los valores
+      anteriores y nuevos de los campos afectados y el estado actual anterior y nuevo si varía. Todo en una
+      transacción: actividad (bloqueada antes que las bitácoras, como M2-05), bitácora del avance, avance, estado
+      actual y auditoría."""
+    huella = calcular_huella({
+        "avance_id": str(avance_id),
+        "campos": {c: getattr(entrada, c) for c in sorted(entrada.model_fields_set)},
+    })
+    settings = get_settings()
+
+    def ejecutar() -> tuple[int, dict]:
+        inicial = repositorio.obtener_avance_propio(db, op.persona_id, avance_id)
+        if inicial is None:
+            raise AppError("RECURSO_NO_DISPONIBLE")
+        # Se bloquea la actividad antes que la bitácora (el orden de M2-05, M3-04 y M3-05) y se relee el avance ya
+        # bloqueado: lo que cuenta es lo que hay tras esperar a quien lo tuviera
+        actividad = repositorio.obtener_actividad_propia(db, op.persona_id, inicial.actividad_id, bloquear=True)
+        if actividad is None:
+            raise AppError("RECURSO_NO_DISPONIBLE")
+        if actividad.registrada_por_error:
+            raise AppError("ACTIVIDAD_MARCADA_POR_ERROR")
+        if not entrada.model_fields_set:
+            raise AppError("SOLICITUD_INVALIDA", [{"campo": "cuerpo", "motivo": "al_menos_un_campo"}])
+        bitacora = repositorio.bloquear_bitacora(db, inicial.bitacora_id)
+        avance = repositorio.obtener_avance_propio(db, op.persona_id, avance_id, bloquear=True)
+        estado, descripcion, motivo = _valores_corregidos(entrada, avance, settings.text_max_description)
+        if bitacora.estado == "cerrada":
+            raise AppError("BITACORA_CERRADA")
+
+        fecha = avance.fecha_laboral
+        if (estado, descripcion, motivo) == (avance.estado, avance.descripcion, avance.motivo_bloqueo):
+            return 200, {
+                "avance": avance_a_dict(avance, fecha),
+                "actividad": actividad_a_dict(actividad, actividad.fecha_laboral_origen),
+                "estado_actual_cambio": False,
+            }
+
+        existentes = [
+            secuencia.AvanceEnSecuencia(r.id, r.fecha_laboral, r.registrado_en, r.estado, r.es_reactivacion)
+            for r in repositorio.listar_avances_de_actividad(db, actividad.id)
+        ]
+        despues = secuencia.con_estado_corregido(existentes, avance.id, estado)
+        nuevas = secuencia.violaciones_nuevas(existentes, despues)
+        if nuevas:
+            raise AppError("SECUENCIA_INVALIDA", [
+                {"campo": "estado", "motivo": v.motivo, "avance_id": str(v.avance_id)} for v in nuevas
+            ])
+
+        estado_actual_anterior = actividad.estado_actual
+        estado_actual_nuevo = secuencia.estado_actual(despues)
+        cambia_estado_actual = estado_actual_nuevo != estado_actual_anterior
+        corregido = repositorio.corregir_avance(db, avance.id, estado, descripcion, motivo)
+        if cambia_estado_actual:
+            repositorio.actualizar_estado_actual(db, actividad.id, estado_actual_nuevo)
+
+        anteriores = {"estado": avance.estado, "descripcion": avance.descripcion, "motivo_bloqueo": avance.motivo_bloqueo}
+        nuevos = {"estado": estado, "descripcion": descripcion, "motivo_bloqueo": motivo}
+        campos = [c for c in anteriores if anteriores[c] != nuevos[c]]
+        valor_anterior = {"actividad_id": str(actividad.id), "avance": {c: anteriores[c] for c in campos}}
+        valor_nuevo = {"actividad_id": str(actividad.id), "bitacora_id": str(bitacora.id),
+                       "avance": {c: nuevos[c] for c in campos}}
+        if cambia_estado_actual:
+            valor_anterior["estado_actual"] = estado_actual_anterior
+            valor_nuevo["estado_actual"] = estado_actual_nuevo
+        registrar_operacion_de_persona(
+            db,
+            autor_persona_id=op.persona_id,
+            operacion="correccion",
+            tipo_objeto="avance",
+            objeto_id=avance.id,
+            propietaria_registro_id=op.persona_id,
+            fecha_laboral_registro=fecha,
+            valor_anterior=valor_anterior,
+            valor_nuevo=valor_nuevo,
+        )
+        final = repositorio.obtener_actividad_propia(db, op.persona_id, actividad.id)
+        return 200, {
+            "avance": avance_a_dict(corregido, fecha),
+            "actividad": actividad_a_dict(final, final.fecha_laboral_origen),
+            "estado_actual_cambio": cambia_estado_actual,
+        }
+
+    return ejecutar_con_clave(
+        db, persona_id=op.persona_id, operacion=OPERACION_CORRECCION, clave=clave, huella=huella, ejecutar=ejecutar
     )

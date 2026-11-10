@@ -1,4 +1,5 @@
 import '../../../../core/errors/api_error.dart';
+import '../../domain/entities/audit_entities.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../../domain/repository/logbook_repository.dart';
 import '../remote/logbook_remote_data_source.dart';
@@ -115,4 +116,58 @@ class LogbookRepositoryImpl implements LogbookRepository {
     );
     return model.toEntity();
   }
+
+  @override
+  Future<ProgressResult> reactivateActivity({
+    required String activityId,
+    required DateTime date,
+    required ActivityStatus status,
+    required String description,
+    String? blockReason,
+    required String key,
+  }) async {
+    final model = await _remote.reactivateActivity(
+      activityId: activityId,
+      date: date,
+      status: status,
+      description: description,
+      blockReason: blockReason,
+      key: key,
+    );
+    return model.toEntity();
+  }
+
+  @override
+  Future<MarkResult> markActivityAsError({
+    required String activityId,
+    required String reason,
+    required String key,
+  }) async {
+    final model = await _remote.markActivityAsError(activityId: activityId, reason: reason, key: key);
+    return model.toEntity();
+  }
+
+  @override
+  Future<MarkResult> revertActivityMark({required String activityId, required String key}) async {
+    final model = await _remote.revertActivityMark(activityId: activityId, key: key);
+    return model.toEntity();
+  }
+
+  @override
+  Future<CorrectionResult> correctProgress({
+    required String progressId,
+    required ProgressCorrection correction,
+    required String key,
+  }) async {
+    final model = await _remote.correctProgress(progressId: progressId, correction: correction, key: key);
+    return model.toEntity();
+  }
+
+  @override
+  Future<AuditPage> listAudit({
+    required AuditObjectType type,
+    required String objectId,
+    int? limit,
+    String? cursor,
+  }) async => (await _remote.listAudit(type: type, objectId: objectId, limit: limit, cursor: cursor)).toEntity();
 }

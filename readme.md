@@ -2,7 +2,7 @@
 
 > Plataforma web para registrar y consultar bitácoras laborales: qué se planea hacer, qué se hizo realmente, qué quedó pendiente y qué bloqueos hubo.
 
-**Estado.** La documentación técnica (Entrega 1) está completa y en [docs/](docs/). La **Entrega 2** implementa el **módulo M2 completo** (bitácoras híbridas) y, de M3, solo el **cierre y la reapertura de la jornada** (M3-01 y M3-02), con los tres bloques conectados: cliente Flutter Web, API FastAPI y PostgreSQL. Una persona inicia sesión; abre o consulta su bitácora; planifica actividades y continuaciones; registra avances y actividades no planificadas; consulta el detalle y el listado de sus actividades; guarda el resumen diario; cierra la jornada cuando cumple las condiciones y la reabre indicando un motivo, con auditoría. Es un subconjunto deliberado del MVP: **no** están implementados el resto de M1, las operaciones M3-03 a M3-07 (corregir avances, reactivar, marcar error, auditoría consultable), M4 (consulta de equipo y supervisión) ni M5 (informes con IA). **M2 está implementado y verificado en el entorno de verificación (clúster desechable); `smartwork_app` todavía requiere aplicar la migración 0006** antes de usar avances, resumen, cierre y reapertura. Hay una [matriz de trazabilidad](docs/evidencia/matriz-trazabilidad-m2-m3.md) y un [informe de verificación](docs/evidencia/verificacion-integral-m2.md). Límites y pendientes en la [sección 9](#9-decisiones-y-limitaciones-técnicas-pendientes).
+**Estado.** La documentación técnica (Entrega 1) está completa y en [docs/](docs/). La **Entrega 2** implementa el **módulo M2 completo** (bitácoras híbridas) y, de M3, el **cierre y la reapertura de la jornada** (M3-01 y M3-02) la **reactivación de actividades completadas** (M3-04) la **marca de error de una actividad y su reversión** (M3-05 y M3-06) la **corrección auditada de avances** (M3-03) y la **consulta del historial de auditoría** (M3-07, solo de los propios registros), con los tres bloques conectados: cliente Flutter Web, API FastAPI y PostgreSQL. Una persona inicia sesión; abre o consulta su bitácora; planifica actividades y continuaciones; registra avances y actividades no planificadas; consulta el detalle y el listado de sus actividades; guarda el resumen diario; cierra la jornada cuando cumple las condiciones y la reabre indicando un motivo, retoma una actividad completada (reactivación) sin crear otra, y marca una actividad como registrada por error o revierte esa marca, sin borrar nada, y corrige el estado, la descripción o el motivo de un avance ya registrado sin crear otro, con auditoría, y consulta la auditoría de su jornada, de una actividad o de un avance. Es un subconjunto deliberado del MVP: **no** están implementados el resto de M1, M4 (consulta de equipo y supervisión, incluida la consulta de la auditoría por quien supervisa) ni M5 (informes con IA). **M2 está implementado y verificado en el entorno de verificación (clúster desechable); `smartwork_app` tiene aplicadas las migraciones 0006, 0007 y 0008** (la consulta de la auditoría no requiere ninguna migración nueva). Hay una [matriz de trazabilidad](docs/evidencia/matriz-trazabilidad-m2-m3.md) y un [informe de verificación](docs/evidencia/verificacion-integral-m2.md). Límites y pendientes en la [sección 9](#9-decisiones-y-limitaciones-técnicas-pendientes).
 
 ## Índice
 
@@ -196,7 +196,11 @@ uv run python -m scripts.seed_dev
 cd ..
 ```
 
-**Migración 0006.** Concede a la API permisos de actualización **solo por columnas** (`actividad.estado_actual`, y `bitacora.resumen`, `modificada_en`, `estado` y `cerrada_en`), necesarios para avances, resumen, cierre y reapertura. `alembic upgrade head` la aplica. En una base que ya existía antes (por ejemplo `smartwork_app`) **está pendiente de aplicar y no se ha aplicado**: hay que hacerlo, con el rol propietario, antes de usar esas operaciones allí.
+**Migración 0006.** Concede a la API permisos de actualización **solo por columnas** (`actividad.estado_actual`, y `bitacora.resumen`, `modificada_en`, `estado` y `cerrada_en`), necesarios para avances, resumen, cierre y reapertura. `alembic upgrade head` la aplica. En una base que ya existía antes hay que aplicarla, con el rol propietario, antes de usar esas operaciones; `smartwork_app` ya la tiene aplicada.
+
+**Migración 0007.** Concede a la API permiso de actualización **solo por las cuatro columnas de la marca de error** de `actividad` (`registrada_por_error`, `motivo_error`, `marcada_por`, `marcada_en`), y añade restricciones de coherencia: la marca vigente lleva siempre motivo, autora y momento (y sin marca no queda ninguno); una marca vigente no se reescribe; no se marca una actividad con avances en jornadas posteriores a su origen; y una actividad marcada no admite avances ni continuaciones planificadas. No crea tablas ni columnas, y la API sigue sin permiso de borrado. `smartwork_app` ya la tiene aplicada.
+
+**Migración 0008.** Añade `avance.modificado_en` (el momento de la última corrección; igual al del registro mientras no se corrija) y concede a la API permiso de actualización **solo por cuatro columnas** de `avance` (`estado`, `descripcion`, `motivo_bloqueo` y `modificado_en`), sin permiso de borrado. La base garantiza además que el identificador, la actividad, la bitácora (y con ella la fecha laboral), el momento de registro y la condición de reactivación son inmutables; que el motivo de bloqueo solo existe con el estado Bloqueada; que `modificado_en` solo avanza con un cambio de contenido; y que no se corrige un avance de una actividad con marca de error vigente. `smartwork_app` ya la tiene aplicada.
 
 La semilla crea una organización, un equipo y tres personas ficticias (`supervisor.demo`, `colaborador1.demo` y `colaborador2.demo`). Sus contraseñas se generan al ejecutarla y **se muestran una sola vez**: hay que anotarlas en ese momento, porque no se guardan ni se versionan. La semilla se niega a ejecutarse fuera de un servidor local, contra una base que no termine en `_dev` o `_test`, o si la base ya tiene datos.
 
@@ -401,7 +405,7 @@ No se ha realizado ningún despliegue. En local, FastAPI sirve el cliente compil
 1. **Cabeceras de proxy.** La comprobación de `Origin` compara el esquema de la petición con el del `Origin`. Detrás de un balanceador que termina TLS, uvicorn ve `http` y **rechazaría toda escritura** (400) salvo que se arranque con `--proxy-headers` y un `--forwarded-allow-ips` limitado al balanceador, y que el proxy conserve `Host`. Sin comprobar.
 2. **HTTPS obligatorio.** La cookie `__Host-` es `Secure`: sin HTTPS no se establece la sesión.
 3. **Credenciales y roles.** Hoy salen de `backend/.env`. En ECS deben venir de un gestor de secretos, con dos identidades distintas: `smartwork_owner` solo para migraciones (una tarea aparte antes del despliegue) y `smartwork_app` sin DDL para la API.
-4. **Migraciones.** La 0006 está pendiente en bases existentes. Las migraciones se aplican antes de actualizar las tareas.
+4. **Migraciones.** La 0006, la 0007 y la 0008 deben estar aplicadas en las bases existentes (en `smartwork_app` lo están). Las migraciones se aplican antes de actualizar las tareas.
 5. **Conexiones.** El tamaño del *pool* por tarea multiplicado por el número de tareas debe caber en las conexiones máximas de PostgreSQL. No se ha medido.
 6. **Alta de usuarios.** No hay provisión ni códigos de primer acceso: las personas de prueba las crea la semilla o un script local. No se pueden dar de alta usuarios reales.
 7. **Limitación de intentos fallidos** del inicio de sesión sin implementar (ADR-002 A9). Hace falta antes de exponer el servicio.
@@ -419,8 +423,8 @@ Resultado de la última ejecución, con las dos suites completas. Las de backend
 
 | Suite | Resultado | Qué cubre |
 |---|---|---|
-| Backend (`pytest`) | **653 superadas, 1 omitida a propósito** (suite completa, sobre `smartwork_test`) | Esquema y restricciones de la base de datos, autenticación, CSRF y origen, M2 completo (consulta, apertura, resumen, planificación, continuación, avances, actividades no planificadas, detalle y listado), cierre y reapertura, secuencia de avances, concurrencia, idempotencia, auditoría, atomicidad, extremo a extremo, salud y aislamiento de las propias pruebas |
-| Frontend (`flutter test`) | **414 superadas** | Modelos, cliente HTTP, reglas puras (avances, continuación, cierre), pantallas con repositorios falsos y diseño responsive (escritorio, tableta y móvil, con la fuente real para detectar desbordamientos) |
+| Backend (`pytest`) | **1031 superadas, 1 omitida a propósito** (suite completa, sobre `smartwork_test`) | Esquema y restricciones de la base de datos, autenticación, CSRF y origen, M2 completo (consulta, apertura, resumen, planificación, continuación, avances, actividades no planificadas, detalle y listado), cierre y reapertura, reactivación (M3-04), marca de error y su reversión (M3-05 y M3-06), corrección de avances (M3-03), consulta de la auditoría (M3-07), secuencia de avances, concurrencia, idempotencia, auditoría, atomicidad, extremo a extremo, salud y aislamiento de las propias pruebas |
+| Frontend (`flutter test`) | **619 superadas** | Modelos, cliente HTTP, reglas puras (avances, continuación, cierre, reactivación, marca de error, corrección, secuencia y presentación de la auditoría), pantallas con repositorios falsos y diseño responsive (escritorio, tableta y móvil, con la fuente real para detectar desbordamientos) |
 | Frontend (`flutter analyze`) | Sin incidencias | Análisis estático |
 
 Puntos que las pruebas comprueban de verdad:
@@ -506,7 +510,7 @@ Atributos, tipos conceptuales, restricciones y las 39 reglas de integridad: [mod
 
 ## 4. Especificación de la API
 
-La especificación completa son 35 contratos (propuestos): [docs/api/](docs/api/indice.md). **Implementados en la Entrega 2:** M1-01a, M1-01b, M1-01c, **M2-01a a M2-08 (todo M2)**, **M3-01** y **M3-02**. No implementados: el resto de M1, M3-03 a M3-07, M4 y M5.
+La especificación completa son 35 contratos (propuestos): [docs/api/](docs/api/indice.md). **Implementados en la Entrega 2:** M1-01a, M1-01b, M1-01c, **M2-01a a M2-08 (todo M2)**, **M3-01**, **M3-02**, **M3-04**, **M3-03**, **M3-05**, **M3-06** y **M3-07** (solo la consulta de la persona propietaria). No implementados: el resto de M1, M4 y M5.
 
 | Operación | Método y ruta |
 |---|---|
@@ -519,6 +523,11 @@ La especificación completa son 35 contratos (propuestos): [docs/api/](docs/api/
 | M2-06 | `POST /mi/actividades-no-planificadas` |
 | M2-07 / M2-08 | `GET /mi/actividades/{id}` · `GET /mi/actividades` |
 | M3-01 / M3-02 | `POST /mi/bitacoras/{fecha}/cierre` · `POST /mi/bitacoras/{fecha}/reapertura` |
+| M3-04 | `POST /mi/actividades/{id}/reactivacion` |
+| M3-03 | `PATCH /mi/avances/{id}` |
+| M3-05 | `POST /mi/actividades/{id}/marca-error` |
+| M3-06 | `POST /mi/actividades/{id}/marca-error/reversion` |
+| M3-07 | `GET /auditoria?tipo_objeto=&objeto_id=` |
 
 Las rutas son relativas a `/api/v1`. Toda operación que crea registros, y el cierre y la reapertura, exigen la cabecera `Idempotency-Key`. Los listados devuelven `{"elementos": [...], "siguiente": ...}`; las escrituras devuelven un objeto con nombre (`{"bitacora": …}`, `{"actividad": …, "avance": …, "bitacora_creada": …}`). Extracto de tres operaciones principales en formato OpenAPI:
 
@@ -714,8 +723,8 @@ Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entr
 | Entrega | Contenido |
 |---|---|
 | **Entrega 1** | Documentación técnica: alcance, requisitos, historias y criterios, arquitectura y decisiones, modelo de datos, contratos de la API, tickets, README y registro del uso de IA |
-| **Entrega 2 (esta)** | Flutter Web, FastAPI y PostgreSQL conectados con **M2 completo** y el **cierre y la reapertura de la jornada** (M3-01 y M3-02), con persistencia, auditoría, idempotencia y pruebas de concurrencia |
-| **Posteriores (previstas)** | M3-03 a M3-07 (corregir avances, reactivar, marcar error, consultar la auditoría), M4 (consulta de equipo, histórico y supervisión), M5 (informes con IA, una vez decidido el proveedor), provisión y códigos de acceso, despliegue y pruebas de seguridad |
+| **Entrega 2 (esta)** | Flutter Web, FastAPI y PostgreSQL conectados con **M2 completo**, el **cierre y la reapertura de la jornada** (M3-01 y M3-02) la **reactivación de actividades completadas** (M3-04) la **marca de error y su reversión** (M3-05 y M3-06) la **corrección auditada de avances** (M3-03) y la **consulta del historial de auditoría** (M3-07, solo de los propios registros), con persistencia, auditoría, idempotencia y pruebas de concurrencia |
+| **Posteriores (previstas)** | M4 (consulta de equipo, histórico y supervisión, incluida la consulta de la auditoría por quien supervisa), M5 (informes con IA, una vez decidido el proveedor), provisión y códigos de acceso, despliegue y pruebas de seguridad |
 
 **Estado por módulo.**
 
@@ -723,7 +732,7 @@ Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entr
 |---|---|---|
 | **M1** | Inicio y cierre de sesión, consulta de la sesión, pertenencias (modelo y restricciones) | Provisión de cuentas y equipos, códigos de primer acceso y recuperación, cambio de pertenencia, baja lógica operativa, limitación de intentos |
 | **M2** | Todo: M2-01a a M2-08 | Nada del alcance de M2. Criterios que dependen de otros módulos: ver la matriz |
-| **M3** | M3-01 cerrar y M3-02 reabrir la jornada | M3-03 corregir un avance, M3-04 reactivar, M3-05 marcar por error, M3-06 revertir la marca, M3-07 consultar la auditoría |
+| **M3** | M3-01 cerrar, M3-02 reabrir la jornada, M3-04 reactivar una actividad completada, M3-05 marcar por error, M3-06 revertir la marca, M3-03 corregir un avance y M3-07 consultar la auditoría propia | La consulta de la auditoría por quien supervisa (depende de M4) |
 | **M4** | Nada | Consulta de bitácoras de compañeros, histórico y supervisión; de ello depende pasar del 404 provisional al 403 según visibilidad |
 | **M5** | Nada | Informes individuales y consolidados con IA (el proveedor sigue sin decidir) |
 
@@ -742,7 +751,7 @@ Las prioridades y dependencias están en el [índice de tickets](docs/backlog/ti
 | Retención de la auditoría (PA-06); objetivos de rendimiento y volumen (PA-13); métricas de éxito (PA-11) | Valores de parámetros configurables | [Alcance](docs/producto/alcance-mvp.md), sección 6.3 |
 | Reincorporación de personas (PA-24); ajustes históricos de pertenencia (PA-25) | Fuera del MVP | Alcance |
 
-**Límites de la Entrega 2.** Están implementadas M1-01a/b/c, M2-01a a M2-08, M3-01 y M3-02. No hay corrección de avances, reactivación, marca de error, consulta de la auditoría, supervisión, consulta de compañeros ni informes con IA. No hay provisión: las personas ficticias las crea la semilla de desarrollo, que inserta directamente en la base y por eso no deja entradas de auditoría de provisión. No hay despliegue ni prueba automatizada de la interfaz en un navegador. Por tanto, algunos criterios de aceptación solo se cumplen en parte o están bloqueados por otro módulo: ver la [matriz de trazabilidad](docs/evidencia/matriz-trazabilidad-m2-m3.md).
+**Límites de la Entrega 2.** Están implementadas M1-01a/b/c, M2-01a a M2-08, M3-01, M3-02, M3-03, M3-04, M3-05, M3-06 y M3-07. La consulta de la auditoría es solo de la persona propietaria del registro: no hay consulta por quien supervisa (depende de M4), supervisión, consulta de compañeros ni informes con IA. No hay provisión: las personas ficticias las crea la semilla de desarrollo, que inserta directamente en la base y por eso no deja entradas de auditoría de provisión. No hay despliegue ni prueba automatizada de la interfaz en un navegador. Por tanto, algunos criterios de aceptación solo se cumplen en parte o están bloqueados por otro módulo: ver la [matriz de trazabilidad](docs/evidencia/matriz-trazabilidad-m2-m3.md).
 
 **Decisiones de implementación que no están en los contratos** (técnicas, sin cambiar ningún requisito):
 
@@ -751,10 +760,10 @@ Las prioridades y dependencias están en el [índice de tickets](docs/backlog/ti
 - **El token CSRF no se almacena:** se deriva con HMAC del secreto de la sesión, porque M1-01c debe poder devolverlo. ADR-002 describía guardar su hash.
 - **Rechazo por CSRF u origen:** el catálogo de errores no tiene un código para ello; se responde `SOLICITUD_INVALIDA` (400) con el motivo en `detalles`.
 - **La planificación no renueva `modificada_en`** de la bitácora: el contrato M2-03 no lo dice (M2-02 sí lo dice para el resumen). Tampoco lo renuevan el cierre ni la reapertura: no modifican el contenido (aprobado).
-- **El esquema de `avance` no incluye `modificado_en`**, que el contrato de M2-05 prevé; se añadirá con la corrección de avances (M3-03). La API devuelve el momento de registro en su lugar.
+- **`avance.modificado_en`** existe desde la migración 0008 (M3-03): es el momento de la última corrección y coincide con el del registro mientras el avance no se corrija.
 - **Decisiones aprobadas durante la implementación de M2 y M3:** el formato de respuesta `{"bitacora": …}` en el cierre y la reapertura; `bitacora_creada` en la respuesta de M2-04; varias continuaciones de una actividad en la misma fecha si son operaciones distintas; los instantes de la auditoría en UTC; un resumen omitido o nulo equivale a vacío (D-03); el 404 provisional para todo recurso ajeno hasta que exista M4.
 - **Decididas el 2026-11-09:** IR-11 y CA-78 se armonizan (una inserción retroactiva se incorpora sin tocar los avances posteriores y el estado actual sale del orden laboral completo, PA-27); el envoltorio del listado de M2-08 es `{"elementos": …, "siguiente": …}`; un avance con fecha anterior a la jornada de origen de la actividad se sigue aceptando **de forma provisional**, vinculado a definir el origen laboral de las actividades en M3 (PA-28).
-- **Pendiente para M3:** cómo valida M3-03 una corrección sobre una secuencia con un avance posterior a una finalización sin reactivación admitido por un retroactivo (PA-29). Detalle en la [matriz](docs/evidencia/matriz-trazabilidad-m2-m3.md#4-diferencias-y-decisiones-señaladas).
+- **PA-29 (resuelta):** una corrección de un avance (M3-03) no debe introducir violaciones de secuencia nuevas; los pares preexistentes que admitió un retroactivo no la rechazan por sí solos. Detalle en la [matriz](docs/evidencia/matriz-trazabilidad-m2-m3.md#4-diferencias-y-decisiones-señaladas).
 - **Política de contraseñas:** mínimo de **10 caracteres** (ADR-002, A8), decidido por la persona responsable. Se aparta a propósito de los 15 que recomienda NIST SP 800-63B-4, una referencia y no una obligación para SMARTWORK; el riesgo y sus mitigaciones constan en ADR-002 (Argon2id y almacenamiento solo del hash; la limitación de intentos fallidos todavía no está implementada). Hoy solo la aplica el script de cuentas, porque los flujos que fijan contraseñas (primer acceso y recuperación) no están implementados; el inicio de sesión no impone mínimo.
 - **Valores locales** (zona horaria `America/Bogota` de la semilla, duración de sesión, longitudes máximas de texto, ventana de idempotencia): configurables y sin valor de requisito.
 - **Pertenencias de la semilla:** empiezan 60 días atrás para poder demostrar jornadas pasadas; IR-30 lo impide por la vía ordinaria pero el modelo permite representar períodos históricos.

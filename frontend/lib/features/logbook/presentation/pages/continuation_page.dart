@@ -172,7 +172,7 @@ class _ContinuationPageState extends ConsumerState<ContinuationPage> {
               title: 'Actividad completada',
               text:
                   'Una actividad completada no admite continuaciones planificadas. Para continuarla '
-                  'después habrá que reactivarla.',
+                  'después hay que reactivarla (acción «Reactivar» en la actividad).',
               icon: Icons.info_outline,
             ),
             const SizedBox(height: 14),

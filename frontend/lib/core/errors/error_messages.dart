@@ -21,8 +21,19 @@ String errorMessage(ApiError error) {
       return 'La bitácora de esa fecha no está cerrada.';
     case 'ACTIVIDAD_COMPLETADA':
       return 'La actividad está Completada. Hay que reactivarla antes de continuarla.';
+    case 'ACTIVIDAD_NO_COMPLETADA':
+      return 'La actividad ya no está Completada, así que no hay nada que reactivar. Se ha actualizado su estado.';
+    case 'SECUENCIA_INVALIDA':
+      return 'La fecha no puede ser anterior a la de la finalización de la actividad.';
     case 'ACTIVIDAD_MARCADA_POR_ERROR':
       return 'La actividad está marcada como registrada por error.';
+    case 'MARCA_NO_PROCEDE':
+      return 'No se puede marcar: la actividad tiene avances en jornadas posteriores a la de su origen.';
+    case 'MARCA_INVALIDARIA_CIERRE':
+      return 'No se puede marcar: una jornada cerrada se quedaría sin ninguna actividad válida. '
+          'Reabre esa jornada, marca la actividad y vuelve a cerrarla cuando cumpla las condiciones.';
+    case 'MARCA_NO_VIGENTE':
+      return 'La actividad ya no tiene una marca de error vigente. Se ha actualizado su estado.';
     case 'CONDICIONES_DE_CIERRE_NO_CUMPLIDAS':
       return 'La jornada todavía no cumple las condiciones para cerrarse.';
     case 'FECHA_FUTURA_NO_PERMITIDA':

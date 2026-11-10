@@ -28,5 +28,5 @@ Como colaborador o supervisor, quiero que el estado actual de una actividad se d
 
 ## Notas
 
-- **Interpretación confirmada (PA-27):** una inserción retroactiva se incorpora a la secuencia sin eliminar ni modificar los avances posteriores, y el estado actual se deriva del orden laboral completo (CA-78). Al registrar un avance nuevo solo se mira el avance que quedaría justo antes; la validación de una corrección sobre esos casos está pendiente (PA-29).
+- **Interpretación confirmada (PA-27):** una inserción retroactiva se incorpora a la secuencia sin eliminar ni modificar los avances posteriores, y el estado actual se deriva del orden laboral completo (CA-78). Al registrar un avance nuevo solo se mira el avance que quedaría justo antes; una corrección posterior no debe introducir violaciones nuevas y no se rechaza por los pares preexistentes que admitió esta regla (PA-29).
 - Solo los avances de ejecución forman la secuencia y determinan el estado actual. La planificación, incluida la futura, no participa (RN-71, RN-75).

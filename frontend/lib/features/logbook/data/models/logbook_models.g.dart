@@ -52,7 +52,18 @@ ProgressModel _$ProgressModelFromJson(Map<String, dynamic> json) =>
       createdAt: DateTime.parse(json['registrado_en'] as String),
       blockReason: json['motivo_bloqueo'] as String?,
       isReactivation: json['es_reactivacion'] as bool? ?? false,
+      modifiedAt: json['modificado_en'] == null
+          ? null
+          : DateTime.parse(json['modificado_en'] as String),
     );
+
+CorrectionResultModel _$CorrectionResultModelFromJson(
+  Map<String, dynamic> json,
+) => CorrectionResultModel(
+  progress: ProgressModel.fromJson(json['avance'] as Map<String, dynamic>),
+  activity: ActivityModel.fromJson(json['actividad'] as Map<String, dynamic>),
+  currentStatusChanged: json['estado_actual_cambio'] as bool,
+);
 
 LogbookDayModel _$LogbookDayModelFromJson(Map<String, dynamic> json) =>
     LogbookDayModel(
@@ -111,6 +122,13 @@ ProgressResultModel _$ProgressResultModelFromJson(Map<String, dynamic> json) =>
       logbookCreated: json['bitacora_creada'] as bool,
     );
 
+MarkResultModel _$MarkResultModelFromJson(Map<String, dynamic> json) =>
+    MarkResultModel(
+      activity: ActivityModel.fromJson(
+        json['actividad'] as Map<String, dynamic>,
+      ),
+    );
+
 ActivitySummaryModel _$ActivitySummaryModelFromJson(
   Map<String, dynamic> json,
 ) => ActivitySummaryModel(
@@ -150,4 +168,26 @@ SummaryResultModel _$SummaryResultModelFromJson(Map<String, dynamic> json) =>
     SummaryResultModel(
       logbook: LogbookModel.fromJson(json['bitacora'] as Map<String, dynamic>),
       logbookCreated: json['bitacora_creada'] as bool,
+    );
+
+AuditEntryModel _$AuditEntryModelFromJson(Map<String, dynamic> json) =>
+    AuditEntryModel(
+      id: json['id'] as String,
+      moment: DateTime.parse(json['momento'] as String),
+      operation: json['operacion'] as String,
+      objectType: json['tipo_objeto'] as String,
+      objectId: json['objeto_id'] as String,
+      authorId: json['autor_persona_id'] as String?,
+      workDate: json['fecha_laboral_registro'] as String?,
+      reason: json['motivo'] as String?,
+      previous: json['valor_anterior'] as Map<String, dynamic>?,
+      next: json['valor_nuevo'] as Map<String, dynamic>?,
+    );
+
+AuditPageModel _$AuditPageModelFromJson(Map<String, dynamic> json) =>
+    AuditPageModel(
+      items: (json['elementos'] as List<dynamic>)
+          .map((e) => AuditEntryModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      next: json['siguiente'] as String?,
     );

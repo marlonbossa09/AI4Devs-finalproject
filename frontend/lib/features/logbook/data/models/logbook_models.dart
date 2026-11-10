@@ -1,6 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import '../../../../core/utils/dates.dart';
+import '../../domain/entities/audit_entities.dart';
 import '../../domain/entities/logbook_entities.dart';
 
 part 'logbook_models.g.dart';
@@ -179,6 +180,7 @@ class ProgressModel {
     required this.createdAt,
     this.blockReason,
     this.isReactivation = false,
+    this.modifiedAt,
   });
 
   factory ProgressModel.fromJson(Map<String, dynamic> json) => _$ProgressModelFromJson(json);
@@ -198,6 +200,8 @@ class ProgressModel {
   final String? blockReason;
   @JsonKey(name: 'es_reactivacion', defaultValue: false)
   final bool isReactivation;
+  @JsonKey(name: 'modificado_en')
+  final DateTime? modifiedAt;
 
   Progress toEntity() => Progress(
     id: id,
@@ -208,6 +212,32 @@ class ProgressModel {
     createdAt: createdAt,
     blockReason: blockReason,
     isReactivation: isReactivation,
+    modifiedAt: modifiedAt,
+  );
+}
+
+/// Response of M3-03.
+@JsonSerializable(createToJson: false)
+class CorrectionResultModel {
+  const CorrectionResultModel({
+    required this.progress,
+    required this.activity,
+    required this.currentStatusChanged,
+  });
+
+  factory CorrectionResultModel.fromJson(Map<String, dynamic> json) => _$CorrectionResultModelFromJson(json);
+
+  @JsonKey(name: 'avance')
+  final ProgressModel progress;
+  @JsonKey(name: 'actividad')
+  final ActivityModel activity;
+  @JsonKey(name: 'estado_actual_cambio')
+  final bool currentStatusChanged;
+
+  CorrectionResult toEntity() => CorrectionResult(
+    progress: progress.toEntity(),
+    activity: activity.toEntity(),
+    currentStatusChanged: currentStatusChanged,
   );
 }
 
@@ -343,6 +373,19 @@ class ProgressResultModel {
   );
 }
 
+/// Response of M3-05 and M3-06: the activity as the server holds it now.
+@JsonSerializable(createToJson: false)
+class MarkResultModel {
+  const MarkResultModel({required this.activity});
+
+  factory MarkResultModel.fromJson(Map<String, dynamic> json) => _$MarkResultModelFromJson(json);
+
+  @JsonKey(name: 'actividad')
+  final ActivityModel activity;
+
+  MarkResult toEntity() => MarkResult(activity: activity.toEntity());
+}
+
 /// One element of the M2-08 list.
 @JsonSerializable(createToJson: false)
 class ActivitySummaryModel {
@@ -428,4 +471,92 @@ class SummaryResultModel {
   final bool logbookCreated;
 
   SummaryResult toEntity() => SummaryResult(logbook: logbook.toEntity(), logbookCreated: logbookCreated);
+}
+
+
+
+/// The way a kind of record travels in the audit query (M3-07), without accents.
+String auditTypeToWire(AuditObjectType type) => switch (type) {
+  AuditObjectType.logbook => 'bitacora',
+  AuditObjectType.activity => 'actividad',
+  AuditObjectType.progress => 'avance',
+};
+
+AuditOperation _auditOperation(String name) => switch (name) {
+  'cierre' => AuditOperation.closing,
+  'reapertura' => AuditOperation.reopening,
+  'correccion' => AuditOperation.correction,
+  'modificacion_jornada_pasada' => AuditOperation.pastDayChange,
+  'reactivacion' => AuditOperation.reactivation,
+  'marca_error' => AuditOperation.errorMark,
+  'reversion_marca' => AuditOperation.markReversal,
+  _ => AuditOperation.other,
+};
+
+/// One entry of the response of M3-07.
+@JsonSerializable(createToJson: false)
+class AuditEntryModel {
+  const AuditEntryModel({
+    required this.id,
+    required this.moment,
+    required this.operation,
+    required this.objectType,
+    required this.objectId,
+    this.authorId,
+    this.workDate,
+    this.reason,
+    this.previous,
+    this.next,
+  });
+
+  factory AuditEntryModel.fromJson(Map<String, dynamic> json) => _$AuditEntryModelFromJson(json);
+
+  final String id;
+  @JsonKey(name: 'momento')
+  final DateTime moment;
+  @JsonKey(name: 'operacion')
+  final String operation;
+  @JsonKey(name: 'tipo_objeto')
+  final String objectType;
+  @JsonKey(name: 'objeto_id')
+  final String objectId;
+  @JsonKey(name: 'autor_persona_id')
+  final String? authorId;
+  @JsonKey(name: 'fecha_laboral_registro')
+  final String? workDate;
+  @JsonKey(name: 'motivo')
+  final String? reason;
+  @JsonKey(name: 'valor_anterior')
+  final Map<String, dynamic>? previous;
+  @JsonKey(name: 'valor_nuevo')
+  final Map<String, dynamic>? next;
+
+  AuditEntry toEntity() => AuditEntry(
+    id: id,
+    moment: moment,
+    operationName: operation,
+    operation: _auditOperation(operation),
+    objectType: objectType,
+    objectId: objectId,
+    authorId: authorId,
+    workDate: workDate == null ? null : parseDate(workDate!),
+    reason: reason,
+    previous: previous,
+    next: next,
+  );
+}
+
+/// Response of M3-07.
+@JsonSerializable(createToJson: false)
+class AuditPageModel {
+  const AuditPageModel({required this.items, this.next});
+
+  factory AuditPageModel.fromJson(Map<String, dynamic> json) => _$AuditPageModelFromJson(json);
+
+  @JsonKey(name: 'elementos')
+  final List<AuditEntryModel> items;
+  @JsonKey(name: 'siguiente')
+  final String? next;
+
+  AuditPage toEntity() => AuditPage(items: items.map((i) => i.toEntity()).toList(), next: next);
 }

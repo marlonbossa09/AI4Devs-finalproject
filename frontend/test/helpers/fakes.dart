@@ -7,8 +7,10 @@ import 'package:smartwork/core/errors/api_error.dart';
 import 'package:smartwork/core/utils/dates.dart';
 import 'package:smartwork/features/auth/domain/entities/session.dart';
 import 'package:smartwork/features/auth/domain/repository/auth_repository.dart';
+import 'package:smartwork/features/logbook/domain/entities/audit_entities.dart';
 import 'package:smartwork/features/logbook/domain/entities/logbook_entities.dart';
 import 'package:smartwork/features/logbook/domain/repository/logbook_repository.dart';
+import 'package:smartwork/features/logbook/domain/rules/correction_rules.dart';
 
 /// Server "today" used by the tests.
 final DateTime today = DateTime.utc(2026, 11, 6);
@@ -786,5 +788,441 @@ class FakeLogbookRepository implements LogbookRepository {
     final result = ProgressResult(progress: entry, activity: updated, logbookCreated: logbookCreated);
     _byKey[key] = (fingerprint, result);
     return result;
+  }
+
+  /// What `reactivateActivity` received, one map per call (including retries).
+  final List<Map<String, Object?>> reactivationRequests = [];
+
+  /// Errors to throw, one per call to `reactivateActivity`, in order (null = succeed).
+  final List<ApiError?> reactivationErrors = [];
+
+  /// While set, `reactivateActivity` waits for it: lets a test look at the screen with the request in flight.
+  Completer<void>? reactivationGate;
+
+  final Map<String, (String, ProgressResult)> _reactivationByKey = {};
+
+  /// Same rules as the server (M3-04): own, Completada, not marked, a state other than Completada,
+  /// not a future date, not before the completion (the same date is valid), open journal. The new
+  /// entry is flagged as a reactivation and sorts AFTER the completion even on the same date.
+  @override
+  Future<ProgressResult> reactivateActivity({
+    required String activityId,
+    required DateTime date,
+    required ActivityStatus status,
+    required String description,
+    String? blockReason,
+    required String key,
+  }) async {
+    final fingerprint = '$activityId|${formatDate(date)}|${status.name}|$description|${blockReason ?? ''}';
+    calls.add('reactivation ${formatDate(date)} ${status.name}');
+    reactivationRequests.add({
+      'activityId': activityId,
+      'date': formatDate(date),
+      'status': status,
+      'description': description,
+      'blockReason': blockReason,
+      'key': key,
+    });
+    final gate = reactivationGate;
+    if (gate != null) await gate.future;
+    if (reactivationErrors.isNotEmpty) {
+      final error = reactivationErrors.removeAt(0);
+      if (error != null) throw error;
+    }
+    final replay = _reactivationByKey[key];
+    if (replay != null) {
+      if (replay.$1 != fingerprint) {
+        throw const ApiError(code: 'CLAVE_IDEMPOTENCIA_REUTILIZADA', message: 'x', status: 422);
+      }
+      return replay.$2;
+    }
+    final activity = _find(activityId);
+    if (activity == null) {
+      throw const ApiError(code: 'RECURSO_NO_DISPONIBLE', message: 'x', status: 404);
+    }
+    if (activity.marked) {
+      throw const ApiError(code: 'ACTIVIDAD_MARCADA_POR_ERROR', message: 'x', status: 409);
+    }
+    if (status == ActivityStatus.completed) {
+      throw const ApiError(code: 'ESTADO_INVALIDO', message: 'x', status: 422);
+    }
+    final ordered = _progressOf(activityId).toList()
+      ..sort((a, b) {
+        final byDate = a.date.compareTo(b.date);
+        return byDate != 0 ? byDate : _order(a.id).compareTo(_order(b.id));
+      });
+    if (ordered.isEmpty || ordered.last.status != ActivityStatus.completed) {
+      throw const ApiError(code: 'ACTIVIDAD_NO_COMPLETADA', message: 'x', status: 409);
+    }
+    if (date.isAfter(today)) {
+      throw const ApiError(code: 'FECHA_FUTURA_NO_PERMITIDA', message: 'x', status: 422);
+    }
+    if (date.isBefore(ordered.last.date)) {
+      throw const ApiError(code: 'SECUENCIA_INVALIDA', message: 'x', status: 409);
+    }
+    final dayKey = formatDate(date);
+    if (days[dayKey]?.logbook.closed == true) {
+      throw const ApiError(code: 'BITACORA_CERRADA', message: 'x', status: 409);
+    }
+    final logbookCreated = days[dayKey] == null;
+    final base = days[dayKey] ?? LogbookDay(logbook: _newLogbook(date), plannings: const [], activities: const []);
+    final updated = Activity(
+      id: activity.id,
+      userId: activity.userId,
+      title: activity.title,
+      origin: activity.origin,
+      status: status,
+      date: activity.date,
+      createdAt: activity.createdAt,
+      marked: activity.marked,
+      markReason: activity.markReason,
+    );
+    final entry = Progress(
+      id: 'pr${++_sequence}',
+      activityId: activityId,
+      date: date,
+      status: status,
+      description: description,
+      blockReason: blockReason,
+      createdAt: DateTime.utc(2026, 11, 6, 17),
+      isReactivation: true,
+    );
+    days[dayKey] = LogbookDay(
+      logbook: base.logbook,
+      plannings: base.plannings,
+      activities: base.activities.any((a) => a.id == activityId) ? base.activities : [...base.activities, activity],
+      progress: [...base.progress, entry],
+    );
+    // The new status shows in every day where the activity appears.
+    for (final k in days.keys.toList()) {
+      final day = days[k]!;
+      days[k] = LogbookDay(
+        logbook: day.logbook,
+        plannings: day.plannings,
+        activities: [for (final a in day.activities) a.id == activityId ? updated : a],
+        progress: day.progress,
+      );
+    }
+    final result = ProgressResult(progress: entry, activity: updated, logbookCreated: logbookCreated);
+    _reactivationByKey[key] = (fingerprint, result);
+    return result;
+  }
+
+  // ------------------------------------------------------------------------------ M3-05 / M3-06
+
+  /// What `markActivityAsError` / `revertActivityMark` received, one map per call (including retries).
+  final List<Map<String, Object?>> markRequests = [];
+
+  /// Errors to throw, one per call to either operation, in order (null = succeed).
+  final List<ApiError?> markErrors = [];
+
+  /// While set, both operations wait for it: lets a test look at the screen with the request in flight.
+  Completer<void>? markGate;
+
+  final Map<String, (String, MarkResult)> _markByKey = {};
+
+  /// Removes the mark behind the screen's back (as if it had been reverted from another place).
+  void clearMarkBehindTheScreen(String activityId) => _replaceEverywhere(activityId, (a) => _withMark(a, null));
+
+  void _replaceEverywhere(String activityId, Activity Function(Activity) change) {
+    for (final k in days.keys.toList()) {
+      final day = days[k]!;
+      days[k] = LogbookDay(
+        logbook: day.logbook,
+        plannings: day.plannings,
+        activities: [for (final a in day.activities) a.id == activityId ? change(a) : a],
+        progress: day.progress,
+      );
+    }
+  }
+
+  Activity _withMark(Activity a, String? reason) => Activity(
+    id: a.id,
+    userId: a.userId,
+    title: a.title,
+    origin: a.origin,
+    status: a.status,
+    date: a.date,
+    createdAt: a.createdAt,
+    marked: reason != null,
+    markReason: reason,
+  );
+
+  Future<void> _markGate(String operation, Map<String, Object?> request) async {
+    calls.add(operation);
+    markRequests.add(request);
+    final gate = markGate;
+    if (gate != null) await gate.future;
+    if (markErrors.isNotEmpty) {
+      final error = markErrors.removeAt(0);
+      if (error != null) throw error;
+    }
+  }
+
+  /// Same rules as the server (M3-05): own activity, mandatory reason, not already marked, no progress
+  /// after the origin day, and no closed day left without a valid activity (the origin day AND any day
+  /// where the activity counts through its own progress). Nothing is deleted.
+  @override
+  Future<MarkResult> markActivityAsError({
+    required String activityId,
+    required String reason,
+    required String key,
+  }) async {
+    await _markGate('mark $activityId', {'activityId': activityId, 'reason': reason, 'key': key});
+    final fingerprint = '$activityId|$reason';
+    final replay = _markByKey[key];
+    if (replay != null) {
+      if (replay.$1 != fingerprint) {
+        throw const ApiError(code: 'CLAVE_IDEMPOTENCIA_REUTILIZADA', message: 'x', status: 422);
+      }
+      return replay.$2;
+    }
+    final activity = _find(activityId);
+    if (activity == null) {
+      throw const ApiError(code: 'RECURSO_NO_DISPONIBLE', message: 'x', status: 404);
+    }
+    if (reason.trim().isEmpty) {
+      throw const ApiError(code: 'MOTIVO_OBLIGATORIO', message: 'x', status: 422);
+    }
+    if (activity.marked) {
+      throw const ApiError(code: 'ACTIVIDAD_MARCADA_POR_ERROR', message: 'x', status: 409);
+    }
+    final progress = _progressOf(activityId).toList();
+    if (progress.any((p) => p.date.isAfter(activity.date))) {
+      throw const ApiError(code: 'MARCA_NO_PROCEDE', message: 'x', status: 409);
+    }
+    bool counts(Activity other, DateTime date) =>
+        other.date == date || _progressOf(other.id).any((p) => p.date == date);
+    final affected = {activity.date, ...progress.map((p) => p.date)};
+    for (final date in affected) {
+      final day = days[formatDate(date)];
+      if (day == null || !day.logbook.closed) continue;
+      final others = [
+        for (final a in _allActivities())
+          if (a.id != activityId && !a.marked && counts(a, date)) a,
+      ];
+      if (others.isEmpty) {
+        throw const ApiError(code: 'MARCA_INVALIDARIA_CIERRE', message: 'x', status: 409);
+      }
+    }
+    _replaceEverywhere(activityId, (a) => _withMark(a, reason));
+    final result = MarkResult(activity: _find(activityId)!);
+    _markByKey[key] = (fingerprint, result);
+    return result;
+  }
+
+  /// Same rules as the server (M3-06): own activity with a mark in force. The day stays as it was.
+  @override
+  Future<MarkResult> revertActivityMark({required String activityId, required String key}) async {
+    await _markGate('revert $activityId', {'activityId': activityId, 'key': key});
+    final replay = _markByKey[key];
+    if (replay != null) {
+      if (replay.$1 != activityId) {
+        throw const ApiError(code: 'CLAVE_IDEMPOTENCIA_REUTILIZADA', message: 'x', status: 422);
+      }
+      return replay.$2;
+    }
+    final activity = _find(activityId);
+    if (activity == null) {
+      throw const ApiError(code: 'RECURSO_NO_DISPONIBLE', message: 'x', status: 404);
+    }
+    if (!activity.marked) {
+      throw const ApiError(code: 'MARCA_NO_VIGENTE', message: 'x', status: 409);
+    }
+    _replaceEverywhere(activityId, (a) => _withMark(a, null));
+    final result = MarkResult(activity: _find(activityId)!);
+    _markByKey[key] = (activityId, result);
+    return result;
+  }
+
+  // ------------------------------------------------------------------------------------- M3-03
+
+  /// What `correctProgress` received, one map per call (including retries).
+  final List<Map<String, Object?>> correctionRequests = [];
+
+  /// Errors to throw, one per call to `correctProgress`, in order (null = succeed).
+  final List<ApiError?> correctionErrors = [];
+
+  /// While set, `correctProgress` waits for it: lets a test look at the screen with the request in flight.
+  Completer<void>? correctionGate;
+
+  final Map<String, (String, CorrectionResult)> _correctionByKey = {};
+
+  List<Progress> _sequenceOf(String activityId) =>
+      _progressOf(activityId).toList()
+        ..sort((a, b) {
+          final byDate = a.date.compareTo(b.date);
+          return byDate != 0 ? byDate : _order(a.id).compareTo(_order(b.id));
+        });
+
+  /// Same rules as the server (M3-03): own entry, activity not marked, an open day, a status among the four, a
+  /// reason for Bloqueada (cleared for any other status), no new breach of the sequence, and nothing at all when
+  /// the values are the ones in force. The entry keeps its identifier, its work date, its moment and its
+  /// reactivation flag; nothing is created, removed or reordered. The current status is recalculated from the
+  /// last entry of the sequence.
+  @override
+  Future<CorrectionResult> correctProgress({
+    required String progressId,
+    required ProgressCorrection correction,
+    required String key,
+  }) async {
+    final fingerprint = '$progressId|${correction.status?.name}|${correction.description}|${correction.blockReason}';
+    calls.add('correct $progressId');
+    correctionRequests.add({
+      'progressId': progressId,
+      'status': correction.status,
+      'description': correction.description,
+      'blockReason': correction.blockReason,
+      'key': key,
+    });
+    final gate = correctionGate;
+    if (gate != null) await gate.future;
+    if (correctionErrors.isNotEmpty) {
+      final error = correctionErrors.removeAt(0);
+      if (error != null) throw error;
+    }
+    final replay = _correctionByKey[key];
+    if (replay != null) {
+      if (replay.$1 != fingerprint) {
+        throw const ApiError(code: 'CLAVE_IDEMPOTENCIA_REUTILIZADA', message: 'x', status: 422);
+      }
+      return replay.$2;
+    }
+    Progress? entry;
+    for (final candidate in days.values.expand((d) => d.progress)) {
+      if (candidate.id == progressId) entry = candidate;
+    }
+    if (entry == null) throw const ApiError(code: 'RECURSO_NO_DISPONIBLE', message: 'x', status: 404);
+    final activity = _find(entry.activityId)!;
+    if (activity.marked) throw const ApiError(code: 'ACTIVIDAD_MARCADA_POR_ERROR', message: 'x', status: 409);
+    if (correction.isEmpty) throw const ApiError(code: 'SOLICITUD_INVALIDA', message: 'x', status: 400);
+    final status = correction.status ?? entry.status;
+    final description = correction.description ?? entry.description;
+    String? reason;
+    if (status == ActivityStatus.blocked) {
+      reason = correction.blockReason ?? entry.blockReason;
+      if (reason == null || reason.trim().isEmpty) {
+        throw const ApiError(code: 'MOTIVO_BLOQUEO_OBLIGATORIO', message: 'x', status: 422);
+      }
+    }
+    if (description.trim().isEmpty) throw const ApiError(code: 'DESCRIPCION_OBLIGATORIA', message: 'x', status: 422);
+    if (days[formatDate(entry.date)]?.logbook.closed == true) {
+      throw const ApiError(code: 'BITACORA_CERRADA', message: 'x', status: 409);
+    }
+    final sequence = _sequenceOf(entry.activityId);
+    CorrectionResult result;
+    if (status == entry.status && description == entry.description && reason == entry.blockReason) {
+      result = CorrectionResult(progress: entry, activity: activity, currentStatusChanged: false);
+    } else {
+      if (newSequenceViolations(sequence, entry.id, status).isNotEmpty) {
+        throw const ApiError(
+          code: 'SECUENCIA_INVALIDA',
+          message: 'x',
+          status: 409,
+          details: [
+            {'campo': 'estado', 'motivo': 'avance_tras_finalizacion_sin_reactivacion'},
+          ],
+        );
+      }
+      final corrected = Progress(
+        id: entry.id,
+        activityId: entry.activityId,
+        date: entry.date,
+        status: status,
+        description: description,
+        createdAt: entry.createdAt,
+        blockReason: reason,
+        isReactivation: entry.isReactivation,
+        modifiedAt: DateTime.utc(2026, 11, 6, 18),
+      );
+      final newCurrent = currentStatusAfter(sequence, entry.id, status);
+      final changed = newCurrent != activity.status;
+      for (final k in days.keys.toList()) {
+        final day = days[k]!;
+        days[k] = LogbookDay(
+          logbook: day.logbook,
+          plannings: day.plannings,
+          activities: [
+            for (final a in day.activities)
+              a.id == activity.id
+                  ? Activity(
+                      id: a.id,
+                      userId: a.userId,
+                      title: a.title,
+                      origin: a.origin,
+                      status: newCurrent,
+                      date: a.date,
+                      createdAt: a.createdAt,
+                      marked: a.marked,
+                      markReason: a.markReason,
+                    )
+                  : a,
+          ],
+          progress: [for (final p in day.progress) p.id == entry.id ? corrected : p],
+        );
+      }
+      result = CorrectionResult(progress: corrected, activity: _find(activity.id)!, currentStatusChanged: changed);
+    }
+    _correctionByKey[key] = (fingerprint, result);
+    return result;
+  }
+
+  // ------------------------------------------------------------------------------------- M3-07
+
+  /// The audit "held by the server" for each record, in chronological order, keyed `<type>|<id>`.
+  final Map<String, List<AuditEntry>> auditEntries = {};
+
+  /// Records the server says are not available (they do not exist or are someone else's: the same answer).
+  final Set<String> auditUnavailable = {};
+
+  /// Page size when the client does not ask for one (the server default).
+  int auditPageSize = 20;
+
+  /// What `listAudit` received, one map per call.
+  final List<Map<String, Object?>> auditRequests = [];
+
+  /// Errors to throw, one per call to `listAudit`, in order (null = succeed).
+  final List<ApiError?> auditErrors = [];
+
+  /// While set, `listAudit` waits for it: lets a test look at the loading state.
+  Completer<void>? auditGate;
+
+  String _auditKey(AuditObjectType type, String id) => '${type.name}|$id';
+
+  void seedAudit(AuditObjectType type, String objectId, List<AuditEntry> entries) =>
+      auditEntries[_auditKey(type, objectId)] = entries;
+
+  /// Same rules as the server (M3-07): read-only, one record at a time, chronological order, pages by an opaque
+  /// cursor, no data and no hint about a record that is not available.
+  @override
+  Future<AuditPage> listAudit({
+    required AuditObjectType type,
+    required String objectId,
+    int? limit,
+    String? cursor,
+  }) async {
+    calls.add('audit ${type.name} $objectId');
+    auditRequests.add({'type': type, 'objectId': objectId, 'limit': limit, 'cursor': cursor});
+    final gate = auditGate;
+    if (gate != null) await gate.future;
+    if (auditErrors.isNotEmpty) {
+      final error = auditErrors.removeAt(0);
+      if (error != null) throw error;
+    }
+    final key = _auditKey(type, objectId);
+    if (auditUnavailable.contains(key)) {
+      throw const ApiError(code: 'RECURSO_NO_DISPONIBLE', message: 'x', status: 404);
+    }
+    var start = 0;
+    if (cursor != null) {
+      if (!cursor.startsWith('c')) throw const ApiError(code: 'SOLICITUD_INVALIDA', message: 'x', status: 400);
+      start = int.tryParse(cursor.substring(1)) ?? -1;
+      if (start < 0) throw const ApiError(code: 'SOLICITUD_INVALIDA', message: 'x', status: 400);
+    }
+    final all = auditEntries[key] ?? const <AuditEntry>[];
+    final size = limit ?? auditPageSize;
+    final page = all.skip(start).take(size).toList();
+    final more = start + size < all.length;
+    return AuditPage(items: page, next: more ? 'c${start + size}' : null);
   }
 }

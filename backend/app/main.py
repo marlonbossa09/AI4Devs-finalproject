@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.errores import registrar_manejadores
 from app.modulos.acceso.router import router as router_acceso
+from app.modulos.auditoria.router import router as router_auditoria
 from app.modulos.bitacoras.router import router as router_bitacoras
 from app.salud import router as router_salud
 
@@ -35,7 +36,7 @@ def crear_app() -> FastAPI:
             CORSMiddleware,
             allow_origins=settings.cors_allowed_origins,
             allow_credentials=True,
-            allow_methods=["GET", "POST", "PUT"],
+            allow_methods=["GET", "PATCH", "POST", "PUT"],
             allow_headers=["Content-Type", "Idempotency-Key", "X-CSRF-Token"],
         )
 
@@ -43,6 +44,7 @@ def crear_app() -> FastAPI:
     # Los routers de cada módulo se registran aquí, a medida que se implementan.
     api.include_router(router_acceso)
     api.include_router(router_bitacoras)
+    api.include_router(router_auditoria)
     app.include_router(api)
     # Salud y disponibilidad: en la raíz, sin /api/v1 y sin autenticación; antes del cliente web.
     app.include_router(router_salud)

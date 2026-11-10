@@ -140,6 +140,104 @@ class LogbookNotifier extends _$LogbookNotifier {
     return result;
   }
 
+  /// Reactivates a Completada activity (M3-04) with a progress entry dated this notifier date. Throws
+  /// `ApiError` when the server rejects it.
+  ///
+  /// It changes the status of the activity (visible in every day, in the list and in the indicators)
+  /// and adds an entry to its history, so ALL cached days, the detail and the list are reloaded from the
+  /// API. If the server says the activity is not Completada any more, or that the day is closed, what
+  /// the screen believed was stale and it is reloaded too.
+  Future<ProgressResult> reactivate({
+    required String activityId,
+    required ActivityStatus status,
+    required String description,
+    String? blockReason,
+    required String key,
+  }) async {
+    try {
+      final result = await _write(
+        () => ref.read(logbookRepositoryProvider).reactivateActivity(
+          activityId: activityId,
+          date: date,
+          status: status,
+          description: description,
+          blockReason: blockReason,
+          key: key,
+        ),
+      );
+      await _reloadEverything();
+      return result;
+    } on ApiError catch (error) {
+      if (error.code == 'ACTIVIDAD_NO_COMPLETADA') await _reloadEverything();
+      rethrow;
+    }
+  }
+
+  /// Marks an activity as registered by mistake (M3-05). Throws `ApiError` when the server rejects it.
+  ///
+  /// The mark takes the activity out of the operational views and counts of EVERY day, the list and any
+  /// open detail, so all of them are reloaded from the API. When the server says what the screen believed
+  /// was stale (already marked, later progress exists, the day was closed meanwhile), they are reloaded
+  /// too, so the screen stops offering what is not allowed.
+  Future<MarkResult> markAsError({required String activityId, required String reason, required String key}) {
+    return _mark(
+      () => ref.read(logbookRepositoryProvider).markActivityAsError(activityId: activityId, reason: reason, key: key),
+    );
+  }
+
+  /// Reverts the error mark of an activity (M3-06). The activity goes back to the operational views and
+  /// counts. Throws `ApiError` when the server rejects it.
+  Future<MarkResult> revertMark({required String activityId, required String key}) {
+    return _mark(() => ref.read(logbookRepositoryProvider).revertActivityMark(activityId: activityId, key: key));
+  }
+
+  /// Corrects a progress entry (M3-03). Throws `ApiError` when the server rejects it.
+  ///
+  /// It can change the current status of the activity (visible in every day, the list and the indicators) and
+  /// rewrites the history of the activity, so ALL cached days, the detail and the list are reloaded from the API.
+  /// When the server says what the screen believed was stale (the activity was marked meanwhile, the sequence is
+  /// different now, the day was closed), they are reloaded too, so the screen stops offering what is not allowed.
+  Future<CorrectionResult> correctProgress({
+    required String progressId,
+    required ProgressCorrection correction,
+    required String key,
+  }) async {
+    try {
+      final result = await _write(
+        () => ref.read(logbookRepositoryProvider).correctProgress(
+          progressId: progressId,
+          correction: correction,
+          key: key,
+        ),
+      );
+      await _reloadEverything();
+      return result;
+    } on ApiError catch (error) {
+      if (_staleCorrectionCodes.contains(error.code)) await _reloadEverything();
+      rethrow;
+    }
+  }
+
+  static const _staleCorrectionCodes = {'ACTIVIDAD_MARCADA_POR_ERROR', 'SECUENCIA_INVALIDA'};
+
+  static const _staleMarkCodes = {
+    'ACTIVIDAD_MARCADA_POR_ERROR',
+    'MARCA_NO_PROCEDE',
+    'MARCA_INVALIDARIA_CIERRE',
+    'MARCA_NO_VIGENTE',
+  };
+
+  Future<MarkResult> _mark(Future<MarkResult> Function() call) async {
+    try {
+      final result = await _write(call);
+      await _reloadEverything();
+      return result;
+    } on ApiError catch (error) {
+      if (_staleMarkCodes.contains(error.code)) await _reloadEverything();
+      rethrow;
+    }
+  }
+
   /// Records work that was not planned (M2-06) for this notifier date: the activity and its first
   /// progress entry are created by ONE server operation. Throws `ApiError` when the server rejects it.
   Future<ProgressResult> registerUnplanned({

@@ -11,13 +11,20 @@ import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/kind_tag.dart';
 import '../../../../core/widgets/status_pill.dart';
 import '../../../../core/widgets/text_blocks.dart';
+import '../../domain/entities/audit_entities.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../../domain/rules/continuation_rules.dart';
+import '../../domain/rules/correction_rules.dart';
+import '../../domain/rules/mark_rules.dart';
+import '../../domain/rules/reactivation_rules.dart';
 import '../providers/activity_detail.dart';
 import '../providers/navigation.dart';
 import '../widgets/activity_tile.dart';
 import '../widgets/continuation_tag.dart';
+import '../widgets/mark_actions.dart';
+import '../widgets/marked_tag.dart';
 import '../widgets/origin_tag.dart';
+import '../widgets/reactivation_tag.dart';
 
 /// One activity with everything recorded about it (M2-07). What was PLANNED and what was DONE are
 /// shown in separate blocks, so a planning is never mistaken for a progress entry (CA-40).
@@ -49,13 +56,14 @@ class ActivityDetailPage extends ConsumerWidget {
     final view = ref.watch(activityDetailProvider(opened.id));
 
     Widget body;
-    if (view.isLoading) {
+    // Only the FIRST load replaces the page: a reload keeps showing what it had (and keeps its dialogs alive)
+    if (view.isLoading && !view.hasValue) {
       body = const Padding(
         key: Key('detail-loading'),
         padding: EdgeInsets.all(40),
         child: Center(child: CircularProgressIndicator()),
       );
-    } else if (view.hasError) {
+    } else if (view.hasError && !view.hasValue) {
       final error = view.error;
       body = ErrorBox(
         message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la actividad.',
@@ -73,6 +81,38 @@ class ActivityDetailPage extends ConsumerWidget {
           final activity = view.requireValue.activity;
           ref.read(continuationTargetProvider.notifier).select(activity.summary, back: AppPage.activityDetail);
           ref.read(currentPageProvider.notifier).go(AppPage.continuation);
+        },
+        onReactivate: () {
+          final activity = view.requireValue.activity;
+          ref.read(reactivationTargetProvider.notifier).select(activity.summary, back: AppPage.activityDetail);
+          ref.read(currentPageProvider.notifier).go(AppPage.reactivation);
+        },
+        onCorrect: (entry) {
+          ref.read(correctionTargetProvider.notifier).select(
+            activityId: view.requireValue.activity.id,
+            progressId: entry.id,
+            back: AppPage.activityDetail,
+          );
+          ref.read(currentPageProvider.notifier).go(AppPage.correction);
+        },
+        onAudit: () {
+          final activity = view.requireValue.activity;
+          ref.read(auditTargetProvider.notifier).select(
+            type: AuditObjectType.activity,
+            objectId: activity.id,
+            title: activity.title,
+            back: AppPage.activityDetail,
+          );
+          ref.read(currentPageProvider.notifier).go(AppPage.audit);
+        },
+        onAuditProgress: (entry) {
+          ref.read(auditTargetProvider.notifier).select(
+            type: AuditObjectType.progress,
+            objectId: entry.id,
+            title: 'Avance del ${formatShortDate(entry.date)}: ${entry.description}',
+            back: AppPage.activityDetail,
+          );
+          ref.read(currentPageProvider.notifier).go(AppPage.audit);
         },
       );
     }
@@ -95,11 +135,25 @@ class ActivityDetailPage extends ConsumerWidget {
 }
 
 class _DetailBody extends StatelessWidget {
-  const _DetailBody({required this.detail, required this.onRegisterProgress, required this.onPlanContinuation});
+  const _DetailBody({
+    required this.detail,
+    required this.onRegisterProgress,
+    required this.onPlanContinuation,
+    required this.onReactivate,
+    required this.onCorrect,
+    required this.onAudit,
+    required this.onAuditProgress,
+  });
 
   final ActivityDetail detail;
   final VoidCallback onRegisterProgress;
   final VoidCallback onPlanContinuation;
+  final VoidCallback onReactivate;
+  final ValueChanged<Progress> onCorrect;
+
+  /// Opens the audit of the activity, or of one of its progress entries (M3-07).
+  final VoidCallback onAudit;
+  final ValueChanged<Progress> onAuditProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -121,29 +175,47 @@ class _DetailBody extends StatelessWidget {
                   label: 'Planificar continuación',
                   onPressed: onPlanContinuation,
                 ),
+              if (canReactivate(status: detail.status, marked: activity.marked))
+                PrimaryButton(
+                  key: const Key('detail-reactivate'),
+                  label: 'Reactivar actividad',
+                  icon: Icons.replay,
+                  onPressed: onReactivate,
+                ),
               PrimaryButton(
                 key: const Key('detail-register-progress'),
                 label: 'Registrar avance',
                 icon: Icons.add,
                 onPressed: activity.marked ? null : onRegisterProgress,
               ),
+              if (canRevertMark(activity) || canMarkAsError(activity: activity, progress: detail.progress))
+                ActivityMarkActions(activity: activity, progress: detail.progress),
             ],
           ),
         ),
-        _StatusCard(detail: detail),
+        _StatusCard(detail: detail, onAudit: onAudit),
         const SizedBox(height: 18),
         _PlanningCard(detail: detail),
         const SizedBox(height: 18),
-        _HistoryCard(progress: detail.progress),
+        _HistoryCard(
+          progress: detail.progress,
+          // The entries of a marked activity are not corrected until the mark is reverted (D-05)
+          onCorrect: canCorrect(detail.activity) ? onCorrect : null,
+          onAudit: onAuditProgress,
+          marked: detail.activity.marked,
+        ),
       ],
     );
   }
 }
 
 class _StatusCard extends StatelessWidget {
-  const _StatusCard({required this.detail});
+  const _StatusCard({required this.detail, required this.onAudit});
 
   final ActivityDetail detail;
+
+  /// Opens the audit of the activity (M3-07): who changed it, when and how. It is not the work history below.
+  final VoidCallback onAudit;
 
   @override
   Widget build(BuildContext context) {
@@ -205,17 +277,41 @@ class _StatusCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.blockedBackground,
+                color: MarkedColors.background,
                 borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: MarkedColors.border),
               ),
-              child: Text(
-                'Esta actividad se marcó como registrada por error y ya no admite avances. '
-                'Su historial se conserva.'
-                '${activity.markReason == null || activity.markReason!.isEmpty ? '' : ' Motivo: ${activity.markReason}'}',
-                style: const TextStyle(fontSize: 11, height: 1.6, color: AppColors.blockedText),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const KeyedSubtree(key: Key('detail-marked-tag'), child: MarkedTag()),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Esta actividad se marcó como registrada por error: no aparece en tus vistas ni recuentos y ya '
+                    'no admite avances. Su historial se conserva y puedes revertir la marca.',
+                    style: const TextStyle(fontSize: 11, height: 1.6, color: MarkedColors.foreground),
+                  ),
+                  if (activity.markReason != null && activity.markReason!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Motivo: ${activity.markReason}',
+                      key: const Key('detail-marked-reason'),
+                      style: const TextStyle(fontSize: 11, height: 1.6, fontWeight: FontWeight.w700, color: MarkedColors.foreground),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: LinkButton(
+              key: const Key('detail-audit'),
+              label: 'Ver historial de auditoría',
+              onPressed: onAudit,
+            ),
+          ),
         ],
       ),
     );
@@ -322,9 +418,17 @@ class _PlanningCard extends StatelessWidget {
 
 /// WHAT WAS DONE. Each entry keeps the status the activity had when it was recorded.
 class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.progress});
+  const _HistoryCard({
+    required this.progress,
+    required this.onCorrect,
+    required this.onAudit,
+    required this.marked,
+  });
 
   final List<Progress> progress;
+  final ValueChanged<Progress>? onCorrect;
+  final ValueChanged<Progress> onAudit;
+  final bool marked;
 
   @override
   Widget build(BuildContext context) {
@@ -342,12 +446,26 @@ class _HistoryCard extends StatelessWidget {
             'Lo que realmente se hizo, ordenado por fecha laboral. Cada avance conserva el estado que tenía entonces.',
             style: TextStyle(fontSize: 11, color: AppColors.textSoft),
           ),
+          if (marked) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'Los avances de una actividad marcada como registrada por error no se corrigen: revierte antes la marca.',
+              key: Key('detail-correct-blocked'),
+              style: TextStyle(fontSize: 11, color: AppColors.textSoft),
+            ),
+          ],
           const SizedBox(height: 8),
           if (progress.isEmpty)
             const EmptyState('Todavía no hay avances registrados.', key: Key('detail-no-progress'))
           else
             for (var i = 0; i < progress.length; i++)
-              _ProgressEntry(key: Key('detail-progress-${progress[i].id}'), entry: progress[i], first: i == 0),
+              _ProgressEntry(
+                key: Key('detail-progress-${progress[i].id}'),
+                entry: progress[i],
+                first: i == 0,
+                onCorrect: onCorrect == null ? null : () => onCorrect!(progress[i]),
+                onAudit: () => onAudit(progress[i]),
+              ),
         ],
       ),
     );
@@ -355,10 +473,16 @@ class _HistoryCard extends StatelessWidget {
 }
 
 class _ProgressEntry extends StatelessWidget {
-  const _ProgressEntry({super.key, required this.entry, required this.first});
+  const _ProgressEntry({super.key, required this.entry, required this.first, required this.onAudit, this.onCorrect});
 
   final Progress entry;
   final bool first;
+
+  /// Opens the audit of THIS entry (M3-07): the corrections and changes made to it, not the work history.
+  final VoidCallback onAudit;
+
+  /// Opens the correction form (M3-03). Null when the entry cannot be corrected.
+  final VoidCallback? onCorrect;
 
   @override
   Widget build(BuildContext context) {
@@ -379,6 +503,15 @@ class _ProgressEntry extends StatelessWidget {
           'Registrado ${formatDateTime(entry.createdAt)}',
           style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
         ),
+        // A corrected entry says so and when; an entry never corrected shows nothing (CA-62)
+        if (entry.corrected) ...[
+          const SizedBox(height: 2),
+          Text(
+            'Corregido ${formatDateTime(entry.modifiedAt!)}',
+            key: Key('detail-corrected-${entry.id}'),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSoft),
+          ),
+        ],
       ],
     );
     final content = Column(
@@ -394,7 +527,7 @@ class _ProgressEntry extends StatelessWidget {
               child: StatusPill(label: statusLabel(entry.status), kind: pillKind(entry.status)),
             ),
             if (entry.isReactivation)
-              const Text('Reactivación', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSoft)),
+              KeyedSubtree(key: Key('detail-reactivation-${entry.id}'), child: const ReactivationTag()),
           ],
         ),
         const SizedBox(height: 8),
@@ -406,6 +539,26 @@ class _ProgressEntry extends StatelessWidget {
             style: const TextStyle(fontSize: 11, height: 1.55, color: AppColors.blockedText),
           ),
         ],
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Wrap(
+            spacing: 14,
+            children: [
+              if (onCorrect != null)
+                LinkButton(
+                  key: Key('detail-correct-${entry.id}'),
+                  label: 'Corregir',
+                  onPressed: onCorrect,
+                ),
+              LinkButton(
+                key: Key('detail-audit-${entry.id}'),
+                label: 'Ver auditoría',
+                onPressed: onAudit,
+              ),
+            ],
+          ),
+        ),
       ],
     );
     return Container(
