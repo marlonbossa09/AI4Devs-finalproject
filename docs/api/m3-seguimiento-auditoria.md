@@ -3,9 +3,11 @@
 | Campo | Contenido |
 |---|---|
 | **Estado** | `[PROPUESTO]`, pendiente de revisión |
-| **Versión** | 0.8 |
-| **Fecha** | 2026-11-09 |
+| **Versión** | 0.9 |
+| **Fecha** | 2026-11-11 |
 | **Convenciones** | `docs/api/convenciones.md` |
+
+**Estado de la implementación (cierre técnico de M3, 2026-11-11).** M3-01 a M3-07 están implementados y verificados de extremo a extremo (FastAPI, PostgreSQL y Flutter). M3-07 solo para la persona propietaria: el acceso del supervisor (CA-111) y la visibilidad histórica por equipo (RA-10) dependen de M4. Los rechazos por recurso ajeno responden 404 `RECURSO_NO_DISPONIBLE` (convenciones 3.1) y los métodos no admitidos, 405 `METODO_NO_PERMITIDO` con la cabecera `Allow` (PA-30, implementado en M1-T0). Todos los instantes de la API son ISO 8601 en UTC.
 
 Todas las operaciones de escritura actúan sobre registros propios (RN-23). Ni el supervisor puede reabrir ni corregir bitácoras ajenas (CA-101, CA-107). La continuidad de una actividad se registra con M2-05 (selección explícita de la actividad). HU-3.5 (auditar las modificaciones de jornadas pasadas) no tiene operación propia: es un comportamiento transversal de las operaciones que modifican, descrito en cada contrato.
 
@@ -80,7 +82,7 @@ División técnica del catálogo: el resumen se corrige con M2-02 (con la bitác
 | **Validaciones** | La actividad es mía, está Completada y no está marcada por error. **La finalización relevante es el último avance del orden laboral completo, que es el que determina el estado actual** (decisión aprobada); F es su fecha laboral. La fecha no es anterior a F (CA-188), puede ser la misma F con un momento de registro posterior (CA-187), y no es futura (CA-189). El estado es uno de los tres permitidos; Completada, o un valor fuera de los cuatro, se rechaza con `ESTADO_INVALIDO`. Bloqueada exige motivo (CA-128, CA-270, CA-271). Descripción no vacía (CA-129). La reactivación es un avance de la secuencia, posterior al que la completó, y puede registrarse en una jornada pasada posterior a F (CA-126, CA-192). La actividad conserva identidad, planificación original y avances (CA-191). La bitácora de la `fecha_laboral` de la reactivación debe estar abierta (D-04) y se crea si no existe (D-01); no se exige reabrir la jornada de la finalización ni otras anteriores, porque reactivar es una ejecución nueva. Textos (D-03): `descripcion` obligatoria; `motivo_bloqueo` obligatorio si Bloqueada; máximos configurables |
 | **Autorización** | Propietaria (CA-127) |
 | **Errores** | `ACTIVIDAD_NO_COMPLETADA` · `ESTADO_INVALIDO` · `MOTIVO_BLOQUEO_OBLIGATORIO` · `DESCRIPCION_OBLIGATORIA` · `FECHA_FUTURA_NO_PERMITIDA` · `SECUENCIA_INVALIDA` (fecha anterior a F) · `BITACORA_CERRADA` · `ACTIVIDAD_MARCADA_POR_ERROR` · `RECURSO_NO_DISPONIBLE` · `OPERACION_NO_PERMITIDA` · `ACCESO_DESACTIVADO` · `SIN_PERTENENCIA_VIGENTE`. Además: los errores de idempotencia (convenciones 5.3) y, en campos de texto, `CAMPO_OBLIGATORIO` y `TEXTO_DEMASIADO_LARGO` (convenciones 6.2) |
-| **Auditoría y transacción** | Transacción atómica y serializada por actividad (la actividad se bloquea antes que la bitácora): avance, entrada de auditoría y recálculo del estado actual (CA-125). **Una única entrada por operación**: `reactivacion`, `tipo_objeto` `avance` (el avance de reactivación), autor la persona y `fecha_laboral_registro` la de la reactivación, también si es una jornada pasada; con el estado actual anterior y nuevo y la finalización anterior |
+| **Auditoría y transacción** | Transacción atómica y serializada por actividad (la actividad se bloquea antes que la bitácora): avance, entrada de auditoría y recálculo del estado actual (CA-125). **Una única entrada por operación**: `reactivacion`, `tipo_objeto` `avance` (el avance de reactivación), autor la persona y `fecha_laboral_registro` la de la reactivación, también si es una jornada pasada; con el estado actual anterior y nuevo y la finalización anterior. La entrada se consulta con M3-07 sobre el avance de reactivación (`tipo_objeto` `avance`), no sobre la actividad |
 | **Criterios vinculados** | CA-124, CA-125, CA-126, CA-127, CA-128, CA-129, CA-187, CA-188, CA-189, CA-190, CA-191, CA-192, CA-269, CA-270, CA-271 |
 | **Decisiones pendientes** | D-02, D-03 y T-04 (confirmadas o aceptadas) |
 

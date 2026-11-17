@@ -7,7 +7,7 @@
 | **Fecha** | 2026-11-06 |
 | **Fuente** | `docs/backlog/` (historias y criterios), `docs/api/` (contratos), `docs/modelo-datos/modelo-datos.md`, `docs/arquitectura/` |
 
-Los tickets están organizados por capa: [base de datos](base-de-datos.md), [backend](backend.md) y [frontend](frontend.md). Son 34 tickets para las cinco funcionalidades del MVP. Cada ticket agrupa los criterios de aceptación por historia; **no hay un ticket por criterio**, y las operaciones de un mismo contrato no se repiten en varios tickets. En la fase de documentación no se ha implementado nada.
+Los tickets están organizados por capa: [base de datos](base-de-datos.md), [backend](backend.md) y [frontend](frontend.md). El [plan de implementación de M1](m1-plan-implementacion.md) (M1-T0 a M1-T9) descompone el módulo en incrementos según su estado real en código. Son 34 tickets para las cinco funcionalidades del MVP. Cada ticket agrupa los criterios de aceptación por historia; **no hay un ticket por criterio**, y las operaciones de un mismo contrato no se repiten en varios tickets. En la fase de documentación no se ha implementado nada.
 
 ## Flujo principal de extremo a extremo (FP-1)
 

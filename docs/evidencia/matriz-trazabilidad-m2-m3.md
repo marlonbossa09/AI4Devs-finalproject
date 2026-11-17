@@ -1,12 +1,12 @@
-# SMARTWORK — Matriz de trazabilidad y cobertura: M2 y M3-01/M3-02
+# SMARTWORK — Matriz de trazabilidad y cobertura: M2 y M3
 
 | Campo | Contenido |
 |---|---|
 | **Naturaleza** | Evidencia de la implementación. No define requisitos: los requisitos viven en `docs/` (alcance, PRD, historias y contratos) |
-| **Fecha** | 2026-11-09 |
-| **Alcance** | Contratos M2-01a a M2-08, M3-01 y M3-02, y (T11 a T13) M3-03, M3-05, M3-06 y M3-07, tal como están implementados en la fecha indicada. M3-04 está implementado y verificado, pero su cobertura por criterio se incorpora a esta matriz en el cierre de M3 |
+| **Fecha** | 2026-11-11 (cierre técnico de M3, T14; CA-212 a CA-214 con un traslado oficial, M1-T5) |
+| **Alcance** | Contratos M2-01a a M2-08 y M3-01 a M3-07, tal como están implementados en la fecha indicada. M3-07 solo para la persona propietaria: el acceso del supervisor y la visibilidad histórica son de M4 |
 | **Fuente de los criterios** | `docs/api/m2-bitacoras.md` y `docs/api/m3-seguimiento-auditoria.md` («Criterios vinculados») y las historias de `docs/backlog/` |
-| **Fuera de alcance** | M4 y M5 (y, de momento, la fila por criterio de M3-04): sus criterios no se evalúan aquí, salvo los que los contratos M2/M3-01/02 citan |
+| **Fuera de alcance** | M4 y M5: sus criterios no se evalúan aquí, salvo los que los contratos de M2 y M3 citan |
 
 ## 1. Cómo leerla
 
@@ -18,7 +18,7 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 |---|---|---|
 | **B** | Prueba de backend (`pytest`): HTTP contra la aplicación con **PostgreSQL real** (`smartwork_test`), sin dobles de datos. Se cita `archivo::prueba`, con el nombre abreviado: el prefijo identifica la prueba | Sí (API y base) |
 | **F** | Prueba de Flutter (`flutter test`) con un repositorio **en memoria** que imita al servidor. Verifica la pantalla y sus reglas, no la integración | **No**: es simulada |
-| **R-INT** | Verificación integral: FastAPI y PostgreSQL reales en una instalación desechable, incluido el reinicio del servidor | Sí |
+| **R-INT** | Verificación integral: FastAPI y PostgreSQL reales en una instalación desechable (en T14, una base nueva creada con `alembic upgrade head` desde cero y la semilla de desarrollo), incluidas peticiones simultáneas reales y, en T9, el reinicio del servidor. En M1-T5, además, la provisión oficial por la CLI como procesos reales y un servidor uvicorn en otro proceso con el reloj de la aplicación de prueba (ver «Recorrido de M1-T5») | Sí |
 | **R-UI** | Recorrido en Chrome real (escritorio y móvil) contra FastAPI y PostgreSQL, con capturas revisadas, durante el desarrollo y la verificación | Sí |
 
 **Estados**
@@ -31,29 +31,34 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 
 ## 2. Resumen
 
-113 criterios distintos, 142 filas (un criterio aparece en cada contrato que lo cita).
+153 criterios distintos, 211 filas (un criterio aparece en cada contrato que lo cita, y las filas sin criterio propio recogen pruebas de validación, idempotencia, atomicidad y concurrencia).
 
 | Estado | Filas |
 |---|---|
-| Implementado y probado | 124 |
-| Parcial | 9 |
-| No implementado | 4 |
-| Bloqueado por otro módulo | 5 |
+| Implementado y probado | 208 |
+| Parcial | 2 |
+| No implementado | 0 |
+| Bloqueado por otro módulo | 1 |
 | Pendiente de decisión | 0 |
 
-| Contrato | Criterios | Implementado y probado | Parcial | Bloqueado |
-|---|---|---|---|---|
-| M2-01a — Consultar mi bitácora de una fecha | 7 | 6 | 1 | 0 |
-| M2-01b — Abrir mi bitácora de una fecha | 11 | 11 | 0 | 0 |
-| M2-02 — Guardar el resumen libre | 9 | 9 | 0 | 0 |
-| M2-03 — Planificar una actividad nueva | 9 | 9 | 0 | 0 |
-| M2-04 — Planificar la continuación de una actividad | 10 | 9 | 0 | 1 |
-| M2-05 — Registrar un avance | 35 | 32 | 2 | 1 |
-| M2-06 — Registrar una actividad no planificada | 9 | 9 | 0 | 0 |
-| M2-07 — Consultar una actividad propia | 25 | 18 | 4 | 3 |
-| M2-08 — Listar mis actividades | 4 | 3 | 1 | 0 |
-| M3-01 — Cerrar mi jornada | 13 | 12 | 1 | 0 |
-| M3-02 — Reabrir mi bitácora cerrada | 6 | 6 | 0 | 0 |
+| Contrato | Criterios | Filas | Implementado y probado | Parcial | Bloqueado |
+|---|---|---|---|---|---|
+| M2-01a — Consultar mi bitácora de una fecha | 7 | 7 | 7 | 0 | 0 |
+| M2-01b — Abrir mi bitácora de una fecha | 11 | 11 | 11 | 0 | 0 |
+| M2-02 — Guardar el resumen libre | 9 | 9 | 9 | 0 | 0 |
+| M2-03 — Planificar una actividad nueva | 9 | 9 | 9 | 0 | 0 |
+| M2-04 — Planificar la continuación de una actividad | 10 | 10 | 10 | 0 | 0 |
+| M2-05 — Registrar un avance | 35 | 35 | 34 | 1 | 0 |
+| M2-06 — Registrar una actividad no planificada | 9 | 9 | 9 | 0 | 0 |
+| M2-07 — Consultar una actividad propia | 25 | 25 | 24 | 1 | 0 |
+| M2-08 — Listar mis actividades | 4 | 4 | 4 | 0 | 0 |
+| M3-01 — Cerrar mi jornada | 13 | 13 | 13 | 0 | 0 |
+| M3-02 — Reabrir mi bitácora cerrada | 6 | 6 | 6 | 0 | 0 |
+| M3-04 — Reactivar una actividad Completada | 15 | 21 | 21 | 0 | 0 |
+| M3-05 — Marcar una actividad como registrada por error | 10 | 11 | 11 | 0 | 0 |
+| M3-06 — Revertir la marca de error | 3 | 5 | 5 | 0 | 0 |
+| M3-07 — Consultar la auditoría de un registro | 15 | 18 | 17 | 0 | 1 |
+| M3-03 — Corregir un avance ya registrado | 18 | 18 | 18 | 0 | 0 |
 
 ## 3. Matriz por contrato
 
@@ -136,7 +141,7 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 | CA-185 | El estado actual es el del último avance | B actividades::las_continuaciones_planificadas_se_listan_aparte_y_no_forman_parte_de_la_secuencia | Implementado y probado |  |
 | CA-186 | Sin avances sigue Pendiente | B actividades::las_continuaciones_planificadas_se_listan_aparte…; continuaciones::la_continuacion_no_forma_parte… | Implementado y probado |  |
 | CA-209 | Una Completada no se continúa sin reactivarla | B continuaciones::una_actividad_completada_no_se_continua_sin_reactivarla · R-INT | Implementado y probado |  |
-| CA-210 | Una reactivada sí se continúa | — | Bloqueado por otro módulo | Depende de M3-04 (reactivación), no implementada. Hoy una Completada siempre se rechaza. |
+| CA-210 | Una reactivada sí se continúa | B reactivacion::despues_de_reactivar_se_puede_planificar_su_continuacion; continuaciones::una_actividad_completada_no_se_continua_sin_reactivarla | Implementado y probado | Con la reactivación real de M3-04: una Completada se rechaza y, reactivada, admite continuación. |
 
 ### M2-05 — Registrar un avance
 
@@ -174,9 +179,9 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 | CA-204 | Se inserta en su posición y se audita | B avances::un_avance_retroactivo_sobre_una_actividad_completada_se_audita | Implementado y probado |  |
 | CA-205 | El estado actual sigue Completada | B secuencia::el_retroactivo_anterior_a_la_finalizacion_deja_la_actividad_completada | Implementado y probado |  |
 | CA-206 | Misma fecha tras la finalización no se admite | B secuencia::un_avance_de_la_misma_fecha_registrado_despues_de_la_finalizacion…; avances | Implementado y probado |  |
-| CA-207 | Entre una finalización y su reactivación no se admite | B secuencia::no_se_admite_un_avance_entre_una_finalizacion_y_su_reactivacion | Parcial | Regla de dominio probada con una reactivación representada en los datos; no existe el flujo real de reactivar (M3-04). |
+| CA-207 | Entre una finalización y su reactivación no se admite | B secuencia::no_se_admite_un_avance_entre_una_finalizacion_y_su_reactivacion; reactivacion::sin_reactivar_no_se_admite_un_avance_entre_una_finalizacion_y_su_reactivacion · R-INT | Implementado y probado | Con el flujo real de reactivar (M3-04). |
 | CA-208 | No es posible sobre una Completada ajena | B avances::un_avance_retroactivo_sobre_una_actividad_completada_ajena_tampoco_es_posible | Implementado y probado |  |
-| CA-213 | Registrar en el equipo nuevo no crea otra actividad | — | Bloqueado por otro módulo | Requiere el traslado de equipo de M1 (no implementado). La propietaria es una persona, no un equipo (modelo), y ningún avance consulta el equipo. |
+| CA-213 | Registrar en el equipo nuevo no crea otra actividad | B: `test_traslado_e2e.py`::ca213_un_avance_registrado_en_u_no_crea_otra_actividad y ca213_el_avance_en_u_se_valida_con_las_mismas_reglas · R-INT M1-T5 (servidor real, CLI real) · R-UI M1-T5 (cliente Flutter real) | Implementado y probado | M1-T5, con un traslado oficial de M1-05: la actividad iniciada en T recibe en U un avance sobre la misma actividad (una sola fila de actividad, una sola en el listado). El avance se valida con las reglas de siempre (estado, motivo, fecha no futura, cobertura). |
 | CA-284 | Una jornada cerrada no admite avances | B cierre_reapertura::en_una_jornada_cerrada_no_se_escribe_contenido_sin_reabrirla; test una_escritura_que_esperaba_al_cierre_ve_la_jornada_cerrada · F closed_day_actions · R-INT · R-UI | Implementado y probado |  |
 | CA-293 | La primera escritura efectiva en una jornada pasada se audita | B avances::un_avance_en_una_jornada_pasada_deja_una_unica_entrada… | Implementado y probado |  |
 
@@ -223,10 +228,10 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 | CA-121 | Una marcada por error no se borra | B actividades::una_actividad_marcada_por_error_sigue_siendo_consultable; marca_error::marcar_no_borra_ni_modifica_ningun_registro; test_db_marca_error (sin permiso de borrado) · R-INT | Implementado y probado | La marca es lógica: el estado no cambia y no se borra ninguna fila. |
 | CA-185 | El estado no depende de la continuación | B actividades::las_continuaciones_planificadas_se_listan_aparte… | Implementado y probado |  |
 | CA-186 | Con continuación y sin avances: Pendiente | B actividades::las_continuaciones_planificadas_se_listan_aparte…; continuaciones | Implementado y probado |  |
-| CA-191 | Una reactivada sigue siendo la misma actividad | — | Bloqueado por otro módulo | Requiere M3-04. Toda actividad conserva hoy su identidad, planificación y avances (CA-265, CA-39). |
+| CA-191 | Una reactivada sigue siendo la misma actividad | B reactivacion::la_actividad_conserva_su_identidad_su_planificacion_y_sus_avances; el_detalle_y_el_listado_reflejan_la_reactivacion · R-INT · R-UI | Implementado y probado | Con la reactivación real (M3-04); además CA-265 y CA-39. |
 | CA-265 | El título es el mismo en todas las jornadas | B actividades::la_secuencia_de_tres_jornadas_muestra_tres_avances_y_una_sola_actividad (título inmutable por disparador) | Implementado y probado |  |
-| CA-212 | Una actividad sigue siendo de su propietaria al cambiar de equipo | — | Bloqueado por otro módulo | Requiere el cambio de pertenencia de M1. El modelo no liga la actividad al equipo. |
-| CA-214 | El historial muestra los avances de ambos equipos | — | Bloqueado por otro módulo | Requiere el cambio de pertenencia de M1; no hay prueba con un traslado real. |
+| CA-212 | Una actividad sigue siendo de su propietaria al cambiar de equipo | B: `test_traslado_e2e.py`::ca212_la_actividad_iniciada_en_t_sigue_siendo_la_misma y ca212_el_equipo_historico_de_la_actividad_sigue_siendo_t · R-INT M1-T5 (servidor real, CLI real) · R-UI M1-T5 (cliente Flutter real) | Implementado y probado | M1-T5: tras el traslado efectivo la actividad conserva su identidad, su propietaria y su jornada de origen (del equipo T por su fecha); el traslado no reescribió ninguna fila de M2 ni de M3. |
+| CA-214 | El historial muestra los avances de ambos equipos | B: `test_traslado_e2e.py`::ca214_la_propietaria_ve_en_u_todos_los_avances y ca214_la_actividad_aparece_una_sola_vez_en_el_listado · R-INT M1-T5 (servidor real, CLI real) · R-UI M1-T5 (cliente Flutter real) | Implementado y probado | M1-T5: la propietaria ve, desde U, los avances de T y los de U en el orden laboral, con su fecha laboral (distinta de la real) y el estado actual derivado; el cliente Flutter lo muestra en «Historial de avances». |
 
 ### M2-08 — Listar mis actividades
 
@@ -272,6 +277,34 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 | CA-109 | El motivo consta en la auditoría | B cierre_reapertura::reabre_una_bitacora_cerrada_indicando_un_motivo · R-INT | Implementado y probado |  |
 | CA-266 | Ciclos reconstruibles | B cierre_reapertura::los_ciclos_de_cierre_y_reapertura_se_reconstruyen_desde_la_auditoria | Implementado y probado |  |
 
+### M3-04 — Reactivar una actividad Completada
+
+**Componente:** `POST /mi/actividades/{id}/reactivacion` · acción «Reactivar» del detalle de la actividad (`ReactivationPage`, formulario con estado, descripción, motivo y fecha laboral)
+
+| Criterio | Qué exige | Prueba | Estado | Nota |
+|---|---|---|---|---|
+| CA-124 | Reactivar una Completada con descripción: la misma actividad pasa a otro estado y no se crea otra | B reactivacion::reactiva_hacia_los_tres_estados_permitidos; la_actividad_conserva_su_identidad_su_planificacion_y_sus_avances · F reactivation_form · R-INT · R-UI | Implementado y probado |  |
+| CA-125 | Una reactivación completada consta en la auditoría | B reactivacion::deja_una_unica_entrada_de_auditoria_con_el_autor_el_objeto_y_la_fecha_correctos; una_reactivacion_en_hoy_tambien_se_audita; la_persistencia_es_coherente_en_la_base · R-INT | Implementado y probado | Una entrada `reactivacion` sobre el avance, con el estado actual anterior y nuevo y la finalización anterior. Se consulta con M3-07. |
+| CA-126 | La reactivación es un avance de la secuencia, posterior al que completó | B reactivacion::la_reactivacion_es_un_avance_posterior_a_la_finalizacion_y_la_historia_se_conserva; la_finalizacion_relevante_es_la_del_ultimo_avance_del_orden_laboral · R-INT · R-UI | Implementado y probado | La finalización relevante es el último avance del orden laboral completo (decisión aprobada). |
+| CA-127 | La actividad Completada de otra persona no se reactiva | B reactivacion::la_actividad_completada_de_otra_persona_no_se_reactiva; un_supervisor_del_mismo_equipo_tampoco_la_reactiva; la_visibilidad_se_evalua_antes_que_el_cuerpo · R-INT | Implementado y probado | 404 indistinguible de una inexistente (T-01). |
+| CA-128 | Bloqueada sin motivo no se permite | B reactivacion::bloqueada_sin_motivo_no_se_permite · F reactivation_form, reactivation_rules · R-UI | Implementado y probado |  |
+| CA-129 | Sin descripción no vacía no se permite | B reactivacion::sin_descripcion_no_se_permite · F reactivation_form · R-UI | Implementado y probado |  |
+| CA-187 | La misma fecha F de la finalización se acepta, con un momento posterior | B reactivacion::la_misma_fecha_de_la_finalizacion_se_acepta_y_queda_despues_de_ella | Implementado y probado |  |
+| CA-188 | Una fecha anterior a F no se permite | B reactivacion::una_fecha_anterior_a_la_finalizacion_no_se_permite · F reactivation_rules | Implementado y probado | `SECUENCIA_INVALIDA`. |
+| CA-189 | Una fecha futura no se permite | B reactivacion::una_fecha_futura_no_se_permite · F reactivation_rules | Implementado y probado | `FECHA_FUTURA_NO_PERMITIDA`. |
+| CA-190 | Sin reactivar no se admite un avance posterior a la finalización | B reactivacion::sin_reactivar_no_se_admite_un_avance_entre_una_finalizacion_y_su_reactivacion; avances::una_actividad_completada_no_recibe_avances_posteriores_sin_reactivarla · R-INT | Implementado y probado | `ACTIVIDAD_COMPLETADA`. |
+| CA-191 | Una reactivada sigue siendo la misma actividad | B reactivacion::la_actividad_conserva_su_identidad_su_planificacion_y_sus_avances; el_detalle_y_el_listado_reflejan_la_reactivacion · R-INT · R-UI | Implementado y probado | Identidad, planificación original y avances anteriores. |
+| CA-192 | Reactivar en una jornada pasada posterior a F se acepta y queda auditado | B reactivacion::se_admite_hoy_y_una_jornada_pasada_posterior_a_la_finalizacion_con_una_sola_entrada · R-INT | Implementado y probado | Una sola entrada, con la fecha laboral de la reactivación. |
+| CA-269 | Hacia Pendiente o En progreso se acepta y la finalización anterior se conserva | B reactivacion::reactiva_hacia_los_tres_estados_permitidos; la_finalizacion_anterior_se_conserva_sin_cambios · R-INT | Implementado y probado |  |
+| CA-270 | Hacia Bloqueada sin motivo se rechaza | B reactivacion::bloqueada_sin_motivo_no_se_permite | Implementado y probado |  |
+| CA-271 | Hacia Bloqueada con motivo se acepta y el motivo se conserva | B reactivacion::bloqueada_con_motivo_conserva_el_motivo_en_el_historial · R-UI | Implementado y probado |  |
+| — | Estados y textos | B reactivacion::Completada_no_es_un_estado_de_reactivacion; un_estado_fuera_de_los_cuatro_o_ausente_es_estado_invalido; el_motivo_solo_existe_para_bloqueada; el_maximo_de_texto_se_valida_con_su_valor | Implementado y probado | `ESTADO_INVALIDO`, `MOTIVO_BLOQUEO_OBLIGATORIO`, `DESCRIPCION_OBLIGATORIA`, `TEXTO_DEMASIADO_LARGO`. |
+| — | Actividad no Completada o marcada | B reactivacion::una_actividad_que_no_esta_completada_no_se_reactiva; una_actividad_marcada_por_error_no_se_reactiva · R-INT | Implementado y probado | `ACTIVIDAD_NO_COMPLETADA`, `ACTIVIDAD_MARCADA_POR_ERROR`. |
+| — | Bitácora de la fecha de la reactivación | B reactivacion::si_la_bitacora_de_la_fecha_esta_cerrada_se_rechaza…; no_hace_falta_reabrir_la_jornada_cerrada_de_la_finalizacion; la_bitacora_de_la_fecha_se_crea_en_la_misma_operacion_y_una_sola_vez | Implementado y probado | Solo importa la jornada de la fecha de la reactivación (D-04); se crea si no existe (D-01). |
+| — | Tras reactivar | B reactivacion::tras_reactivar_se_pueden_registrar_avances_y_completar_de_nuevo; un_segundo_ciclo_de_reactivacion_es_valido; la_reactivacion_cuenta_como_actividad_continuada_para_cerrar_la_jornada; despues_de_reactivar_se_puede_planificar_su_continuacion | Implementado y probado | |
+| — | Idempotencia y atomicidad | B reactivacion::repetir_la_misma_peticion_con_la_misma_clave_no_duplica; reutilizar_la_clave_con_otra_peticion_se_rechaza; si_falla_el_guardado_no_queda_ni_el_avance_ni_la_bitacora_ni_la_clave · R-INT | Implementado y probado | |
+| — | Concurrencia | B reactivacion::reactivaciones_simultaneas…; la_misma_reactivacion_simultanea…; una_reactivacion_espera_a_quien_tiene_la_actividad_bloqueada…; una_reactivacion_y_un_avance_simultaneos… · R-INT (8 peticiones simultáneas reales: una sola efectiva) | Implementado y probado | |
+
 ### M3-05 — Marcar una actividad como registrada por error
 
 **Componente:** `POST /mi/actividades/{id}/marca-error` · acción «Marcar como registrada por error» del detalle de la actividad (`ActivityMarkActions`, diálogo con motivo)
@@ -282,7 +315,7 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 | CA-116 | Sin motivo no se permite | B marca_error::sin_motivo_no_se_permite_y_no_cambia_nada · F mark_form (motivo en blanco) · R-UI | Implementado y probado |  |
 | CA-117 | Con avances en jornadas posteriores no se permite | B marca_error::con_avances_en_jornadas_posteriores_a_su_origen_no_procede; test_db_marca_error (disparador) · F mark_rules · R-INT · R-UI | Implementado y probado | La interfaz no ofrece la acción; el servidor y la base la rechazan igualmente. |
 | CA-118 | La de otra persona no se marca | B marca_error::la_actividad_de_otra_persona_no_se_marca_ni_se_revierte; un_supervisor_del_mismo_equipo… · R-INT | Implementado y probado | 404 indistinguible de una inexistente (T-01). |
-| CA-119, CA-120, CA-121 | Fuera de vistas y recuentos; consultable; no se borra | Ver M2-07 y M2-08 | Ver arriba | CA-120 sigue parcial por M3-07. |
+| CA-119, CA-120, CA-121 | Fuera de vistas y recuentos; consultable; no se borra | Ver M2-07, M2-08 y M3-07 | Implementado y probado | CA-120 se prueba en M3-07: la auditoría de una marcada sigue consultable. |
 | CA-287 | Jornada cerrada con dos actividades válidas: se acepta y sigue cerrada | B marca_error::con_otra_actividad_valida_se_marca_sin_reabrir_la_jornada · F mark_form · R-INT | Implementado y probado | No se reabre ni se renueva `modificada_en`. |
 | CA-288 | Única actividad válida de una jornada cerrada: se rechaza sin cambiar nada | B marca_error::si_era_la_unica_actividad_valida…; una_actividad_con_avance_anterior_al_origen… · F mark_form · R-INT · R-UI | Implementado y probado | `MARCA_INVALIDARIA_CIERRE`; la comprobación abarca toda jornada cerrada en la que la actividad cuenta (ver diferencia 12). |
 | CA-289 | Con otra actividad continuada, se acepta | B marca_error::otra_actividad_iniciada_antes_y_continuada_en_la_jornada_la_mantiene_valida | Implementado y probado |  |
@@ -365,34 +398,95 @@ Ninguna se ha resuelto cambiando una regla confirmada. Cada una indica qué hace
 | 1 | **IR-11 frente a CA-78** | Una inserción retroactiva se incorpora a la secuencia sin eliminar ni modificar los avances posteriores; al registrar un avance nuevo solo se mira el avance anterior al punto de inserción, y el estado actual sale del orden laboral completo. No amplía las transiciones permitidas | **Decidido y armonizado** (2026-11-09, PA-27) en IR-11, M2-05 y HU-2.9. **PA-29 resuelta** (opción A): una corrección no debe introducir violaciones nuevas; se aplicará en M3-03 |
 | 2 | **403 frente a 404 según visibilidad** | Todo recurso que no es propio responde 404 `RECURSO_NO_DISPONIBLE`, con el mismo cuerpo que uno inexistente (T-01). `OPERACION_NO_PERMITIDA` (403) no se emite porque aún no hay recursos ajenos visibles | **Provisional, depende de M4**; documentado en `convenciones.md` 3.1 |
 | 3 | **CA-62** | La fecha de modificación existe en la bitácora y en cada avance (columna `modificado_en`, migración 0008) | **Implementado** con M3-03 |
-| 4 | **CA-210** | Una actividad Completada siempre se rechaza al planificar su continuación | **Bloqueado por M3-04** |
-| 5 | **CA-212, CA-213 y CA-214** | Sin prueba con un traslado real. La actividad pertenece a una persona, no a un equipo | **Bloqueado por M1** (cambio de pertenencia) |
+| 4 | **CA-210** | Una actividad Completada se rechaza al planificar su continuación y, una vez reactivada con M3-04, la admite | **Resuelto con M3-04** (T10) |
+| 5 | **CA-212, CA-213 y CA-214** | Probados con un traslado oficial de M1-05 (M1-T5). La actividad pertenece a una persona, no a un equipo | **Implementado y probado** (B, R-INT y R-UI) |
 | 6 | **Fechas laborales anteriores al origen de la actividad** | Se acepta un avance con una fecha cubierta y no futura aunque sea anterior a la jornada de origen de la actividad. No se valida contra `creada_en`, que es una marca técnica de registro y no el inicio laboral | **Provisional** (2026-11-09, PA-28): vinculado a definir el origen laboral de las actividades en M3. No se cambia el código |
 | 7 | **Paginación y formato de respuestas** | El listado devuelve `{"elementos": [...], "siguiente": cursor o null}` con `limite` y `continuar_desde` configurables (convenciones 6.1). Las escrituras devuelven sobres con nombre (`{"bitacora"}`, `{"actividad", "planificacion", "bitacora_creada"}`, `{"avance", "actividad", "bitacora_creada"}`) | **Aprobado** el envoltorio del listado (2026-11-09) y `{"bitacora": …}` y `bitacora_creada`. M2-08 y convenciones 6.1 lo reflejan |
 | 8 | **Resumen omitido o nulo** | Equivale a un resumen vacío y se acepta al guardar; solo impide cerrar (D-03) | **Decidido y mantenido**. Documentado en M2-02 |
 | 9 | **Varias continuaciones en la misma fecha** | Se registran todas si proceden de operaciones distintas (distinta clave); el mismo reintento no duplica | **Aprobado**. Documentado en M2-04 |
 | 10 | **`modificada_en` al cerrar y reabrir** | No cambia: es la fecha de modificación del contenido | **Aprobado**. Documentado en M3-01 |
-| 11 | **Marca de error (M3-05 y M3-06)** | Implementadas (T11). Las pruebas anteriores que preparaban la marca por SQL se adaptaron a estados alcanzables: una actividad con avances posteriores a su origen ya no puede marcarse ni siquiera por SQL | **CA-119, CA-121 y CA-283 implementados**; CA-120 sigue parcial hasta M3-07 |
+| 11 | **Marca de error (M3-05 y M3-06)** | Implementadas (T11). Las pruebas anteriores que preparaban la marca por SQL se adaptaron a estados alcanzables: una actividad con avances posteriores a su origen ya no puede marcarse ni siquiera por SQL | **CA-119, CA-121 y CA-283 implementados**; CA-120, con M3-07 (T13) |
 | 12 | **Alcance de la comprobación de cierre de M3-05** | El contrato la describe sobre la jornada de origen. Como PA-28 admite un avance anterior al origen (que cuenta la actividad como continuada en esa jornada anterior), la comprobación se aplica a **toda jornada cerrada en la que la actividad cuenta** | **Aprobado** (2026-11-09): la comprobación abarca todas las jornadas cerradas cuyas condiciones de cierre dependan de la actividad |
 | 13 | **Respuesta de M3-05 y M3-06** | `{"actividad": …}`, el sobre con nombre que usan las demás respuestas con una actividad; el contrato dice «la Actividad» | **Aprobado** (2026-11-09), con el esquema completo de la entidad |
 | 14 | **Interpretaciones menores de M3-03** | Un `motivo_bloqueo` enviado para un estado distinto de Bloqueada es `SOLICITUD_INVALIDA` (como en M2-05); corregir una reactivación a Completada se rechaza con `SECUENCIA_INVALIDA`; una violación se identifica por el avance y el motivo para compararlas antes y después (PA-29) | **Aprobado** (2026-11-09): identidad estable = avance afectado y tipo de violación; una violación nueva o agravada se rechaza aunque existan otras históricas toleradas |
 | 15 | **Corrección y modificación de jornada pasada** | Corregir un avance de una jornada pasada deja UNA sola entrada `correccion` (no una de corrección y otra de modificación de jornada pasada), como indica IR-35 | **Según el contrato** |
+| 16 | **400 frente a 405, y rechazos de CSRF y de origen** | El servidor responde `400 SOLICITUD_INVALIDA` (sin cabecera `Allow`) a todo error HTTP del marco que no sea 404, incluido un método no admitido en una ruta existente (comprobado con `DELETE`, `PUT`, `PATCH` y `POST` sobre rutas que no los admiten). Una petición de escritura sin token CSRF o con un `Origin` no permitido también da 400, con `detalles` (`csrf_invalido`, `origen_no_permitido`), y no cambia nada. Las convenciones definen 400 como «petición mal formada» y no mencionan 405 ni el código de los rechazos de CSRF | **Decidido (PA-30 `[CONFIRMADO]`, 2026-11-11) e implementado en M1-T0**: un método no admitido en una ruta existente responde 405 `METODO_NO_PERMITIDO` con `Allow`; el 400 para solicitudes inválidas y el rechazo provisional de CSRF u origen se mantienen. La descripción de la columna anterior corresponde al comportamiento previo al ticket. Ninguna regla de negocio se ve afectada |
+| 17 | **Alcance de la auditoría de una actividad frente a la de sus avances** | La consulta es siempre de UN registro: la de una actividad devuelve su alta en jornada pasada, su marca y su reversión; las correcciones y reactivaciones constan en la de cada avance, y los cierres y reaperturas, en la de la bitácora. La interfaz ofrece el enlace de cada una | **Según el contrato** (M3-07, T13); verificado de extremo a extremo en T14 |
+| 18 | **Instante de las entradas de auditoría** | `momento` es el del reloj real al aplicar el cambio (`clock_timestamp()`), no el inicio de la transacción: el orden de la consulta es el de aplicación incluso con operaciones simultáneas. Las entradas anteriores conservan su momento | **Aplicado** en T13; la prueba de seis correcciones simultáneas en T14 las recupera encadenadas |
+| 19 | **UTC en los eventos de auditoría** | Todos los instantes de la API (`momento` de la auditoría, `cerrada_en`, `modificado_en`, valores de auditoría) son ISO 8601 en UTC con `Z`; la base los guarda como `timestamptz`. La interfaz los muestra en la hora local | **Comprobado** en T14 (HTTP y base) |
+| 20 | **403 frente a 404 según la visibilidad** | Se comprobó en T14 con una colaboradora ajena y con la supervisión: la auditoría, la consulta, la corrección, la reactivación, la marca y su reversión de un registro ajeno responden 404 `RECURSO_NO_DISPONIBLE`, con el mismo cuerpo que un registro inexistente. No se emite 403 `OPERACION_NO_PERMITIDA` porque no hay recursos ajenos visibles | **Provisional, depende de M4** (igual que la diferencia 2) |
+| 21 | **Esquema de `smartwork_app` frente al historial de migraciones** | El esquema real (migraciones 0001 a 0008) es idéntico al de una instalación nueva creada con `alembic upgrade head`, salvo dos permisos del esquema `public`: tiene `GRANT ALL … TO smartwork_owner` y conserva el `USAGE` de PUBLIC que las bases de pruebas revocan. Ambos proceden del aprovisionamiento manual del servidor 5432, no de ninguna migración | **Sin efecto funcional; no se ha modificado** (inspección solo de lectura). `smartwork_app` está en la migración **0008** (0001 a 0005 aplicadas el 2026-11-06 y 0006 a 0008 el 2026-11-09, esta vez con un respaldo previo) |
 
-## 5. Criterios que dependen de otros módulos (siguen pendientes)
+## 5. Criterios que dependen de otros módulos o siguen parciales
 
-La cobertura propia de M2 y del cierre y la reapertura es la de las secciones anteriores. Esto es lo que **no** se puede dar por cumplido hasta que exista el módulo indicado:
+M3-01 a M3-07 están implementados. Lo que **no** se puede dar por cumplido hasta que exista el módulo indicado, o por una limitación de la prueba:
 
-| Módulo | Criterios | Qué falta |
+| Módulo o causa | Criterios | Qué falta |
 |---|---|---|
-| **M1** | CA-212, CA-213, CA-214 | El cambio de pertenencia (traslado de equipo) para probar con un caso real que la actividad sigue siendo de su propietaria y conserva su historial |
-| **M3** | CA-210, CA-191 | Reactivación de una actividad Completada (M3-04) |
-| **M3** | CA-111 | La consulta de la auditoría por el supervisor autorizado (M3-07, CA-111) y la autorización histórica por equipo (RA-10) |
-| **M3** | CA-207 | Reactivación real (M3-04): hoy se prueba la regla de dominio con una reactivación representada en los datos |
-| **M3** | PA-28 | Origen laboral de la actividad (hoy: fecha de la bitácora de origen); restricción de avances anteriores, provisional |
+| **M4** | CA-111 (M3-07) | La consulta de la auditoría por el supervisor autorizado del equipo y la visibilidad histórica por equipo (RA-10). Hoy solo consulta la propietaria; la supervisión recibe 404 |
+| **M4** | CA-15 a CA-21, CA-176 a CA-178, CA-216, CA-217, CA-249 (visibilidad histórica) | La política interna está implementada y probada (M1-T1) pero **ningún endpoint la usa**: no se declaran cumplidos hasta que M4 los exponga y se pruebe de extremo a extremo. El traslado real ya existe (M1-05, M1-T3) y la política se ha probado con líneas temporales creadas por esa operación |
 | **M4** | Respuesta 403 frente a 404 | Qué registros ajenos son visibles. Hasta entonces todo recurso ajeno responde 404 |
+| **M2 / M4** | DM-08 (clase «planificación conservada») | CA-262 se cumple en los datos (M1-T4: la planificación posterior a una finalización se conserva con su actividad y su propietaria y sigue consultable mientras la persona tiene pertenencia vigente), pero las vistas de M2 siguen presentando toda planificación como vigente (`planificacion_a_dict`): la clasificación «conservada» no existe en la proyección. No se ha modificado M2; la decisión es de M2 y M4 |
+| **Decisión** | PA-28 | Origen laboral de la actividad (hoy: la fecha de la bitácora de origen); la restricción de avances anteriores al origen es provisional |
+| **Prueba** | CA-76 (M2-05 y M2-07) | Un empate real de fecha y momento no se puede forzar por HTTP: la regla de desempate está probada como regla pura y en el orden de la consulta |
+
+### Recorrido de M1-T5: qué está probado de extremo a extremo y qué no
+
+**Probado de extremo a extremo** (B con PostgreSQL real, la CLI de provisión y la API HTTP; R-INT con un servidor uvicorn en otro proceso; R-UI con el cliente Flutter en Chrome): CA-212, CA-213 y CA-214, y con ellos, desde la nueva pertenencia, la aplicación de FECHA_NO_CUBIERTA y de la fecha no futura, M3-01 (cierre de la jornada de T antes del traslado), M3-02 (reapertura desde U), M3-03 (corrección de un avance de T desde U), M3-07 (auditoría con la fecha laboral de la jornada y a nombre de la propietaria, sin las entradas de provisión, D-11), la autorización antes y después (ninguna otra persona accede: 404 provisional) y el rechazo de operar sin pertenencia vigente (IR-38) con los registros y su propiedad conservados.
+
+**Cómo se vive el día del traslado sin tocar pertenencias por SQL:** el traslado se registra con la orden oficial (`registrar-traslado`, fecha efectiva futura). Las operaciones de M2 y M3 toman «hoy» de una sola función de producción (`politica_acceso.fecha_actual_en`); en las pruebas se sustituye con `monkeypatch` (en el servidor real de R-INT y R-UI, con un arranque de prueba fuera del repositorio que la lee de un archivo). No cambia el reloj del sistema ni el de PostgreSQL (que sigue protegiendo la edición de pertenencias efectivas), ni ningún código de producción. Lo único preparado por SQL es la contraseña de las personas de prueba (el primer acceso, M1-03, no existe).
+
+**Solo a nivel de dominio o de base de datos (no de extremo a extremo):** la política de visibilidad histórica de M1-T1 (quién lee las jornadas de P según el equipo en cada fecha), porque no hay endpoint hasta M4; el enlace de la auditoría con la operación original (`test_enlace_auditoria.py`); y los controles de PostgreSQL sobre la edición de pertenencias (M1-T3 y M1-T4).
+
+**No demostrado** y pendiente de otros módulos: CA-15 a CA-21, CA-176 a CA-178, CA-216, CA-217 y CA-249 como consulta HTTP (M4); el acceso del supervisor (CA-111); y la clase «planificación conservada» de DM-08 en las vistas de M2 y M4 (M2 presenta toda planificación como vigente; no se modificó). Limitación del cliente: el recorrido con el cliente Flutter requiere el servidor de prueba con reloj controlado; el cliente actual no tiene pantalla de provisión ni de visibilidad entre personas, así que no se pudo comprobar la autorización de otras personas desde la interfaz.
+
+### Recorrido de M1-T7: protección frente a intentos fallidos de autenticación
+
+**Fuente:** decisiones de ADR-002 A9 y A11 aprobadas el 2026-11-17 (no hay criterios de aceptación nuevos: no se inventaron) y el contrato M1-01a; CA-05 (ninguna respuesta, registro ni informe contiene credenciales en claro), CA-29, CA-255 y CA-259 (sin sesión con acceso desactivado o sin pertenencia) y el contrato de la persona operadora (M1-02a, M1-08). Pruebas (`B`, PostgreSQL real; `R-INT`, uvicorn real en otro proceso; `R-UI`, Flutter):
+
+| Decisión aprobada | Pruebas |
+|---|---|
+| Cinco intentos libres; esperas de 30 s, 1, 2, 4, 8, 16 y 32 min y 1 hora de máximo | `test_control_de_intentos.py` (curva, progresión con reloj controlado), `test_login_intentos_api.py` (progresión HTTP) |
+| Contador por identificador normalizado y origen; olvido a las 24 h; reinicio solo tras una autenticación COMPLETA (contraseña correcta, acceso habilitado y pertenencia vigente; cierre del 2026-11-17) | `test_control_de_intentos.py`, `test_login_intentos_api.py` (variantes de mayúsculas, espacios y Unicode; otro origen no espera) |
+| 429 `DEMASIADAS_SOLICITUDES` y `Retry-After`; credenciales correctas durante la espera; respuestas uniformes | `test_login_intentos_api.py`, `test_login_uniformidad.py` (mismo número de verificaciones y parámetros Argon2; ningún hash durante una espera) |
+| Límites por origen de 30 en 5 minutos y 200 en 1 hora; sin penalizar a una red compartida; sin bloqueos permanentes | `test_control_de_intentos.py`, `test_login_intentos_api.py` |
+| Reserva atómica y concurrencia | `test_control_de_intentos_concurrencia.py` (20 reservas simultáneas: exactamente 5; 50 cuentas desde un origen: exactamente 30; sin interbloqueos; 20 inicios HTTP simultáneos: 5 × 401 y 15 × 429) |
+| HMAC con `AUTH_PEPPER`, sin secretos en contadores, eventos ni registros | `test_login_intentos_api.py` (recorre las tablas y los registros), `test_db_control_de_intentos.py` (restricciones de forma) |
+| Origen: dirección de conexión; proxy solo si es de confianza; cabeceras falsificadas | `test_control_de_intentos.py`, `test_login_intentos_api.py` (DT-07) |
+| Eventos de A11 (seis tipos), separados de la auditoría; retención de 30 días y purga | `test_login_intentos_api.py`, `test_desactivacion_cli.py` (revocación), `test_operador_intentos.py` (purga), `test_db_control_de_intentos.py` (solo anexado, borrado solo pasados 30 días) |
+| Persona operadora: misma curva, contador separado, sin deshabilitarla, sin credenciales | `test_operador_intentos.py` (también como proceso real) |
+| Cierre de M1-T7 (2026-11-17): una contraseña válida sin poder operar no reinicia el contador ni devuelve la reserva de origen y no permite sondeo ilimitado; el reinicio va con la sesión; la auditoría de la desactivación es siempre efectiva y el evento de revocación solo cuenta sesiones reales, sin identificadores ni secretos | `test_login_intentos_api.py`, `test_control_de_intentos_concurrencia.py`, `test_desactivacion_cli.py` |
+| Sesión de 24 h y 1 h de inactividad | `test_control_de_intentos.py` (valores por defecto sin `.env`), `test_login_intentos_api.py` |
+| Migración 0013: privilegios mínimos, instalación desde cero, datos existentes y reversión | `test_db_control_de_intentos.py` |
+| CSRF, `Origin`, cookies y sesiones sin cambios; compatibilidad con M1-T6 | `test_login_intentos_api.py`, y las suites de M1-T6 sin cambios |
+| Flutter: `Retry-After`, mensaje fijo, cuenta atrás, envío deshabilitado y rehabilitado, nueva espera, móvil y escritorio | `login_wait_test.dart` |
+
+**Resultados:** 2619 superadas y 1 omitida a propósito (193 más que al cerrar M1-T6) en el backend y 638 superadas y `flutter analyze` sin incidencias en Flutter. Mutaciones: backend 71 de 71 muertas tras reforzar las pruebas (56 sobre el código y 15 sobre la migración; en la primera pasada sobrevivieron 7 de 70, que revelaron huecos reales y se corrigieron: el olvido del contador a las 24 horas oculto por la limpieza, la comprobación vacua de «transacción abierta durante Argon2», `Retry-After` sin exponer por CORS, el dominio de la clave de la persona operadora, la actualización de un evento antiguo y una mutación mal planteada); Flutter 23 de 24 muertas; la superviviente es defensiva y equivalente (ninguna acción de la interfaz puede iniciar una espera nueva mientras otra sigue activa: el envío está deshabilitado y protegido); en la primera pasada sobrevivieron 3 y revelaron que faltaba probar el envío con Enter durante la espera y que un `Retry-After` de otro error no debe iniciar una espera. Evidencia real: servidor uvicorn real en otro proceso y la CLI como procesos reales sobre una base desechable creada con `alembic upgrade head`: 47 comprobaciones correctas (fallo cerrado sin `AUTH_PEPPER`; cinco intentos libres y 429 con `Retry-After`; uniformidad entre cuenta existente e inexistente; espera real de 30 s y reinicio; límite por origen de 30 en 5 minutos y red compartida; cabeceras falsificadas y proxy de confianza; eventos y ausencia de secretos; 30 intentos simultáneos contra una cuenta: exactamente 5 × 401 y 25 × 429; carreras con la desactivación del acceso sin sesiones residuales; progresión real de la espera con la curva configurada; persona operadora; purga y retención; privilegios por rol). Chrome: Chrome real (protocolo CDP, sin interfaz) con el cliente compilado, escritorio y móvil emulado: 30 comprobaciones correctas (mensaje uniforme en los cinco intentos libres, 429 con la cuenta atrás visible, envío deshabilitado, nueva espera tras recargar con la restricción aún vigente, rehabilitación al terminar y acceso con la contraseña correcta).
+
+**No demostrado, pendiente o fuera de M1-T7:** el tope agregado de 100 fallos con deshabilitación de la contraseña (decisión diferida: **no se declara resuelto el requisito agregado** por el contador por cuenta y origen); la resistencia a ataques distribuidos y a la rotación de direcciones IPv6; el funcionamiento detrás de un balanceador real de AWS ECS (DT-07); la programación de la purga de eventos (no hay planificador); PA-06 general; la recuperación de contraseña (M1-T8); y la medición de tiempos de respuesta (se comprueba la estructura que los hace comparables, no tiempos de pared).
+
+### Recorrido de M1-T8: primer acceso y recuperación con código (la matriz completa de M1 está en `docs/evidencia/matriz-trazabilidad-m1.md`, M1-T9)
+
+**Fuente:** decisiones de ADR-002 (A3, A4, A5, A6, A8, D1 a D10) aprobadas el 2026-11-17 y los contratos M1-03a, M1-03b, M1-09a y M1-09b; criterios CA-23, CA-24, CA-25, CA-27 y CA-254, y CA-05 (ninguna respuesta, registro ni informe contiene credenciales en claro). No se crearon criterios nuevos. **Desde M1-T9 la matriz completa de M1 es `docs/evidencia/matriz-trazabilidad-m1.md`**; esta sección se conserva como registro de M1-T8.
+
+| Criterio o decisión | Componente | Pruebas | Estado |
+|---|---|---|---|
+| CA-23: el primer acceso entregado permite acceder | `POST /acceso/primer-acceso` (no abre sesión; la persona inicia sesión después) y pantalla de primer acceso | B: `test_canje_primer_acceso.py`::el_primer_acceso_establece_la_contrasena_consume_el_codigo_y_no_abre_sesion, despues_del_canje_la_persona_inicia_sesion_con_su_contrasena · F: `access_code_test.dart` · R-UI (Chrome, T8.5) | Implementado y probado |
+| CA-24: un primer acceso ya utilizado no se permite de nuevo | función `canjear_codigo_primer_acceso` | B: `test_canje_primer_acceso.py`::despues_del_canje_la_persona_inicia_sesion_con_su_contrasena_y_el_codigo_no_se_reutiliza, dos_o_mas_canjes_simultaneos…, todas_las_causas_de_un_codigo_no_valido…; `test_db_codigo_unico.py` (uso único) | Implementado y probado |
+| CA-25: el código identifica solo a esa persona | ídem | B: `test_canje_primer_acceso.py`::ca25_el_codigo_de_una_persona_no_da_acceso_como_otra | Implementado y probado |
+| CA-27: recuperar el acceso con el procedimiento | `emitir-codigo-recuperacion` (CLI), `POST /acceso/recuperacion` y pantalla | B: `test_canje_recuperacion.py`::la_recuperacion_cambia_la_contrasena_revoca_todas_las_sesiones… · F: `access_code_test.dart` · R-UI | Implementado y probado |
+| CA-254: un acceso desactivado sigue desactivado | función `canjear_codigo_recuperacion` | B: `test_canje_recuperacion.py`::un_acceso_desactivado_no_se_reactiva…, la_desactivacion_que_toma_el_bloqueo_primero… | Implementado y probado |
+| A8: longitud mínima de 10 sin composición; **contraseñas comprometidas con Pwned Passwords local** (fuente elegida el 2026-11-17) | `app/seguridad/contrasenas_comprometidas.py` y `scripts/lista_contrasenas.py` | B: `test_contrasenas_comprometidas.py` (formato oficial por rangos, instalación completa y procedencia, subconjunto rechazado, rechazo en primer acceso y en recuperación sin consumir el código ni dar un oráculo, contraseña no incluida y cuenta 0 aceptadas, sin comunicación externa), con instalaciones SINTÉTICAS completas de 16 rangos, y un rango real de Pwned Passwords comprobado de forma puntual (no automatizada) | **Implementado y probado; efectivo solo con el conjunto (≈ 81 GB) instalado en el despliegue: NO instalado en desarrollo** (ADR-002, M1-T8.6; `docs/operacion/pwned-passwords.md`) |
+| D6: retención de 30 días y purga de códigos terminados | `purgar-codigos` (CLI) y migración 0017 | B: `test_purga_de_codigos.py` (límites de 30 días, pendientes vigentes, reloj de PostgreSQL, repetible, sin tocar la auditoría, sin contenido en la salida, privilegios mínimos, migración reversible); `test_db_codigo_unico.py` (disparador de retención) | Implementado y probado |
+| D2, D7, D9: función `SECURITY DEFINER` blindada, política antes del código, límites de M1-T7 | migraciones 0015 y 0016 | B: `test_canje_primer_acceso.py`, `test_canje_recuperacion.py` (blindaje, atomicidad, concurrencia, carrera con la desactivación); `test_control_de_intentos*.py` | Implementado y probado |
+| CA-05 (credenciales y códigos no aparecen en respuestas, registros ni auditoría) | API, CLI, base y Flutter | B: `test_canje_primer_acceso.py`::ni_las_respuestas_ni_los_registros…; `test_contrasenas_comprometidas.py` (registros y auditoría; **un fallo interno ya no registra el hash de la contraseña ni el HMAC del código**, M1-T8.6) · F: sin almacenamiento persistente (revisión del código, T8.6) | Implementado y probado |
+
+**No demostrado, pendiente o fuera de M1-T8:** la cobertura real de Pwned Passwords con el conjunto completo instalado (no se instaló en desarrollo) y su frecuencia de actualización; la programación periódica de las purgas (no hay planificador, DT-07); la reactivación del acceso (M1-10); un control de dos personas para la verificación de identidad (A5); la comprobación con lectores de pantalla reales; y la evaluación de seguridad del despliegue.
 
 ## 6. Qué no demuestra esta matriz
 
 - Que las pantallas se comporten igual en todos los navegadores: el recorrido real fue con Chrome. No hay pruebas automáticas de interfaz en un navegador.
 - Rendimiento, volumen ni límites de carga (PA-13).
 - Seguridad de un despliegue: ver las limitaciones en el README (sección 2.5).
+- Que la supervisión pueda consultar la auditoría ajena: es de M4.
+- Que `smartwork_app` se comporte igual que una instalación nueva con datos reales: se comprobó su esquema y migración (solo lectura), no se ejecutaron pruebas destructivas ni escrituras de verificación sobre ella.

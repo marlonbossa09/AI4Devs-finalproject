@@ -3,8 +3,8 @@
 | Campo | Valor |
 |---|---|
 | **Estado** | `[PROPUESTO]`, pendiente de revisión por la persona responsable del producto |
-| **Versión** | 0.5 |
-| **Fecha** | 2026-11-06 |
+| **Versión** | 0.8 |
+| **Fecha** | 2026-11-11 |
 | **Base** | `docs/producto/alcance-mvp.md` (0.12), `docs/producto/prd.md` (0.10), `docs/backlog/indice.md` (0.7), `docs/modelo-datos/modelo-datos.md` (0.5) y ADR-001 |
 | **Alcance** | Convenciones comunes a los contratos de M2, M3 y M4 |
 | **Decisiones aprobadas incorporadas** | T-01, T-03, D-01, D-04, D-04b, D-06, D-09 y D-11 (sección 8 y `indice.md`) |
@@ -48,7 +48,7 @@ Estas convenciones no son requisitos del producto. Son propuestas técnicas para
 | La persona no puede operar (acceso desactivado o sin pertenencia vigente) | `ACCESO_DESACTIVADO` o `SIN_PERTENENCIA_VIGENTE` (403), que solo informan de su propia situación |
 | Un listado filtrado por persona o fechas | Devuelve solo lo autorizado. Un filtro sin resultados autorizados da una lista vacía y no un error |
 
-**Aplicación en la implementación actual (provisional, pendiente de M4).** Mientras no exista M4, ninguna persona puede conocer registros de otra, ni siquiera de su equipo: todo recurso que no es propio es «no visible» y responde `RECURSO_NO_DISPONIBLE` (404). Por eso `OPERACION_NO_PERMITIDA` (403) está definido en los contratos pero la implementación todavía no lo emite. Cuando M4 defina qué registros de un equipo son legibles, las operaciones de M2 y M3 sobre un recurso visible pero ajeno pasarán a responder 403, sin cambiar la respuesta 404 para lo que siga siendo invisible.
+**Aplicación en la implementación actual (provisional, pendiente de M4).** Mientras no exista M4, ninguna persona puede conocer registros de otra, ni siquiera de su equipo: todo recurso que no es propio es «no visible» y responde `RECURSO_NO_DISPONIBLE` (404). Por eso `OPERACION_NO_PERMITIDA` (403) está definido en los contratos pero la implementación todavía no lo emite. Cuando M4 defina qué registros de un equipo son legibles, las operaciones de M2 y M3 sobre un recurso visible pero ajeno pasarán a responder 403, sin cambiar la respuesta 404 para lo que siga siendo invisible. Desde M1-T1 existe la política interna de visibilidad histórica (`app/compartido/visibilidad.py`), que decide con un motivo interno y **no** produce respuestas HTTP: cuando M4 la use, cada operación decidirá, según estas convenciones y su contrato, cuándo un resultado interno se convierte en 404 o en 403. Hoy ninguna operación la usa.
 
 Los mensajes de error nunca incluyen títulos, descripciones, motivos, nombres de equipo ni contenido de otros registros. No se garantiza la igualdad de tiempos de respuesta: un canal de temporización entre «inexistente» y «no autorizado» queda como riesgo residual para el diseño de seguridad.
 
@@ -81,9 +81,12 @@ Estructura: `codigo` (cadena estable), `mensaje` (texto para personas) y `detall
 | 401 | Sin persona identificada | RN-61; el mecanismo está en PA-12 |
 | 403 | Prohibido | La persona no puede operar, u operación prohibida sobre un recurso visible |
 | 404 | No disponible | Recurso inexistente o no autorizado, de forma indistinguible (T-01) |
+| 405 | Método no admitido | Una ruta existente que no admite el método de la petición; la respuesta incluye la cabecera `Allow` con los métodos admitidos (PA-30, aprobado el 2026-11-11; implementado en M1-T0) |
 | 409 | Conflicto con el **estado actual** del recurso o con otra operación en curso | Bitácora cerrada, actividad Completada o marcada, secuencia inválida, condiciones de cierre |
 | 422 | Petición bien formada que incumple una regla sobre **sus propios datos** | Fechas, estados, textos obligatorios o demasiado largos, motivos |
-| 429, 500, 503 | Limitación de solicitudes (reservado), fallo interno, servicio no disponible | — |
+| 429, 500, 503 | Limitación de solicitudes (emitido solo por el inicio de sesión desde M1-T7), fallo interno, servicio no disponible | — |
+
+**Métodos no admitidos y rechazos de CSRF y de origen (PA-30 `[CONFIRMADO]` el 2026-11-11, implementado en M1-T0).** Un método no admitido en una ruta que existe responde `405 METODO_NO_PERMITIDO` con la cabecera `Allow`, que lista **todos** los métodos que la API admite para esa ruta, en orden alfabético y con independencia de cómo estén registrados (por ejemplo, `Allow: GET, POST` en `/api/v1/sesion`). El 405 depende solo de la forma de la ruta: no de la sesión, del identificador del recurso ni de que exista, así que no revela nada privado, y se produce antes de la autenticación. Con el cliente web montado en la raíz, una ruta de la API conserva el mismo tratamiento; un fichero del cliente pedido con un método no admitido responde 405 con `Allow: GET, HEAD`. Una ruta de la API que no existe sigue siendo el 404 uniforme y una solicitud inválida (formato, campo desconocido, parámetro no soportado, paginación, falta de la clave de idempotencia) sigue siendo 400. **El rechazo de CSRF y de origen no autorizado queda provisionalmente como estaba**: una escritura con un método admitido, sin token CSRF o con un `Origin` no permitido, responde `400 SOLICITUD_INVALIDA` con `detalles` (`csrf_invalido`, `origen_no_permitido`) y no modifica nada.
 
 | Código | HTTP | Cuándo | Origen |
 |---|---|---|---|
@@ -94,6 +97,7 @@ Estructura: `codigo` (cadena estable), `mensaje` (texto para personas) y `detall
 | `SIN_PERTENENCIA_VIGENTE` | 403 | La persona no tiene pertenencia vigente | RN-97, IR-38 |
 | `OPERACION_NO_PERMITIDA` | 403 | El registro es visible pero la operación no está permitida | RN-23, RN-13 |
 | `RECURSO_NO_DISPONIBLE` | 404 | Inexistente o no autorizado: respuesta idéntica | T-01 |
+| `METODO_NO_PERMITIDO` | 405 | El método HTTP no está admitido en una ruta que existe; la cabecera `Allow` lista los admitidos | PA-30 |
 | `BITACORA_CERRADA` | 409 | Se intenta modificar el contenido de una jornada cerrada sin reabrirla | RN-19; D-04 |
 | `BITACORA_NO_CERRADA` | 409 | Se intenta reabrir una bitácora que no está cerrada | RN-19 |
 | `ACTIVIDAD_COMPLETADA` | 409 | La operación exige reactivar antes la actividad Completada | RN-73, RN-78, RN-79 |
@@ -126,7 +130,7 @@ Estructura: `codigo` (cadena estable), `mensaje` (texto para personas) y `detall
 | `OPERADOR_NO_AUTORIZADO` | — | La persona operadora no está autorizada para la orden (solo órdenes de provisión) | RN-33; ADR-002 |
 | `INFORME_EXCEDE_LIMITES` | 422 | El informe superaría un límite configurado (período, registros o tamaño); se rechaza antes de generar | ADR-003 |
 | `INFORME_NO_GENERADO` | 503 | El informe no pudo generarse; no se devuelve contenido parcial. Indica si se puede reintentar | RN-58 |
-| `DEMASIADAS_SOLICITUDES` | 429 | Limitación de solicitudes (reservado; la política se define con PA-12 y PA-13) | Técnica |
+| `DEMASIADAS_SOLICITUDES` | 429 | Limitación temporal de intentos. **Hoy lo emiten el inicio de sesión (M1-01a, M1-T7; ADR-002 A9, aprobado el 2026-11-17) y el canje del primer acceso (M1-03b, M1-T8.3)**: lleva la cabecera `Retry-After` (segundos enteros, mínimo 1) y los mismos segundos en `detalles` (`espera_segundos`), con mensaje fijo y sin revelar si el identificador existe. Para el resto de operaciones la política de limitación sigue por definir (PA-12 y PA-13) | Técnica |
 | `ERROR_INTERNO`, `SERVICIO_NO_DISPONIBLE` | 500, 503 | Fallos del servidor | Técnica |
 
 Una operación rechazada no modifica datos ni deja entrada de auditoría (IR-24, RN-93).

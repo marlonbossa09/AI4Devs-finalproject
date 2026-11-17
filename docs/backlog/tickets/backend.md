@@ -22,6 +22,7 @@ Cada ticket implementa uno o varios contratos de [docs/api/](../../api/indice.md
   - Ningún valor de los parámetros configurables aparece fijado en el código.
 
 #### BE-02 — Autorización histórica centralizada
+- **Estado:** parcial. La política interna («equipo en una fecha» y decisión de visibilidad con su predicado SQL) está implementada y probada en M1-T1 (ver [el plan de M1](m1-plan-implementacion.md)); falta usarla en M4 y definir cómo cada operación convierte la decisión en su respuesta pública.
 - **Prioridad:** P0 · **Capa:** Backend
 - **Objetivo:** Un único punto que decide qué ve y qué hace cada persona.
 - **Historias y criterios:** HU-1.4 (CA-15 a CA-21, CA-176 a CA-178, CA-212 a CA-217), RNF-13 (CA-286, CA-291).
@@ -47,6 +48,7 @@ Cada ticket implementa uno o varios contratos de [docs/api/](../../api/indice.md
   - Ninguna respuesta ni registro contiene la contraseña (CA-05).
 
 #### BE-04 — Provisión: personas, equipos y pertenencias
+- **Estado:** implementado. M1-02a, M1-02b, M1-05 (traslado y cambio de rol), M1-06 (finalizar) y M1-07 (cancelar o sustituir) están implementadas como CLI del servidor (M1-T2, M1-T3 y M1-T4, ver [el plan de M1](m1-plan-implementacion.md)).
 - **Prioridad:** P0 · **Capa:** Backend
 - **Objetivo:** Poder crear equipos y personas y gestionar pertenencias sin romper el historial.
 - **Historias y criterios:** HU-1.2 (CA-06 a CA-10, CA-240 a CA-242), HU-1.3 (CA-11 a CA-14, CA-243 a CA-248, CA-278, CA-279), HU-1.5 (CA-22, CA-26, CA-250 a CA-253), HU-1.7 (CA-30, CA-31, CA-257, CA-258, CA-262), CA-09, CA-13.

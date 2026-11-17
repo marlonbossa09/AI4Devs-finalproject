@@ -73,6 +73,7 @@ Cada ticket agrupa criterios de aceptación por historia; no hay un ticket por c
   - Una clave caducada se trata como nueva.
 
 #### DB-06 — Índices y consultas históricas
+- **Estado:** el índice de exclusión existente por persona y fecha basta para «equipo en una fecha» y para el predicado de visibilidad (M1-T1, planes comprobados con 150 000 intervalos). El índice por equipo y fecha se creó en M1-T3 (migración 0010) para la validación de IR-32 de la provisión (consulta por equipo: de 5,7 ms a 0,8 ms con unos 83 000 intervalos); M4-03 podrá reutilizarlo y queda por decidir con sus consultas reales si necesita otro. Quedan por decidir la secuencia de avances y la auditoría por registro.
 - **Prioridad:** P1 · **Capa:** Base de datos
 - **Objetivo:** Hacer eficientes las consultas por equipo histórico, secuencia de avances y vista de supervisión.
 - **Historias y criterios:** HU-1.4 (CA-15 a CA-21, CA-176 a CA-178, CA-212 a CA-217), HU-4.1 a HU-4.4.
