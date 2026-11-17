@@ -553,13 +553,13 @@ def test_consultar_no_escribe_nada_ni_genera_entradas(sesion):
 
 @pytest.mark.parametrize("metodo", ["post", "put", "patch", "delete"])
 def test_la_auditoria_no_admite_ninguna_otra_operacion(sesion, metodo):
-    """Es solo lectura: cualquier otro método se rechaza (la API responde SOLICITUD_INVALIDA a un método no permitido) y
-    no cambia nada."""
+    """Es solo lectura: cualquier otro método se rechaza con 405 y Allow: GET (PA-30) y no cambia nada."""
     cliente, csrf = sesion
     a = planificar_actividad(cliente, csrf, iso(0))
     antes = contar("auditoria")
     r = getattr(cliente, metodo)(f"{API}/auditoria", headers=con_clave(csrf), params={"tipo_objeto": "actividad", "objeto_id": a})
-    assert r.status_code in (400, 405) and r.json()["codigo"] == "SOLICITUD_INVALIDA" and contar("auditoria") == antes
+    assert r.status_code == 405 and r.headers["Allow"] == "GET" and r.json()["codigo"] == "METODO_NO_PERMITIDO"
+    assert contar("auditoria") == antes
 
 
 def test_no_hay_un_listado_global_por_ninguna_ruta_conocida(sesion):

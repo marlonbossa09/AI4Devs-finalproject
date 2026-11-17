@@ -7,6 +7,7 @@ toda la ejecución sin tocar nada.
 """
 
 import os
+import secrets
 
 import pytest
 
@@ -27,10 +28,12 @@ def _preparar_entorno() -> None:
     settings = get_settings()  # en este punto todavía son los valores de desarrollo del .env
     app_url = settings.test_database_url
     owner_url = settings.test_migrations_database_url
-    if not app_url or not owner_url:
-        pytest.exit("Faltan TEST_DATABASE_URL o TEST_MIGRATIONS_DATABASE_URL en backend/.env", 2)
+    provision_url = settings.test_provision_database_url
+    if not app_url or not owner_url or not provision_url:
+        pytest.exit("Faltan TEST_DATABASE_URL, TEST_MIGRATIONS_DATABASE_URL o TEST_PROVISION_DATABASE_URL en backend/.env "
+                    "(el rol de provisión se crea con backend/scripts/provision_rol_de_provision.sql)", 2)
     try:
-        for url in (app_url, owner_url):
+        for url in (app_url, owner_url, provision_url):
             _PUERTO_ESPERADO[url] = validar_url_de_pruebas(url).port
             validar_distinta_de_desarrollo(url, [settings.database_url, settings.migrations_database_url])
     except ErrorDeAislamiento as error:
@@ -38,7 +41,12 @@ def _preparar_entorno() -> None:
     os.environ["APP_ENV"] = "test"
     os.environ["DATABASE_URL"] = app_url
     os.environ["MIGRATIONS_DATABASE_URL"] = owner_url
+    os.environ["PROVISION_DATABASE_URL"] = provision_url
     os.environ["WEB_CLIENT_DIR"] = ""  # las pruebas no dependen de que el cliente esté compilado
+    # Secreto de pruebas para los HMAC del control de intentos (M1-T7): aleatorio en cada ejecución, nunca el de un .env real.
+    os.environ["AUTH_PEPPER"] = secrets.token_hex(32)
+    os.environ["TRUSTED_PROXIES"] = ""
+    os.environ["CODE_PEPPER"] = secrets.token_hex(32)    # secreto de los códigos (M1-T8): distinto del anterior, aleatorio en cada ejecución
     get_settings.cache_clear()
 
 
@@ -55,12 +63,13 @@ from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
-from app.db import get_engine, get_owner_engine  # noqa: E402
+from app.db import get_engine, get_owner_engine, get_provision_engine  # noqa: E402
 
 RAIZ_BACKEND = Path(__file__).resolve().parent.parent
 TABLAS = (
     "auditoria, clave_idempotencia, sesion, identidad, avance, planificacion, actividad, "
-    "bitacora, pertenencia, persona, equipo, organizacion"
+    "bitacora, pertenencia, persona, equipo, organizacion, operador, "
+    "control_de_intentos, control_de_intentos_operador, intento_de_origen, evento_autenticacion, codigo_unico"
 )
 
 
@@ -70,7 +79,8 @@ def esquema():
     todas las migraciones (también comprueba que se pueden revertir)."""
     settings = get_settings()
     try:
-        for motor, url in ((get_engine(), settings.database_url), (get_owner_engine(), settings.migrations_database_url)):
+        for motor, url in ((get_engine(), settings.database_url), (get_owner_engine(), settings.migrations_database_url),
+                           (get_provision_engine(), settings.provision_database_url)):
             with motor.connect() as conexion:
                 validar_conexion(conexion, puerto_esperado=_PUERTO_ESPERADO.get(url))
     except ErrorDeAislamiento as error:
