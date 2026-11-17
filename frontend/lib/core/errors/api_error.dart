@@ -6,6 +6,7 @@ class ApiError implements Exception {
     required this.message,
     this.details = const [],
     this.status,
+    this.retryAfterSeconds,
   });
 
   /// Stable code from the API catalog (e.g. `FECHA_NO_CUBIERTA`), or one of the local codes
@@ -17,11 +18,19 @@ class ApiError implements Exception {
   /// HTTP status, when the server answered.
   final int? status;
 
+  /// Seconds the server asks to wait before trying again (`Retry-After` of a 429, or the same value in
+  /// the details). `null` when the server gave no valid, positive wait.
+  final int? retryAfterSeconds;
+
   static const String network = 'RED';
   static const String unknown = 'ERROR_DESCONOCIDO';
   static const String notSignedIn = 'NO_IDENTIFICADA';
+  static const String tooManyRequests = 'DEMASIADAS_SOLICITUDES';
 
   bool get isNotSignedIn => code == notSignedIn;
+
+  /// A temporary restriction on attempts (429): the client must wait [retryAfterSeconds].
+  bool get isTooManyRequests => code == tooManyRequests;
 
   @override
   String toString() => 'ApiError($code, $status)';

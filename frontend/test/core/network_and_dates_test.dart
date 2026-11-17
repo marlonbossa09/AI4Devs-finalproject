@@ -133,6 +133,10 @@ void main() {
         'BITACORA_NO_CERRADA', 'ACTIVIDAD_COMPLETADA', 'ACTIVIDAD_MARCADA_POR_ERROR',
         'CONDICIONES_DE_CIERRE_NO_CUMPLIDAS', 'FECHA_FUTURA_NO_PERMITIDA', 'FECHA_NO_FUTURA',
         'ESTADO_INVALIDO', 'DESCRIPCION_OBLIGATORIA', 'MOTIVO_BLOQUEO_OBLIGATORIO', 'MOTIVO_OBLIGATORIO',
+        // M1-T7: intentos limitados temporalmente
+        ApiError.tooManyRequests,
+        // M1-T8.5: primer acceso y recuperación con código
+        'CODIGO_NO_VALIDO', 'CONTRASENA_NO_VALIDA',
         ApiError.network,
       ];
       final generic = errorMessage(const ApiError(code: 'OTRO', message: ''));

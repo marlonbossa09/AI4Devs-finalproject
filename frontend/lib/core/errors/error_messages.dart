@@ -7,6 +7,24 @@ String errorMessage(ApiError error) {
   switch (error.code) {
     case 'CREDENCIALES_INVALIDAS':
       return 'El usuario o la contraseña no son correctos.';
+    case ApiError.tooManyRequests:
+      // Fixed text: it never says whether the user exists or how many attempts are left.
+      return 'Demasiados intentos. Espera un momento antes de volver a intentarlo.';
+    case 'CODIGO_NO_VALIDO':
+      // One message for every reason (unknown, used, expired, invalidated, someone else's): it never says which.
+      return 'El código no es válido o ya no se puede usar. Si lo necesitas, pide uno nuevo a quien administra el servicio.';
+    case 'CONTRASENA_NO_VALIDA':
+      final reason = error.details.isNotEmpty ? error.details.first['motivo'] : null;
+      switch (reason) {
+        case 'demasiado_corta':
+          return 'La contraseña debe tener al menos 10 caracteres.';
+        case 'demasiado_larga':
+          return 'La contraseña es demasiado larga.';
+        case 'comprometida':
+          return 'Esa contraseña no es segura. Elige otra.';
+        default:
+          return 'La contraseña no cumple los requisitos.';
+      }
     case 'NO_IDENTIFICADA':
       return 'Tu sesión no está activa. Inicia sesión de nuevo.';
     case 'ACCESO_DESACTIVADO':

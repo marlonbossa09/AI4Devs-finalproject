@@ -37,6 +37,7 @@ class LabeledField extends StatelessWidget {
     this.onSubmitted,
     this.onChanged,
     this.fieldKey,
+    this.suffix,
   });
 
   final String label;
@@ -57,6 +58,9 @@ class LabeledField extends StatelessWidget {
 
   /// Key of the inner text field, so tests and automation can find it.
   final Key? fieldKey;
+
+  /// Widget at the end of the input (for example the show/hide button of a password).
+  final Widget? suffix;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +83,7 @@ class LabeledField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             errorText: errorText,
+            suffixIcon: suffix,
             fillColor: enabled ? AppColors.white : const Color(0xFFF3F6FA),
           ),
         ),

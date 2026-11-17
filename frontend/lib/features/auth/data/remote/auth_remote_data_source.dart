@@ -21,6 +21,25 @@ class AuthRemoteDataSource {
     });
   }
 
+  /// M1-03b. Public; 204 without a body and WITHOUT a session. The code is not retained by this class.
+  Future<void> completeFirstAccess({required String identifier, required String code, required String newPassword}) {
+    return _redeem('${AppConfig.apiPrefix}/acceso/primer-acceso', identifier, code, newPassword);
+  }
+
+  /// M1-09b. Public; 204 without a body, WITHOUT a session. The server revokes every earlier session of the person.
+  Future<void> completeRecovery({required String identifier, required String code, required String newPassword}) {
+    return _redeem('${AppConfig.apiPrefix}/acceso/recuperacion', identifier, code, newPassword);
+  }
+
+  Future<void> _redeem(String path, String identifier, String code, String newPassword) {
+    return _client.guard(() async {
+      await _client.dio.post<void>(
+        path,
+        data: {'identificador_acceso': identifier, 'codigo': code, 'contrasena_nueva': newPassword},
+      );
+    });
+  }
+
   /// M1-01c.
   Future<SessionModel> getSession() {
     return _client.guard(() async {
