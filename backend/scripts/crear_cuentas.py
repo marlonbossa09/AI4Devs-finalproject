@@ -1,5 +1,8 @@
 """Crea cuentas locales de prueba (persona, identidad y pertenencia) de forma idempotente.
 
+HERRAMIENTA DE DESARROLLO Y DEMOSTRACIÓN. La provisión administrativa oficial es ``scripts/provision.py``
+(M1-T2): con persona operadora identificada, rol de provisión de privilegios mínimos y auditoría de la operadora.
+
 Uso (desde backend/), con el rol propietario del esquema, como la semilla de desarrollo:
 
     uv run python -m scripts.crear_cuentas --base smartwork_app --puerto 5432 --simular

@@ -6,6 +6,9 @@
 # Datos del servidor PostgreSQL local de desarrollo
 .pgdata/
 
+# Pwned Passwords instalado en local (unos 81 GB): nunca se versiona ni se redistribuye (docs/operacion/pwned-passwords.md)
+backend/data/
+
 # Datos locales de cuentas de prueba y su contraseña inicial (nunca se versionan)
 .local/
 

@@ -26,6 +26,37 @@ class InicioSesionEntrada(BaseModel):
         return valor
 
 
+class PrimerAccesoEntrada(BaseModel):
+    """M1-03b. Ningún campo se devuelve ni se registra."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    identificador_acceso: str
+    codigo: str
+    contrasena_nueva: str
+
+    @field_validator("identificador_acceso")
+    @classmethod
+    def _longitud_identificador(cls, valor: str) -> str:
+        if len(valor) > get_settings().login_identifier_max_length:
+            raise ValueError("demasiado_largo")
+        return valor
+
+    @field_validator("codigo")
+    @classmethod
+    def _longitud_codigo(cls, valor: str) -> str:
+        if len(valor) > 64:                       # un código bien escrito, con separadores, tiene 30 caracteres
+            raise ValueError("demasiado_largo")
+        return valor
+
+    @field_validator("contrasena_nueva")
+    @classmethod
+    def _longitud_contrasena(cls, valor: str) -> str:
+        if len(valor) > get_settings().login_password_max_length:
+            raise ValueError("demasiado_larga")
+        return valor
+
+
 class PersonaSalida(BaseModel):
     id: str
     nombre: str

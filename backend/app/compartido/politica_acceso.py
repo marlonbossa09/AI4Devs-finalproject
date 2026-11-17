@@ -2,8 +2,9 @@
 
 Único punto que decide si una persona puede operar y si una fecha laboral le corresponde. Los
 módulos no reimplementan estas comprobaciones. Solo cubre lo que necesitan las operaciones
-sobre registros propios (``/mi/...``); la visibilidad histórica entre equipos (M4) no se
-implementa todavía.
+sobre registros propios (``/mi/...``). La visibilidad histórica entre equipos está en
+``app.compartido.visibilidad`` (M1-T1) y todavía no la usa ninguna operación; ambas comparten la
+definición de «equipo en una fecha» de ``app.compartido.pertenencias``.
 
 Reglas aplicadas:
 - IR-37: con ``acceso_desactivado_en`` informado se rechaza toda operación, con independencia
@@ -22,6 +23,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.compartido.pertenencias import pertenencia_en_fecha
 from app.errores import AppError
 
 
@@ -43,7 +45,9 @@ def fecha_actual_en(zona_horaria: str) -> date:
 def contexto_de_operacion(db: Session, persona_id: UUID) -> Contexto:
     """Evalúa los pasos 2 del orden de evaluación: acceso no desactivado y pertenencia vigente."""
     persona = db.execute(
-        text("select nombre, (acceso_desactivado_en is not null and acceso_desactivado_en <= now()) "
+        # clock_timestamp() y no now(): ``now()`` es el inicio de la TRANSACCIÓN, y una transacción iniciada antes de que se confirmara
+        # una desactivación (por ejemplo, un inicio de sesión que verifica la contraseña) no la vería. IR-37: desde ese momento.
+        text("select nombre, (acceso_desactivado_en is not null and acceso_desactivado_en <= clock_timestamp()) "
              "as desactivado from persona where id = :p"),
         {"p": persona_id},
     ).one_or_none()
@@ -62,18 +66,12 @@ def contexto_de_operacion(db: Session, persona_id: UUID) -> Contexto:
         raise AppError("SIN_PERTENENCIA_VIGENTE")
 
     hoy = fecha_actual_en(zona)
-    rol = db.execute(
-        text("select rol from pertenencia where persona_id = :p and daterange(desde, hasta_exclusivo, '[)') @> :f"),
-        {"p": persona_id, "f": hoy},
-    ).scalar_one_or_none()
-    if rol is None:
+    vigente = pertenencia_en_fecha(db, persona_id, hoy)  # DM-04: la única definición de «pertenencia en una fecha»
+    if vigente is None:
         raise AppError("SIN_PERTENENCIA_VIGENTE")
-    return Contexto(persona_id, persona.nombre, rol, zona, hoy)
+    return Contexto(persona_id, persona.nombre, vigente.rol, zona, hoy)
 
 
 def fecha_cubierta(db: Session, persona_id: UUID, fecha: date) -> bool:
     """IR-29: la fecha laboral está cubierta por un intervalo de pertenencia de la persona."""
-    return bool(db.execute(
-        text("select 1 from pertenencia where persona_id = :p and daterange(desde, hasta_exclusivo, '[)') @> :f limit 1"),
-        {"p": persona_id, "f": fecha},
-    ).first())
+    return pertenencia_en_fecha(db, persona_id, fecha) is not None

@@ -5,10 +5,11 @@ idempotencia, costes de Argon2) se leen del entorno. Ningún valor está fijado 
 (BE-01). Los valores por defecto son de desarrollo y no son reglas del producto.
 """
 
+import ipaddress
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -20,6 +21,9 @@ class Settings(BaseSettings):
 
     # Nombre del rol de la aplicación: lo usan las migraciones para conceder permisos por tabla
     app_db_role: str = "smartwork_app"
+    # Nombre del rol de PROVISIÓN (M1-T2): distinto del propietario y de la aplicación, con los privilegios mínimos de las
+    # órdenes de provisión. Las migraciones le conceden permisos por tabla; el rol lo crea quien administra el servidor.
+    provision_db_role: str = "smartwork_provision"
 
     # Segundos máximos para conectar con PostgreSQL y para esperar una conexión libre del pool.
     # Acota también la comprobación /health/ready: una base caída responde 503 en vez de colgarse.
@@ -27,8 +31,11 @@ class Settings(BaseSettings):
 
     database_url: str
     migrations_database_url: str
+    # Conexión del rol de provisión (solo la usa la CLI de provisión, nunca la API). Sin valor por defecto.
+    provision_database_url: str | None = None
     test_database_url: str | None = None
     test_migrations_database_url: str | None = None
+    test_provision_database_url: str | None = None
 
     # Carpeta del cliente web compilado (flutter build web). Si se indica y existe, FastAPI la sirve
     # en el mismo origen que la API (ADR-002); si no, solo se publica la API.
@@ -36,8 +43,9 @@ class Settings(BaseSettings):
 
     cors_allowed_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
-    session_idle_minutes: int = Field(default=30, gt=0)
-    session_absolute_minutes: int = Field(default=480, gt=0)
+    # Sesión (ADR-002, A9; decisión del 2026-11-17): 1 hora de inactividad y 24 horas de duración total. Configurables.
+    session_idle_minutes: int = Field(default=60, gt=0)
+    session_absolute_minutes: int = Field(default=1440, gt=0)
 
     # Cada cuántos segundos se actualiza el último uso de la sesión (para no escribir en cada petición)
     session_touch_seconds: int = Field(default=60, gt=0)
@@ -46,6 +54,38 @@ class Settings(BaseSettings):
     login_password_max_length: int = Field(default=1024, gt=0)
     # Longitud mínima de una contraseña nueva (ADR-002, sección 7). Parámetro configurable.
     password_min_length: int = Field(default=10, gt=0)
+    # Pwned Passwords instalado en LOCAL (M1-T8.6; ver app/seguridad/contrasenas_comprometidas.py): directorio con los 1.048.576 archivos de rango SHA-1 que escribe la
+    # herramienta oficial de Have I Been Pwned (unos 81 GB) y su ``procedencia.json``. El proyecto no lo incluye; sin directorio, la comprobación está inactiva. Si se indica
+    # y la instalación no es completa y válida, la API no arranca.
+    compromised_passwords_dir: str | None = None
+
+    # Protección frente a intentos fallidos de autenticación (M1-T7; ADR-002, A9 y A11; decisiones del 2026-11-17).
+    # Secreto NUEVO e independiente (no versionado) con el que se calcula el HMAC de los identificadores de control: ni el
+    # identificador ni el origen se guardan en claro en los contadores ni en los eventos. Sin él, el inicio de sesión y la CLI se
+    # niegan a funcionar (fallo cerrado). Mínimo de 32 caracteres.
+    auth_pepper: SecretStr | None = None
+    # Códigos de un solo uso de primer acceso y recuperación (M1-T8; ADR-002, A4 y D1 del 2026-11-17). Secreto con el que se calcula el HMAC
+    # con el que SOLO se guardan los códigos: INDEPENDIENTE de AUTH_PEPPER (no puede ser el mismo valor), no versionado, mínimo 32 caracteres.
+    # No hace falta para arrancar la API; sin él, la generación y la comprobación de códigos se niegan (fallo cerrado).
+    code_pepper: SecretStr | None = None
+    # Vigencia de un código: 10 minutos con la entrega directa (A4). Máximo 1440 (24 horas, la referencia de ADR-002 para un canal asíncrono).
+    code_validity_minutes: int = Field(default=10, gt=0, le=1440)
+    # Intentos sin espera, y curva de espera: a partir del intento restringido la espera es ``base * 2 ** (n - 1)`` segundos
+    # (30 s, 1, 2, 4, 8, 16, 32 min...) con un máximo de ``login_wait_max_seconds`` (1 hora).
+    login_free_attempts: int = Field(default=5, ge=0)
+    login_wait_base_seconds: int = Field(default=30, gt=0)
+    login_wait_max_seconds: int = Field(default=3600, gt=0)
+    # Un contador se olvida tras estas horas sin nuevos intentos.
+    login_counter_forget_hours: int = Field(default=24, gt=0)
+    # Límites por origen (red): intentos fallidos admitidos en cada ventana. Se descuentan solos al salir de la ventana.
+    login_origin_short_attempts: int = Field(default=30, gt=0)
+    login_origin_short_window_seconds: int = Field(default=300, gt=0)
+    login_origin_long_attempts: int = Field(default=200, gt=0)
+    login_origin_long_window_seconds: int = Field(default=3600, gt=0)
+    # Proxies de confianza (DT-07): direcciones o redes CIDR cuyas cabeceras ``X-Forwarded-For`` se aceptan. Vacío = ninguna.
+    trusted_proxies: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    # Retención técnica de los eventos de autenticación (A11): 30 días iniciales. La base impide borrar antes de 30 días.
+    auth_event_retention_days: int = Field(default=30, ge=30)
 
     text_max_title: int = Field(default=200, gt=0)
     text_max_description: int = Field(default=4000, gt=0)
@@ -62,12 +102,37 @@ class Settings(BaseSettings):
     argon2_iterations: int = Field(default=2, gt=0)
     argon2_parallelism: int = Field(default=1, gt=0)
 
-    @field_validator("cors_allowed_origins", mode="before")
+    @field_validator("cors_allowed_origins", "trusted_proxies", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("auth_pepper", "code_pepper", mode="before")
+    @classmethod
+    def _pepper_vacio_es_ausente(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @model_validator(mode="after")
+    def _validar_proteccion_de_intentos(self) -> "Settings":
+        if self.auth_pepper is not None and len(self.auth_pepper.get_secret_value()) < 32:
+            raise ValueError("AUTH_PEPPER debe tener al menos 32 caracteres")
+        if self.code_pepper is not None:
+            if len(self.code_pepper.get_secret_value()) < 32:
+                raise ValueError("CODE_PEPPER debe tener al menos 32 caracteres")
+            if self.auth_pepper is not None and self.code_pepper.get_secret_value() == self.auth_pepper.get_secret_value():
+                raise ValueError("CODE_PEPPER debe ser un secreto distinto de AUTH_PEPPER")
+        if self.login_wait_max_seconds < self.login_wait_base_seconds:
+            raise ValueError("LOGIN_WAIT_MAX_SECONDS no puede ser menor que LOGIN_WAIT_BASE_SECONDS")
+        if self.login_origin_long_window_seconds < self.login_origin_short_window_seconds:
+            raise ValueError("La ventana larga por origen no puede ser menor que la corta")
+        for red in self.trusted_proxies:
+            try:
+                ipaddress.ip_network(red, strict=False)
+            except ValueError as error:
+                raise ValueError("TRUSTED_PROXIES solo admite direcciones IP o redes CIDR") from error
+        return self
 
 
 @lru_cache

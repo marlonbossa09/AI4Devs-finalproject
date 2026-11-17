@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.routing import Match, Mount
 
 logger = logging.getLogger("smartwork")
 
@@ -28,6 +29,7 @@ CATALOGO: dict[str, tuple[int, str]] = {
     "ACCESO_DESACTIVADO": (403, "Su acceso está desactivado."),
     "SIN_PERTENENCIA_VIGENTE": (403, "No tiene una pertenencia vigente."),
     "RECURSO_NO_DISPONIBLE": (404, "El recurso solicitado no está disponible"),
+    "METODO_NO_PERMITIDO": (405, "El método HTTP no está permitido para este recurso."),
     "BITACORA_CERRADA": (409, "La bitácora está cerrada; hay que reabrirla antes de modificarla."),
     "BITACORA_NO_CERRADA": (409, "La bitácora no está cerrada."),
     "ACTIVIDAD_COMPLETADA": (409, "La actividad está Completada; hay que reactivarla antes de continuarla."),
@@ -49,6 +51,11 @@ CATALOGO: dict[str, tuple[int, str]] = {
     "CAMPO_OBLIGATORIO": (422, "Falta un campo obligatorio."),
     "TEXTO_DEMASIADO_LARGO": (422, "El texto supera el máximo permitido."),
     "CLAVE_IDEMPOTENCIA_REUTILIZADA": (422, "La clave ya se usó con otra petición distinta."),
+    # Reservados para el canje de códigos (M1-T8.3 y T8.4; todavía no los emite ninguna ruta). Estados HTTP `[PROPUESTO]`. El mensaje es
+    # fijo y único: no distingue un código desconocido, usado, caducado, invalidado o de un acceso desactivado, ni si el identificador existe.
+    "CODIGO_NO_VALIDO": (400, "El código no es válido."),
+    "CONTRASENA_NO_VALIDA": (422, "La contraseña no cumple la política."),
+    "DEMASIADAS_SOLICITUDES": (429, "Demasiados intentos. Vuelva a intentarlo más tarde."),
     "ERROR_INTERNO": (500, "Se produjo un error interno."),
 }
 
@@ -57,22 +64,65 @@ class AppError(Exception):
     """Error de negocio con código del catálogo."""
 
     def __init__(self, codigo: str, detalles: list[dict[str, object]] | None = None,
-                 mensaje: str | None = None) -> None:
+                 mensaje: str | None = None, cabeceras: dict[str, str] | None = None) -> None:
         if codigo not in CATALOGO:
             raise ValueError(f"Código de error fuera del catálogo: {codigo}")
         self.codigo = codigo
         self.estado = CATALOGO[codigo][0]
         self.mensaje = mensaje or CATALOGO[codigo][1]
         self.detalles = detalles or []
+        self.cabeceras = cabeceras or {}
         super().__init__(codigo)
+
+    @classmethod
+    def demasiadas_solicitudes(cls, espera_segundos: int) -> "AppError":
+        """429 con ``Retry-After`` (segundos enteros, RFC 9110) y la misma espera en los detalles. Mensaje y detalles fijos: no
+        distinguen si el identificador existe ni cuántos intentos quedan."""
+        return cls("DEMASIADAS_SOLICITUDES", [{"espera_segundos": espera_segundos}],
+                   cabeceras={"Retry-After": str(espera_segundos), "Cache-Control": "no-store"})
 
 
 def _respuesta(error: AppError, headers: dict[str, str] | None = None) -> JSONResponse:
     return JSONResponse(
         status_code=error.estado,
         content={"codigo": error.codigo, "mensaje": error.mensaje, "detalles": error.detalles},
-        headers=headers,
+        headers={**error.cabeceras, **(headers or {})} or None,
     )
+
+
+_METODOS_HTTP = ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT")
+
+
+def metodos_de_la_api(scope: dict) -> list[str]:
+    """Métodos que atendería de verdad alguna ruta de la API para la ruta de ``scope``, en orden alfabético (PA-30).
+
+    Se pregunta al router, método a método, si hay una ruta de la API que coincida por completo, sin depender de cómo
+    FastAPI organiza internamente sus rutas. El montaje del cliente web se ignora: coincide con cualquier ruta. Solo
+    depende de la ruta, nunca del identificador del recurso ni de la sesión."""
+    app = scope.get("app")
+    if app is None:
+        return []
+    permitidos = []
+    for metodo in _METODOS_HTTP:
+        candidato = {**scope, "method": metodo, "root_path": scope.get("app_root_path", scope.get("root_path", ""))}
+        for route in app.router.routes:
+            if isinstance(route, Mount):
+                continue
+            if route.matches(candidato)[0] is Match.FULL:
+                permitidos.append(metodo)
+                break
+    return permitidos
+
+
+def _metodos_permitidos(request: Request, exc: StarletteHTTPException) -> str:
+    """Valor de la cabecera ``Allow`` de un 405. Starlette solo informa de la primera ruta que coincide parcialmente y,
+    con el cliente web montado, el 405 de una ruta de la API lo emitiría el servidor de ficheros estáticos
+    (``Allow: GET, HEAD``): por eso se reúnen los métodos de todas las rutas de la API. Si ninguna ruta de la API atiende
+    ningún método (por ejemplo, un fichero del cliente), se conserva la cabecera que haya puesto quien lanzó el error."""
+    permitidos = metodos_de_la_api(request.scope)
+    if permitidos:
+        return ", ".join(permitidos)
+    return (exc.headers or {}).get("Allow", "GET, HEAD")
 
 
 def registrar_manejadores(app: FastAPI) -> None:
@@ -90,9 +140,15 @@ def registrar_manejadores(app: FastAPI) -> None:
         return _respuesta(AppError("SOLICITUD_INVALIDA", detalles))
 
     @app.exception_handler(StarletteHTTPException)
-    async def _http(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+    async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         if exc.status_code == 404:
             return _respuesta(AppError("RECURSO_NO_DISPONIBLE"))
+        if exc.status_code == 405:
+            # Método no admitido en una ruta que existe (PA-30): 405 con la cabecera Allow.
+            return _respuesta(
+                AppError("METODO_NO_PERMITIDO", [{"campo": "metodo", "motivo": "metodo_no_permitido"}]),
+                headers={"Allow": _metodos_permitidos(request, exc)},
+            )
         return _respuesta(AppError("SOLICITUD_INVALIDA"))
 
     @app.exception_handler(Exception)

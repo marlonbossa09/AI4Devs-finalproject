@@ -31,3 +31,10 @@ def origen_permitido(request: Request) -> bool:
     if settings.app_env == "development":
         permitidos.update(settings.cors_allowed_origins)
     return presentado in permitidos
+
+
+def direccion_del_cliente(request: Request) -> str:
+    """Dirección de origen de la petición (DT-07): la de la conexión, salvo que venga de un proxy expresamente configurado como
+    de confianza (``TRUSTED_PROXIES``). ``X-Forwarded-For`` no se acepta de ninguna otra conexión."""
+    from app.seguridad.control_de_intentos import direccion_del_cliente as _direccion
+    return _direccion(request.client.host if request.client else None, request.headers.getlist("x-forwarded-for"))

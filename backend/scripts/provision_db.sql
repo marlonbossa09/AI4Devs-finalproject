@@ -11,6 +11,9 @@
 -- Roles (privilegios mínimos):
 --   smartwork_owner  Propietario del esquema. Solo lo usan las migraciones y la semilla de
 --                    desarrollo. No es superusuario.
+--   smartwork_provision  Rol de PROVISIÓN (M1-T2): solo lo usa la CLI de provisión del servidor, con los privilegios
+--                    mínimos de las órdenes; distinto del propietario y de la aplicación. Se crea aparte, con
+--                    provision_rol_de_provision.sql (necesita su propia contraseña).
 --   smartwork_app    Rol de la aplicación. Sin DDL. Los permisos sobre cada tabla los concede
 --                    la migración correspondiente, uno a uno (por ejemplo, solo INSERT y
 --                    SELECT sobre la auditoría).
