@@ -2,9 +2,9 @@
 
 | Campo | Contenido |
 |---|---|
-| **Estado** | `[PROPUESTO]`, pendiente de revisión |
-| **Versión** | 0.5 |
-| **Fecha** | 2026-11-06 |
+| **Estado** | `[PROPUESTO]`, pendiente de revisión. **Implementación:** M4-01 implementado (M4-T1, 2026-11-17); M4-02, M4-03 y M4-04 sin implementar |
+| **Versión** | 0.6 |
+| **Fecha** | 2026-11-17 |
 | **Convenciones** | `docs/api/convenciones.md` |
 
 Todas las operaciones de este módulo son de **solo lectura**. Aplican la política de autorización centralizada (RA-01 a RA-12): el equipo de un registro se deduce de la pertenencia de su propietaria en la fecha laboral, y ninguna respuesta incluye información de otro equipo que la política no permita. Las operaciones de escritura sobre un registro de un compañero no existen en la API: todas cuelgan de `/mi/...` y, si se apunta a un registro ajeno, responden según la convención T-01.
@@ -15,6 +15,7 @@ Todas las operaciones de este módulo son de **solo lectura**. Aplican la polít
 - Un avance, una planificación o una bitácora autorizados se muestran con su detalle propio (descripción y motivo de bloqueo del propio registro), que no incluye el título de la actividad (RA-05). Los motivos de bloqueo de registros de otro equipo nunca se exponen.
 - La planificación conservada tras una finalización de pertenencia no se muestra como trabajo vigente ni pendiente de ningún equipo (RA-11).
 - El estado actual solo se informa si la propietaria pertenece al equipo (RN-48, RN-85).
+- **`forma` (confirmado el 2026-11-17):** cada `ActividadVisible` lleva un campo `forma` (`completa` o `neutral`) que es el **discriminador explícito** de sus dos formas en el JSON. La forma `neutral` tiene una lista cerrada de campos: `forma`, `id`, `propietaria_id` y `referencia_neutral`. En la forma `completa`, el campo `estado_actual` se **omite** (no se envía nulo) cuando la propietaria no pertenece hoy al equipo de quien consulta.
 
 ## M4-01 — Consultar la bitácora de un compañero
 
@@ -29,7 +30,8 @@ Todas las operaciones de este módulo son de **solo lectura**. Aplican la polít
 | **Autorización** | Colaboradores y supervisor del equipo histórico del registro. Un registro de una fecha en que la persona pertenecía a otro equipo no se puede abrir (CA-132). El filtrado de autorización se aplica antes de construir la respuesta (convenciones 3.3) |
 | **Errores** | `RECURSO_NO_DISPONIBLE` (inexistente o de otro equipo, indistinguibles) · `SOLICITUD_INVALIDA` · `ACCESO_DESACTIVADO` · `SIN_PERTENENCIA_VIGENTE` · `NO_IDENTIFICADA` |
 | **Auditoría y transacción** | Lectura |
-| **Criterios vinculados** | CA-130, CA-131, CA-132, CA-133, CA-193, CA-194, CA-291, CA-15, CA-16, CA-17, CA-18, CA-21, CA-176, CA-177, CA-178, CA-216, CA-217 |
+| **Criterios vinculados** | CA-130, CA-131, CA-132, CA-133, CA-193, CA-194, CA-291, CA-15, CA-16, CA-17, CA-18, CA-21, CA-176, CA-177, CA-178, CA-216, CA-217, **CA-30, CA-256** (vinculados el 2026-11-17: la lectura, por un compañero o el supervisor, de los registros de una persona finalizada o con el acceso desactivado) |
+| **Aplicación (M4-T1, 2026-11-17)** | Implementado en `app/modulos/consulta`. Orden de evaluación de convenciones 3.2: sesión, puede operar, formato de `persona_id` y `fecha_laboral` (`SOLICITUD_INVALIDA`) y visibilidad (`RECURSO_NO_DISPONIBLE`) **antes** de leer nada. La decisión de visibilidad es la de M1 (`decidir_lectura`, `forma_de_actividad` y `puede_ver_estado_actual`); no hay política paralela. Un registro inexistente, de otro equipo en esa fecha, de otra organización, de una persona inexistente o de una fecha sin bitácora devuelven exactamente la misma respuesta 404. Las actividades se proyectan según la autorización sobre su **jornada de origen** (completa, neutral u oculta); una actividad oculta (marcada por error con origen no autorizado) no aparece ni sus planificaciones ni sus avances. La planificación y el avance se muestran con su detalle propio, sin el título de la actividad. Si `persona_id` es quien consulta, el contenido equivale a M2-01a (más `forma`). La ruta de M4 solo admite `GET`: cualquier otro método responde 405 con `Allow: GET`. M2 y M3 no cambian (siguen respondiendo 404 sobre lo ajeno hasta M4-T6). **Pendiente de verificación completa en M4-T6:** CA-178 y las prohibiciones de escritura ajena (CA-131, CA-194): M4-T1 solo demuestra que **M4 no tiene ninguna ruta de escritura**; que las escrituras existentes de M2 y M3 sobre un registro visible ajeno respondan 403 `OPERACION_NO_PERMITIDA` es de M4-T6 |
 | **Decisiones pendientes** | D-07 (confirmada: referencia neutral «Actividad en continuidad», con identificador opaco) |
 
 ## M4-02 — Consultar el histórico por colaborador y fechas
@@ -45,7 +47,7 @@ Todas las operaciones de este módulo son de **solo lectura**. Aplican la polít
 | **Autorización** | Según el equipo histórico de cada registro; la propietaria ve todos los suyos. El filtrado de autorización se aplica antes de construir la respuesta (convenciones 3.3) |
 | **Errores** | `SOLICITUD_INVALIDA` (incluidas la búsqueda por texto, CA-136, y la falta o el exceso del rango) · `ACCESO_DESACTIVADO` · `SIN_PERTENENCIA_VIGENTE` · `NO_IDENTIFICADA` |
 | **Auditoría y transacción** | Lectura |
-| **Criterios vinculados** | CA-134, CA-135, CA-136, CA-19, CA-20, CA-299, CA-300 |
+| **Criterios vinculados** | CA-134, CA-135, CA-136, CA-19, CA-20, CA-299, CA-300, **CA-30, CA-256** (vinculados el 2026-11-17: el histórico de un rango incluye los registros de personas finalizadas o con el acceso desactivado) |
 | **Decisiones pendientes** | D-08 y D-10 (confirmadas o aceptadas) |
 
 ## M4-03 — Obtener la vista de supervisión del equipo en un período

@@ -2,7 +2,7 @@
 
 | Campo | Contenido |
 |---|---|
-| **Estado** | `[PROPUESTO]`. Análisis SDD (M4-T0) sin código. **Nada de lo que propone este documento es requisito ni está aprobado**: las decisiones están en la sección 9 y las propuestas de tickets, de nombres y de parámetros llevan la marca `[PROPUESTO]` o `[ABIERTO]` hasta que la persona responsable las apruebe |
+| **Estado** | `[PROPUESTO]` salvo lo indicado. Análisis SDD (M4-T0). **Las decisiones D-M4-01 a D-M4-09 están confirmadas desde el 2026-11-17 por la persona responsable** (sección 9) y **M4-T1 está implementado y aprobado técnicamente** (sección 8); el resto de los tickets sigue pendiente de implementación y de autorización. **Nada de lo que propone este documento es requisito ni está aprobado**: las decisiones están en la sección 9 y las propuestas de tickets, de nombres y de parámetros llevan la marca `[PROPUESTO]` o `[ABIERTO]` hasta que la persona responsable las apruebe |
 | **Versión** | 0.1 |
 | **Fecha** | 2026-11-17 |
 | **Base** | HEAD `5b6405d` (cierre técnico de M1 consolidado). M1, M2 y M3 cerrados en su alcance |
@@ -189,6 +189,8 @@ M4-T9 cierre técnico
 
 ### M4-T1 — Bitácora de un compañero y proyecciones compartidas (M4-01)
 
+- **Estado:** **implementado y aprobado técnicamente el 2026-11-17; commit local único.** Archivos: `app/modulos/consulta/{router,servicio,proyecciones}.py` (módulo único de M4, ADR-001 D2), `app/compartido/visibilidad.py` (se añade `puede_ver_estado_actual`, RN-48 y RN-85, junto a las demás decisiones de la política), `app/main.py`, `tests/test_consulta_bitacora.py` (16 pruebas) y las actualizaciones de `test_visibilidad_historica.py` y `test_provision_cli.py`. **Desviación respecto a la propuesta (aceptada):** las proyecciones de actividad (completa y neutral) quedaron en `app/modulos/consulta/proyecciones.py` y no en `app/compartido/`, porque dependen de los esquemas de M2 y `compartido` no debe importar de `modulos`; **no se mueven de forma preventiva**. **CA-178 y las prohibiciones de escritura ajena (CA-131, CA-194) quedan pendientes de verificación completa en M4-T6**: M4-T1 solo demuestra que M4 no tiene rutas de escritura. **Verificado:** 16 pruebas nuevas, 652 de regresión focalizada superadas y evidencia HTTP real con uvicorn y PostgreSQL desechable (11 comprobaciones). Sin M2/M3 cambiados.
+
 - **Objetivo:** leer, solo lectura, la bitácora de un integrante del equipo de una fecha en que pertenecía a él (incluido su supervisor), y dejar construida la proyección de actividad completa o neutral que usan los demás contratos.
 - **Contratos:** M4-01 (y convenciones 3.1 a 3.3, esquemas compartidos). Prerrequisitos de documentación: vincular CA-30 y CA-256 (H-4) y sincronizar D-09 (H-9).
 - **Criterios:** CA-130, CA-132, CA-133, CA-193, CA-291; CA-15 a CA-18, CA-21, CA-176, CA-177, CA-216, CA-217; CA-131 y CA-194 (ninguna ruta de escritura de M4); CA-30 y CA-256 (lectura de registros de personas finalizadas o desactivadas); verificación de CA-249 (H-1).
@@ -273,11 +275,11 @@ M4-T9 cierre técnico
 - **Entregables:** matriz de trazabilidad de M4 (61 criterios más las dependencias de M1 y M3, con los estados «implementado y probado», parcial, pendiente, fuera de alcance aprobado o bloqueado) y reconciliación con las matrices de M1 y M2/M3 (H-1, con evidencia); regresión completa del backend y de Flutter; comprobación de migraciones solo si T2 creó alguna; recorrido real con FastAPI, Flutter Web y PostgreSQL desechable con un traslado, un relevo y una desactivación; revisión de seguridad focalizada de M4; actualización de contratos, ADR-002 si procede, alcance, README, plan y `prompts.md`; recomendación de commits (sin hacerlos sin autorización).
 - **Condiciones de cierre:** sin defectos bloqueantes; ningún criterio declarado sin evidencia; pendientes de despliegue registrados.
 
-## 9. Decisiones que requieren aprobación
+## 9. Decisiones (confirmadas el 2026-11-17)
 
-Todas `[ABIERTO]` hasta que la persona responsable decida. La recomendación es una propuesta, no una regla.
+**Registro (M4-T1, 2026-11-17).** La persona responsable confirmó las nueve decisiones **con las alternativas y condiciones aprobadas en la revisión SDD**, que son las que se resumen a continuación y las que este plan desarrolla; las alternativas descartadas se conservan abajo como historial. Resumen: **D-M4-01 A** (M4-T6 modifica M2/M3 con aprobación: 403 en las siete rutas y auditoría del supervisor); **D-M4-02 A** (contrato nuevo M4-05 de solo lectura con los integrantes vigentes: identificador, nombre y rol; **sin implementar todavía**); **D-M4-03** 92 días como valor por defecto de la amplitud máxima del rango, parámetro configurable; **D-M4-04 A** (`desde` ≤ `hasta`, `hasta` futuro permitido dentro de la amplitud máxima); **D-M4-05** inclusión por la pertenencia en la fecha de corte y estado actual solo si la propietaria pertenece hoy al equipo; **D-M4-06** las referencias mínimas no entran en `totales_por_estado` (recuento aparte) y `motivo_inclusion` es una lista de `planificada_en_el_periodo`, `con_avances_en_el_periodo` y `pendiente_al_corte`; **D-M4-07 A** (proyección propia de M4 para las planificaciones conservadas; M2 queda como está); **D-M4-08 A** (paginación compartida nueva para M4; M2 y M3 no se tocan); **D-M4-09 A** (no hay endpoint de actividad suelta para colaboradores). Los detalles contractuales de D-M4-06 y los parámetros de D-M4-03 se incorporarán a los contratos y a `config.py` en los tickets que los usan (M4-T2 y M4-T3), no antes.
 
-### D-M4-01 — Alcance de los cambios en módulos cerrados (M4-T6)
+### D-M4-01 — Alcance de los cambios en módulos cerrados (M4-T6) — **Confirmada el 2026-11-17**
 
 | Alternativa | Implicaciones |
 |---|---|
@@ -285,7 +287,7 @@ Todas `[ABIERTO]` hasta que la persona responsable decida. La recomendación es 
 | B. Solo la auditoría del supervisor; mantener 404 en las escrituras | Obliga a **enmendar** convenciones 3.1 (T-01 está aprobada): una respuesta distinta de la documentada |
 | C. Aplazar ambas | Deja CA-111 pendiente y la diferencia entre el contrato y el comportamiento; M4-01 mostraría un registro que las escrituras siguen tratando como inexistente |
 
-### D-M4-02 — Cómo se elige a un compañero y se muestran los nombres
+### D-M4-02 — Cómo se elige a un compañero y se muestran los nombres — **Confirmada el 2026-11-17**
 
 H-3: sin esto, Flutter no puede ofrecer M4-01, el filtro de M4-02 ni una vista de supervisión legible. Es una **ampliación del alcance** (un contrato nuevo) y requiere aprobación (CLAUDE.md, sección 8).
 
@@ -295,7 +297,7 @@ H-3: sin esto, Flutter no puede ofrecer M4-01, el filtro de M4-02 ni una vista d
 | B. Añadir el nombre de la propietaria a las respuestas de M4-01 a M4-04 | Sin endpoint nuevo, pero no permite elegir a quién consultar y amplía cada respuesta |
 | C. A y B | Más superficie de datos personales sin necesidad probada |
 
-### D-M4-03 — Amplitud máxima del rango de fechas (parámetro de PA-13)
+### D-M4-03 — Amplitud máxima del rango de fechas (parámetro de PA-13) — **Confirmada el 2026-11-17**
 
 Hoy no existe parámetro ni valor. Se propone un parámetro de entorno (nombre `[PROPUESTO]`, por ejemplo `QUERY_MAX_RANGE_DAYS`), en días, común a M4-02 y M4-03, con `SOLICITUD_INVALIDA` y el máximo en `detalles` al excederlo (convenciones 6.1 y 9).
 
@@ -305,7 +307,7 @@ Hoy no existe parámetro ni valor. Se propone un parámetro de entorno (nombre `
 | **92 días (recomendada)** | Cubre un trimestre completo con coste razonable y sigue acotando el sondeo (R-7) |
 | 186 días | Menos peticiones; más coste y más superficie de sondeo |
 
-### D-M4-04 — Límites del período
+### D-M4-04 — Límites del período — **Confirmada el 2026-11-17**
 
 El contrato exige `desde` y `hasta` pero no dice si `hasta` puede ser posterior a la fecha actual ni qué ocurre con `desde` posterior a `hasta`.
 
@@ -314,11 +316,11 @@ El contrato exige `desde` y `hasta` pero no dice si `hasta` puede ser posterior 
 | **A. `desde` ≤ `hasta` obligatorio; `hasta` futuro permitido, dentro de la amplitud máxima (recomendada)** | Permite ver lo planificado a futuro por el equipo; el estado al corte de un corte futuro es el del último avance existente |
 | B. `hasta` no posterior a hoy | Más simple de razonar; impide ver planificación futura del equipo |
 
-### D-M4-05 — Qué significa «la propietaria pertenece al equipo»
+### D-M4-05 — Qué significa «la propietaria pertenece al equipo» — **Confirmada el 2026-11-17**
 
 RN-47 la evalúa «en la fecha de corte» (para incluir pendientes) y RF-70 y CA-221 la usan para el **estado actual**. Propuesta `[PROPUESTO]`: la **inclusión** usa la pertenencia de la propietaria en la fecha de corte (`hasta`), y el **estado actual** solo se informa si la propietaria pertenece hoy al equipo del supervisor. Es una interpretación de textos que no la fijan con una sola frase; necesita confirmación.
 
-### D-M4-06 — Detalles del contrato M4-03 que faltan
+### D-M4-06 — Detalles del contrato M4-03 que faltan — **Confirmada el 2026-11-17**
 
 | Punto | Propuesta `[PROPUESTO]` | Efecto |
 |---|---|---|
@@ -327,7 +329,7 @@ RN-47 la evalúa «en la fecha de corte» (para incluir pendientes) y RF-70 y CA
 
 Alternativa: dejar la decisión para el diseño técnico de M4-T3; **no se recomienda**, porque define lo que el cliente Flutter y las pruebas esperan.
 
-### D-M4-07 — Representación de las planificaciones conservadas (DM-08)
+### D-M4-07 — Representación de las planificaciones conservadas (DM-08) — **Confirmada el 2026-11-17**
 
 | Alternativa | Implicaciones |
 |---|---|
@@ -335,7 +337,7 @@ Alternativa: dejar la decisión para el diseño técnico de M4-T3; **no se recom
 | B. Corregir también `planificacion_a_dict` de M2 | Cambia un módulo cerrado sin caso alcanzable que lo justifique |
 | C. Aplazar | Dejaría CA-274 sin base de proyección |
 
-### D-M4-08 — Paginación compartida
+### D-M4-08 — Paginación compartida — **Confirmada el 2026-11-17**
 
 | Alternativa | Implicaciones |
 |---|---|
@@ -343,7 +345,7 @@ Alternativa: dejar la decisión para el diseño técnico de M4-T3; **no se recom
 | B. Unificar también M2 y M3 | Sin cambio de comportamiento, pero toca módulos cerrados |
 | C. Copiar las funciones privadas en M4 | Más duplicación |
 
-### D-M4-09 — ¿Los colaboradores consultan actividades sueltas de sus compañeros?
+### D-M4-09 — ¿Los colaboradores consultan actividades sueltas de sus compañeros? — **Confirmada el 2026-11-17**
 
 El contrato M4-04 es solo del supervisor. Las actividades de un compañero se ven dentro de su bitácora (M4-01) y del histórico (M4-02).
 

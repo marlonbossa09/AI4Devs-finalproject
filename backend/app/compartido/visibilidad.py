@@ -7,8 +7,8 @@ QUÉ NO ES.
 - No es una respuesta HTTP. Devuelve una ``Decision`` interna con su motivo. Convertirla en 404 ``RECURSO_NO_DISPONIBLE`` (T-01),
   en 403 u otra cosa es de cada operación, según las convenciones y el contrato; los motivos internos distintos pueden
   (y hoy deben) ser indistinguibles hacia fuera.
-- No habilita ninguna consulta nueva: ningún endpoint la usa todavía. Hoy toda operación sobre un registro ajeno sigue
-  respondiendo 404 (convenciones 3.1, provisional) y M2 y M3 no cambian.
+- No es una operación: la usa el módulo de M4 (``app.modulos.consulta``) para las lecturas ajenas (desde M4-T1). M2 y M3 no
+  la usan: toda operación suya sobre un registro ajeno sigue respondiendo 404 (convenciones 3.1) hasta M4-T6.
 - No decide la presentación de M4 (referencia mínima, estado al corte: RA-06, RA-07), solo la visibilidad de base.
 
 REGLAS (todas del modelo de datos, sección 12, y del alcance, RN-36):
@@ -192,6 +192,20 @@ def forma_de_actividad(db: Session, consultante: Consultante, origen: Registro, 
     if decision.motivo in (Motivo.ACCESO_DESACTIVADO, Motivo.SIN_PERTENENCIA_VIGENTE):
         return Forma.OCULTA
     return Forma.OCULTA if marcada_por_error else Forma.NEUTRAL
+
+
+def puede_ver_estado_actual(db: Session, consultante: Consultante, propietaria_id: UUID) -> bool:
+    """¿Se informa a ``consultante`` del ESTADO ACTUAL de las actividades de ``propietaria_id``? (RN-48, RN-85, RF-95).
+
+    Solo si la propietaria es la propia consultante o PERTENECE HOY a su equipo. Quien consulta lo que una persona hizo en un
+    equipo al que ya no pertenece no ve el estado actual de su trabajo (la persona trasladada: CA-221). Es independiente de
+    la lectura del registro: se puede leer un registro y no su estado actual."""
+    if not consultante.puede_operar:
+        return False
+    if propietaria_id == consultante.persona_id:
+        return True
+    actual = pertenencia_en_fecha(db, propietaria_id, consultante.hoy)
+    return actual is not None and actual.equipo_id == consultante.pertenencia.equipo_id
 
 
 # ----------------------------------------------------------------------------------------------------------------------

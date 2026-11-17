@@ -84,7 +84,7 @@ Divisiones técnicas respecto al catálogo preliminar, sin añadir funcionalidad
 | D-06 | El corte es el último día del período | RN-48 | **Aprobada y sincronizada** |
 | D-07 | «Actividad en continuidad» con identificador opaco | RN-101; PA-26 resuelto | **Confirmada y sincronizada** |
 | D-08 | Rango obligatorio y persona opcional en el histórico | RN-25 | **Confirmada y sincronizada** |
-| D-09 | Referencia mínima para la actividad heredada sin avances autorizados | RN-89 | **Aprobada** |
+| D-09 | Referencia mínima para la actividad heredada sin avances autorizados | RN-89 | **Aprobada y sincronizada** (2026-11-17: contrato M4-04 y plan de M4) |
 | D-11 | Auditoría de provisión separada de la consulta funcional | RN-110 | **Aprobada y sincronizada** |
 | D-10 | Paginación y límites configurables | PA-13 | Decisión técnica aceptada |
 | T-02 | Catálogo coherente de errores | Ninguno (técnica) | Decisión técnica aceptada |

@@ -498,12 +498,12 @@ def test_la_politica_no_escribe_nada(db, mundo):
     assert {t: db.execute(text(f"select count(*) from {t}")).scalar() for t in tablas} == antes
 
 
-def test_ninguna_operacion_usa_todavia_la_politica_de_visibilidad_historica():
-    """M1-T1 no habilita consultas de registros ajenos: ningún módulo de la API importa la política. Cuando M4 la use,
-    esta prueba se actualiza a propósito (con la aprobación correspondiente)."""
-    usos = [str(f.relative_to(RAIZ)) for f in (RAIZ / "app" / "modulos").rglob("*.py")
-            if "compartido.visibilidad" in f.read_text(encoding="utf-8") or "import visibilidad" in f.read_text(encoding="utf-8")]
-    assert usos == []
+def test_solo_el_modulo_de_m4_usa_la_politica_de_visibilidad_historica():
+    """Actualizada a propósito en M4-T1 (la prueba anterior prohibía todo uso hasta que M4 existiera). La política de visibilidad histórica la usa SOLO el
+    módulo de M4 (``app/modulos/consulta``); M2 y M3 siguen sin usarla (M4-T6 decidirá, con aprobación, su 403 y la auditoría del supervisor)."""
+    usos = sorted(f.relative_to(RAIZ).as_posix() for f in (RAIZ / "app" / "modulos").rglob("*.py")
+                  if "compartido.visibilidad" in f.read_text(encoding="utf-8") or "import visibilidad" in f.read_text(encoding="utf-8"))
+    assert usos == ["app/modulos/consulta/servicio.py"]
 
 
 def test_la_definicion_del_intervalo_de_pertenencia_esta_en_un_solo_lugar():
