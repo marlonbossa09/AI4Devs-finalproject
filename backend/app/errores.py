@@ -17,10 +17,9 @@ from starlette.routing import Match, Mount
 logger = logging.getLogger("smartwork")
 
 # Código -> (estado HTTP, mensaje fijo). Solo los códigos que usan las operaciones implementadas.
-# OPERACION_NO_PERMITIDA (403) no se emite todavía: mientras no exista la visibilidad histórica
-# del equipo (BE-02, M4), una actividad o bitácora ajena se responde siempre con
-# RECURSO_NO_DISPONIBLE (404), sin revelar si existe. Es una diferencia provisional respecto a los
-# contratos de M2 y M3, que distinguen 403 (recurso visible) de 404 (no visible).
+# OPERACION_NO_PERMITIDA (403) la emite M4-03 desde M4-T3 (la vista de supervisión es solo del supervisor con acceso efectivo, RN-13). M2 y M3 todavía no la
+# emiten: una actividad o bitácora ajena se responde con RECURSO_NO_DISPONIBLE (404), sin revelar si existe. Es una diferencia provisional respecto a los contratos de M2
+# y M3, que distinguen 403 (recurso visible) de 404 (no visible); se resuelve en M4-T6.
 CATALOGO: dict[str, tuple[int, str]] = {
     "SOLICITUD_INVALIDA": (400, "La solicitud no es válida."),
     "CLAVE_IDEMPOTENCIA_OBLIGATORIA": (400, "Falta la cabecera Idempotency-Key."),
@@ -28,6 +27,7 @@ CATALOGO: dict[str, tuple[int, str]] = {
     "CREDENCIALES_INVALIDAS": (401, "Las credenciales no son válidas."),
     "ACCESO_DESACTIVADO": (403, "Su acceso está desactivado."),
     "SIN_PERTENENCIA_VIGENTE": (403, "No tiene una pertenencia vigente."),
+    "OPERACION_NO_PERMITIDA": (403, "La operación no está permitida para su rol."),
     "RECURSO_NO_DISPONIBLE": (404, "El recurso solicitado no está disponible"),
     "METODO_NO_PERMITIDO": (405, "El método HTTP no está permitido para este recurso."),
     "BITACORA_CERRADA": (409, "La bitácora está cerrada; hay que reabrirla antes de modificarla."),

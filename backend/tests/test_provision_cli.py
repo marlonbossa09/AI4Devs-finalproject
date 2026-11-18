@@ -236,7 +236,8 @@ def test_no_existe_ningun_endpoint_http_de_provision():
     personas operadoras, así que ningún supervisor (ni nadie con una sesión) dispone de esa función (CA-26)."""
     from app.main import crear_app
     # Las únicas excepciones son las rutas de LECTURA de M4 (solo ``GET``; lecturas de registros, no provisión). Se añaden aquí a medida que M4 las implementa.
-    lecturas_de_m4 = {"/api/v1/personas/{persona_id}/bitacoras/{fecha_laboral}"}                                                     # M4-01 (M4-T1)
+    lecturas_de_m4 = {"/api/v1/personas/{persona_id}/bitacoras/{fecha_laboral}",                                                     # M4-01 (M4-T1)
+                      "/api/v1/equipo/supervision"}                                                                                   # M4-03 (M4-T3)
     rutas = crear_app().openapi()["paths"]
     for ruta, metodos in rutas.items():
         if ruta in lecturas_de_m4:

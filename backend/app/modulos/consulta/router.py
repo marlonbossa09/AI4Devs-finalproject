@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.compartido.dependencias import Operador, operador
 from app.db import get_db
-from app.modulos.consulta import servicio
+from app.modulos.consulta import servicio, supervision
 
 router = APIRouter(tags=["M4 Consulta y supervisión"])
 
@@ -22,3 +22,8 @@ def consultar_bitacora_de_persona(persona_id: str, fecha_laboral: str, op: Opera
 @router.get("/historico", summary="M4-02 Consultar el histórico por colaborador y fechas")
 def consultar_historico(request: Request, op: Operador = Depends(operador), db: Session = Depends(get_db)):
     return JSONResponse(servicio.consultar_historico(db, op, list(request.query_params.multi_items())), headers=SIN_CACHE)
+
+
+@router.get("/equipo/supervision", summary="M4-03 Obtener la vista de supervisión del equipo en un período")
+def consultar_supervision(request: Request, op: Operador = Depends(operador), db: Session = Depends(get_db)):
+    return JSONResponse(supervision.consultar_supervision(db, op, list(request.query_params.multi_items())), headers=SIN_CACHE)

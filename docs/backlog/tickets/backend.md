@@ -143,7 +143,7 @@ Cada ticket implementa uno o varios contratos de [docs/api/](../../api/indice.md
   - Marcar la única actividad válida de una jornada cerrada se rechaza; marcar otra con actividades válidas se acepta sin reabrir.
 
 #### BE-12 — Consulta de equipo e histórico
-- **Estado:** **M4-01 (M4-T1) y M4-02 (M4-T2) implementados el 2026-11-17** en `app/modulos/consulta`; M4-02 con la migración 0018 (índice del histórico, 2026-11-18).
+- **Estado:** **M4-01 (M4-T1) y M4-02 (M4-T2) implementados el 2026-11-17** en `app/modulos/consulta`; M4-02 con la migración 0018 (índice del histórico, 2026-11-18). **M4-03 implementado solo en su núcleo (M4-T3, 2026-11-18)**, sin la herencia entre equipos (M4-T4); M4-04 sin implementar.
 - **Prioridad:** P1 · **Capa:** Backend
 - **Objetivo:** Leer las bitácoras de compañeros y el histórico.
 - **Historias y criterios:** HU-4.1 (CA-130 a CA-133, CA-193, CA-194, CA-291), HU-4.2 (CA-134 a CA-136, CA-299, CA-300).

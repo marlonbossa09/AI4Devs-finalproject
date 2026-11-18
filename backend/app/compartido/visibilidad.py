@@ -208,6 +208,15 @@ def puede_ver_estado_actual(db: Session, consultante: Consultante, propietaria_i
     return actual is not None and actual.equipo_id == consultante.pertenencia.equipo_id
 
 
+def pertenece_al_equipo_en(db: Session, consultante: Consultante, persona_id: UUID, fecha: date) -> bool:
+    """¿El equipo de ``persona_id`` en la fecha laboral es el de quien consulta? (RA-01, DM-04). A diferencia de ``decidir_lectura`` NO concede nada por ser la propia
+    consultante: es la regla de las vistas DE EQUIPO (supervisión, M4-03), donde lo propio de un período en que la supervisora estaba en otro equipo no es del equipo."""
+    if not consultante.puede_operar:
+        return False
+    pertenencia = pertenencia_en_fecha(db, persona_id, fecha)
+    return pertenencia is not None and pertenencia.equipo_id == consultante.pertenencia.equipo_id
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # La misma regla, como predicado SQL para seleccionar solo lo autorizado (convenciones 3.3)
 # ----------------------------------------------------------------------------------------------------------------------
@@ -232,6 +241,31 @@ def condicion_lectura(consultante: Consultante, propietaria: str, fecha: str, *,
            f"where {alias}.persona_id = {propietaria} and {pertenencias.cubre(alias, fecha)} "
            f"and {alias}.equipo_id = :{prefijo}_equipo))")
     return sql, {f"{prefijo}_persona": consultante.persona_id, f"{prefijo}_equipo": consultante.pertenencia.equipo_id}
+
+
+def pertenencia_del_equipo(consultante: Consultante, alias: str, fecha: str, *, prefijo: str = "eq") -> tuple[str, dict]:
+    """Condición SQL sobre un intervalo de ``pertenencia`` ya presente en la consulta (``alias``): es del equipo de quien consulta y cubre ``fecha`` (una columna o ``:nombre``).
+    Es la ÚNICA expresión de «pertenece al equipo del consultante en la fecha»: ``condicion_equipo`` la usa dentro de un ``exists`` y las vistas de equipo (M4-03) la usan para
+    partir de los integrantes del equipo en lugar de recorrer toda la organización. Devuelve el texto y sus parámetros (``false`` si quien consulta no puede operar)."""
+    if not _PREFIJO.match(prefijo):
+        raise ValueError(f"Prefijo no admitido: {prefijo!r}")
+    alias = pertenencias.identificador_sql(alias)
+    fecha = fecha if fecha.startswith(":") else pertenencias.identificador_sql(fecha)
+    if not consultante.puede_operar:
+        return "false", {}
+    return f"{alias}.equipo_id = :{prefijo}_equipo and {pertenencias.cubre(alias, fecha)}", {f"{prefijo}_equipo": consultante.pertenencia.equipo_id}
+
+
+def condicion_equipo(consultante: Consultante, propietaria: str, fecha: str, *, prefijo: str = "eq") -> tuple[str, dict]:
+    """Condición SQL equivalente a ``pertenece_al_equipo_en``: existe una pertenencia de la propietaria (columna ``propietaria``) que cubre la fecha (columna ``fecha``) y es
+    del equipo de quien consulta. Sin la rama «es la propia consultante» de ``condicion_lectura``. Es una expresión booleana (``exists (...)``) que sirve en un ``WHERE`` y en
+    una lista de selección. Devuelve el texto y sus parámetros."""
+    propietaria = pertenencias.identificador_sql(propietaria)
+    alias = f"{prefijo}_pv"
+    condicion, parametros = pertenencia_del_equipo(consultante, alias, fecha, prefijo=prefijo)
+    if condicion == "false":
+        return "false", {}
+    return f"exists (select 1 from pertenencia {alias} where {alias}.persona_id = {propietaria} and {condicion})", parametros
 
 
 def condicion_lectura_auditoria(consultante: Consultante, propietaria: str, fecha: str, tipo_autor: str,
