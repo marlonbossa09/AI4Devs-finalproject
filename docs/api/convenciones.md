@@ -228,7 +228,7 @@ Descripción conceptual de los campos. No fija tipos físicos.
 
 **EntradaAuditoría**: `id`, `momento`, `tipo_autor`, `autor_persona_id`, `operacion`, `tipo_objeto`, `objeto_id`, `propietaria_registro_id`, `fecha_laboral_registro`, `motivo`, `valor_anterior` y `valor_nuevo`.
 
-**ReferenciaMínima** (RA-06): `actividad` (en forma neutral), `propietaria_id`, `iniciada_en_otro_equipo` (siempre verdadero), `estado_actual` y `fecha_ultimo_avance` (solo si ese avance está autorizado).
+**ReferenciaMínima** (RA-06): `actividad` (en forma neutral), `propietaria_id`, `iniciada_en_otro_equipo` (siempre verdadero), `estado_actual` y `fecha_ultimo_avance` (solo si ese avance está autorizado; se omite, no se envía nulo). En la vista de supervisión (M4-03, implementada en M4-T4) es un elemento de `tipo` `referencia_minima` y sus campos van al mismo nivel que `tipo`: la lista de campos es cerrada y nunca incluye título, descripciones, motivos de bloqueo, equipo anterior, número de avances, marca de error ni estado al corte.
 
 ## 8. Decisiones técnicas pendientes
 

@@ -15,6 +15,8 @@ Quién decide la forma es la política de visibilidad (``forma_de_actividad``): 
 ``oculta`` no aparece (RA-08) y no se proyecta.
 """
 
+from datetime import date
+
 from app.modulos.bitacoras.esquemas import actividad_a_dict
 
 REFERENCIA_NEUTRAL = "Actividad en continuidad"
@@ -31,3 +33,18 @@ def actividad_completa(fila, fecha_laboral_origen, *, con_estado_actual: bool) -
 
 def actividad_neutral(fila) -> dict:
     return {"forma": NEUTRAL, "id": str(fila.id), "propietaria_id": str(fila.propietaria_id), "referencia_neutral": REFERENCIA_NEUTRAL}
+
+
+REFERENCIA_MINIMA = "referencia_minima"
+
+
+def referencia_minima(fila, *, estado_actual: str, fecha_ultimo_avance: date | None) -> dict:
+    """``ReferenciaMínima`` (convenciones 7, RA-06, RN-84, RN-89, D-09, D-M4-06): elemento de la vista de supervisión para una actividad iniciada en otro equipo sin registros del
+    equipo. Lista CERRADA de campos: ``tipo`` (la distingue del acceso completo), ``actividad`` (forma neutral), ``propietaria_id``, ``iniciada_en_otro_equipo`` (siempre verdadero, sin
+    nombrar el equipo), ``estado_actual`` y ``fecha_ultimo_avance`` solo si ese avance está autorizado (se OMITE, no se envía nulo). Nunca título, descripciones, motivos de bloqueo,
+    contenido de bitácoras, nombre del equipo anterior, número de avances, fecha de creación, planificación original, marca de error ni estado al corte."""
+    referencia = {"tipo": REFERENCIA_MINIMA, "actividad": actividad_neutral(fila), "propietaria_id": str(fila.propietaria_id), "iniciada_en_otro_equipo": True,
+                  "estado_actual": estado_actual}
+    if fecha_ultimo_avance is not None:
+        referencia["fecha_ultimo_avance"] = fecha_ultimo_avance.isoformat()
+    return referencia

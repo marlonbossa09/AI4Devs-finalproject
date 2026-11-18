@@ -45,10 +45,11 @@ def actividades_referenciadas(db: Session, bitacoras: list[UUID]):
 # =============================== M4-03: vista de supervisión ==========================================
 
 def actividades_candidatas(db: Session, consultante: Consultante, desde: date, hasta: date):
-    """Actividades del EQUIPO del supervisor que pueden entrar en la vista del período: no marcadas por error, con su jornada de origen autorizada (equipo de la propietaria
-    en esa fecha = el del supervisor) y, por motivo, con planificación autorizada en el período, con avances autorizados en el período, o posiblemente pendientes al corte
-    con la propietaria en el equipo en la fecha de corte. La decisión final (estado al corte, motivos) la toma el servicio con los avances. Lo que no está autorizado no sale de
-    esta consulta.
+    """Actividades que pueden entrar en la vista del período del supervisor, con los HECHOS de autorización que decide la política (``visibilidad``): ``origen_autorizado`` (el
+    equipo de la propietaria en la fecha de su jornada de origen es el del supervisor, ``condicion_equipo``), ``por_planificacion`` y ``por_avances`` (con planificación o avances
+    autorizados en el período) y ``en_el_equipo_al_corte`` (la propietaria es del equipo en la fecha de corte). No salen las marcadas por error (RA-08, CA-147). Una actividad
+    cuyo origen no está autorizado (heredada) sale SIN título, origen ni fecha de origen: esos datos no abandonan la base si no están autorizados. La decisión final (forma,
+    estado al corte, motivos) la toma el servicio con la política.
 
     La consulta PARTE de los integrantes del equipo (``pertenencia_del_equipo``, la misma expresión de pertenencia de la política) y de las bitácoras de esos integrantes en las
     fechas en que lo eran, así que su coste crece con el tamaño del equipo y del período, no con el de la organización."""
@@ -68,28 +69,45 @@ def actividades_candidatas(db: Session, consultante: Consultante, desde: date, h
         # actividades de quienes son del equipo en la fecha de corte (posiblemente pendientes al corte)
         " del_equipo_al_corte as (select distinct a.id from pertenencia pc join actividad a on a.propietaria_id = pc.persona_id"
         f"  where {c_corte}),"
-        " candidatas as (select actividad_id as id from planificadas union select actividad_id from con_avances union select id from del_equipo_al_corte)"
-        " select a.id, a.propietaria_id, a.titulo, a.origen, a.estado_actual, a.registrada_por_error, a.motivo_error, a.marcada_en, a.creada_en,"
-        "  ob.fecha_laboral as fecha_laboral_origen,"
-        "  (a.id in (select actividad_id from planificadas)) as por_planificacion,"
-        "  (a.id in (select actividad_id from con_avances)) as por_avances,"
-        "  (a.id in (select id from del_equipo_al_corte)) as en_el_equipo_al_corte"
-        " from candidatas k join actividad a on a.id = k.id join bitacora ob on ob.id = a.bitacora_origen_id"
-        f" where not a.registrada_por_error and ob.fecha_laboral <= :hasta and {c_origen}"
+        " candidatas as (select actividad_id as id from planificadas union select actividad_id from con_avances union select id from del_equipo_al_corte),"
+        " hechos as ("
+        "  select a.id, a.propietaria_id, a.titulo, a.origen, a.estado_actual, a.registrada_por_error, a.motivo_error, a.marcada_en, a.creada_en,"
+        "   ob.fecha_laboral as fecha_laboral_origen,"
+        f"   ({c_origen}) as origen_autorizado,"
+        "   (a.id in (select actividad_id from planificadas)) as por_planificacion,"
+        "   (a.id in (select actividad_id from con_avances)) as por_avances,"
+        "   (a.id in (select id from del_equipo_al_corte)) as en_el_equipo_al_corte"
+        "  from candidatas k join actividad a on a.id = k.id join bitacora ob on ob.id = a.bitacora_origen_id"
+        "  where not a.registrada_por_error and ob.fecha_laboral <= :hasta"
         # lo completado antes del corte y sin avances posteriores no puede estar pendiente al corte: solo cuenta si tiene otro motivo
-        " and (a.id in (select actividad_id from planificadas) or a.id in (select actividad_id from con_avances)"
-        "      or a.estado_actual <> 'Completada' or exists (select 1 from avance ax join bitacora bx on bx.id = ax.bitacora_id where ax.actividad_id = a.id and bx.fecha_laboral > :hasta))")
+        "   and (a.id in (select actividad_id from planificadas) or a.id in (select actividad_id from con_avances)"
+        "        or a.estado_actual <> 'Completada' or exists (select 1 from avance ax join bitacora bx on bx.id = ax.bitacora_id where ax.actividad_id = a.id and bx.fecha_laboral > :hasta)))"
+        " select id, propietaria_id, case when origen_autorizado then titulo end as titulo, case when origen_autorizado then origen end as origen, estado_actual,"
+        "  registrada_por_error, motivo_error, marcada_en, case when origen_autorizado then creada_en end as creada_en,"
+        "  case when origen_autorizado then fecha_laboral_origen end as fecha_laboral_origen,"
+        "  origen_autorizado, por_planificacion, por_avances, en_el_equipo_al_corte from hechos")
     parametros = {"desde": desde, "hasta": hasta, **p_bitacoras, **p_corte, **p_origen}
     return db.execute(text(sql), parametros).all()
 
 
-def avances_hasta_el_corte(db: Session, consultante: Consultante, actividades: list[UUID], hasta: date):
-    """Los avances de esas actividades con fecha laboral ≤ corte, cada uno con si está autorizado (su fecha laboral es de un período en que la propietaria era del equipo del
-    supervisor). El estado al corte lo determina el último; si no está autorizado, no se muestra (RA-07)."""
+def avances_de_las_actividades(db: Session, consultante: Consultante, actividades: list[UUID]):
+    """Los avances de esas actividades de TODAS las fechas (el servicio separa los de hasta el corte), cada uno con si está autorizado (su fecha laboral es de un período en que la
+    propietaria era del equipo del supervisor, ``condicion_equipo``). El estado al corte lo determina el último hasta el corte; si no está autorizado, no se muestra (RA-07)."""
     if not actividades:
         return []
     autorizado, parametros = condicion_equipo(consultante, "a.propietaria_id", "bx.fecha_laboral", prefijo="ea")
     sql = ("select av.actividad_id, av.id, bx.fecha_laboral, av.registrado_en, av.estado, av.es_reactivacion, " + autorizado + " as autorizado "
            "from avance av join bitacora bx on bx.id = av.bitacora_id join actividad a on a.id = av.actividad_id "
-           "where av.actividad_id = any(:ids) and bx.fecha_laboral <= :hasta")
-    return db.execute(text(sql), {"ids": actividades, "hasta": hasta, **parametros}).all()
+           "where av.actividad_id = any(:ids)")
+    return db.execute(text(sql), {"ids": actividades, **parametros}).all()
+
+
+def actividades_con_planificacion_autorizada(db: Session, consultante: Consultante, actividades: list[UUID], hasta: date) -> set[UUID]:
+    """Identificadores de las actividades que tienen alguna planificación (original o continuación) autorizada con fecha laboral hasta el corte: son «registros del equipo» sobre
+    ellas (RN-47). Solo el identificador sale de la consulta."""
+    if not actividades:
+        return set()
+    autorizado, parametros = condicion_equipo(consultante, "a.propietaria_id", "bp.fecha_laboral", prefijo="ep")
+    sql = ("select distinct pl.actividad_id from planificacion pl join bitacora bp on bp.id = pl.bitacora_id join actividad a on a.id = pl.actividad_id "
+           f"where pl.actividad_id = any(:ids) and bp.fecha_laboral <= :hasta and {autorizado}")
+    return {fila[0] for fila in db.execute(text(sql), {"ids": actividades, "hasta": hasta, **parametros}).all()}

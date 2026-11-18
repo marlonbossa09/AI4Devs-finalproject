@@ -218,6 +218,37 @@ def pertenece_al_equipo_en(db: Session, consultante: Consultante, persona_id: UU
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# Presentación de una actividad en la VISTA DE SUPERVISIÓN (M4-03; RA-04, RA-06, RA-07, RA-08; RN-47, RN-84, RN-88)
+# ----------------------------------------------------------------------------------------------------------------------
+# Reglas puras sobre HECHOS ya calculados con los predicados de arriba (``condicion_equipo`` en SQL, ``pertenece_al_equipo_en`` en Python). Las usa el módulo de M4 y las prueban
+# las pruebas de la política; el módulo de supervisión no contiene ninguna regla de autorización propia.
+
+EN_SUPERVISION_COMPLETA = "completa"
+EN_SUPERVISION_NEUTRAL = "neutral"
+EN_SUPERVISION_REFERENCIA_MINIMA = "referencia_minima"
+
+
+def forma_en_supervision(origen_autorizado: bool, registros_del_equipo: bool) -> str:
+    """Cómo se presenta al supervisor una actividad que ya se sabe que no está marcada por error (RA-08: una marcada por error no se presenta de ninguna forma).
+
+    - ``completa``: su jornada de origen es del equipo del supervisor (título y origen autorizados, RA-04).
+    - ``neutral``: el origen es de otro equipo pero el equipo tiene registros propios sobre ella (planificaciones o avances autorizados): se identifica con la referencia neutral
+      «Actividad en continuidad», sin título, y nunca se revela el original aunque existan avances del equipo (RA-04, RN-101).
+    - ``referencia_minima``: el origen es de otro equipo y el equipo no tiene registros propios (RN-47, RN-84): propietaria, indicación de que se inició en otro equipo, estado
+      actual y, si es autorizada, la fecha de su último avance (RA-06). Es claramente distinta del acceso al historial (RN-89)."""
+    if origen_autorizado:
+        return EN_SUPERVISION_COMPLETA
+    return EN_SUPERVISION_NEUTRAL if registros_del_equipo else EN_SUPERVISION_REFERENCIA_MINIMA
+
+
+def estado_al_corte_es_visible(hay_avances_hasta_el_corte: bool, ultimo_avance_autorizado: bool, origen_autorizado: bool) -> bool:
+    """RA-07, RN-88: el estado al corte (el del ÚLTIMO avance hasta el corte según la secuencia válida completa) se muestra solo si ese avance está autorizado. Si no hay avances, es
+    Pendiente por la propia existencia de la actividad, y solo se muestra si su origen está autorizado: si no, derivaría de registros protegidos de otro equipo. NUNCA se sustituye
+    un avance no autorizado por uno anterior autorizado para fabricar un estado."""
+    return ultimo_avance_autorizado if hay_avances_hasta_el_corte else origen_autorizado
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # La misma regla, como predicado SQL para seleccionar solo lo autorizado (convenciones 3.3)
 # ----------------------------------------------------------------------------------------------------------------------
 

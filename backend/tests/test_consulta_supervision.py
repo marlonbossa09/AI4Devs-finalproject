@@ -1,9 +1,9 @@
 """M4-T3 — M4-03 núcleo «Vista de supervisión del equipo en un período» (``GET /api/v1/equipo/supervision``) con FastAPI y PostgreSQL reales.
 
-Pruebas focalizadas (metodología ligera): supervisor autorizado; colaborador (403); supervisor desactivado y equipo pendiente; inclusión por planificación, avances y pendiente
-al corte (RN-47); exclusión de lo completado antes del período y de lo marcado por error; estado al corte frente al actual (D-M4-05); totales sobre lo autorizado; registros de
-otro equipo, de otra organización y planificaciones conservadas sin efecto en totales, lista ni cursor; paginación estable; fechas y rango máximo; y que lo que necesita M4-T4
-(actividad heredada, estado al corte determinado por otro equipo) falla cerrado sin exponer nada. Los criterios reservados a M4-T4 NO se prueban como cumplidos.
+Pruebas focalizadas (metodología ligera) del NÚCLEO de la vista (M4-T3): supervisor autorizado; colaborador (403); supervisor desactivado y equipo pendiente; inclusión por
+planificación, avances y pendiente al corte (RN-47); exclusión de lo completado antes del período y de lo marcado por error; estado al corte frente al actual (D-M4-05); totales sobre
+lo autorizado; registros de otro equipo, de otra organización y planificaciones conservadas sin efecto en totales, lista ni cursor; paginación estable; fechas y rango máximo.
+La herencia entre equipos (forma neutral, referencia mínima, estado al corte autorizado; M4-T4) se prueba en ``test_consulta_supervision_herencia.py``.
 Destructivas solo sobre ``smartwork_test``.
 """
 
@@ -113,11 +113,13 @@ def test_el_supervisor_con_acceso_efectivo_obtiene_la_vista_con_la_forma_del_con
     r = supervision(entrar("supt"), d(-20), d(0))
     c = r.json()
     assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
-    assert set(c) == {"periodo", "corte", "totales_por_estado", "elementos", "siguiente"}
+    assert set(c) == {"periodo", "corte", "totales_por_estado", "sin_estado_al_corte", "elementos", "siguiente"}
     assert c["periodo"] == {"desde": d(-20).isoformat(), "hasta": d(0).isoformat()} and c["corte"] == d(0).isoformat()           # el corte es el último día (D-06)
-    assert all({"tipo", "actividad", "propietaria_id", "motivo_inclusion", "estado_al_corte"} <= set(e) <= {"tipo", "actividad", "propietaria_id", "motivo_inclusion", "estado_al_corte", "estado_actual_si_difiere"}
-               for e in c["elementos"])
-    assert all(e["tipo"] == "actividad" and e["actividad"]["forma"] == "completa" and "estado_actual" not in e["actividad"] for e in c["elementos"])
+    actividades = [e for e in c["elementos"] if e["tipo"] == "actividad"]
+    assert actividades and all({"tipo", "actividad", "propietaria_id", "motivo_inclusion"} <= set(e) <= {"tipo", "actividad", "propietaria_id", "motivo_inclusion", "estado_al_corte", "estado_actual_si_difiere"}
+                               for e in actividades)
+    assert all(e["actividad"]["forma"] == "completa" and "estado_actual" not in e["actividad"] for e in actividades if "titulo" in e["actividad"])
+    assert {e["tipo"] for e in c["elementos"]} <= {"actividad", "referencia_minima"}
     assert not any(palabra in json.dumps(c).lower() for palabra in ("ranking", "puntuacion", "clasificacion"))                    # CA-145
 
 
@@ -137,7 +139,7 @@ def test_un_colaborador_recibe_403_y_nadie_mas_supervisa_aunque_el_supervisor_es
 
 def test_cada_supervisor_ve_solo_las_actividades_de_su_equipo(mundo):
     u = supervision(entrar("supu"), d(-20), d(0)).json()
-    assert {e["actividad"]["titulo"] for e in u["elementos"]} == {"Tarea de Celia"} and u["totales_por_estado"]["Pendiente"] == 1          # CA-146
+    assert {e["actividad"]["titulo"] for e in u["elementos"] if "titulo" in e["actividad"]} == {"Tarea de Celia"} and u["totales_por_estado"]["Pendiente"] == 1          # CA-146
     otra_org = supervision(entrar("externa"), d(-20), d(0)).json()
     assert {e["actividad"]["titulo"] for e in otra_org["elementos"]} == {"Tarea de Externa"}
     texto = json.dumps(u) + json.dumps(otra_org)
@@ -155,14 +157,14 @@ def test_ningun_metodo_de_escritura_existe_en_la_ruta(mundo):
 def test_inclusion_por_planificacion_avances_y_pendiente_con_sus_motivos_y_los_totales_exactos(mundo):
     c = supervision(entrar("supt"), d(-20), d(0)).json()
     e = por_id(c)
-    assert set(e) == {str(mundo[k]) for k in ("A1", "A2", "A4", "A5", "A7")}
+    assert set(e) == {str(mundo[k]) for k in ("A1", "A2", "A4", "A5", "A7", "A9", "A11")}                          # A9 y A11 son de la herencia entre equipos (archivo de M4-T4)
     assert e[str(mundo["A1"])]["motivo_inclusion"] == ["planificada_en_el_periodo", "con_avances_en_el_periodo", "pendiente_al_corte"] and e[str(mundo["A1"])]["estado_al_corte"] == "Bloqueada"   # CA-138, CA-139, CA-140
     assert e[str(mundo["A2"])]["motivo_inclusion"] == ["pendiente_al_corte"] and e[str(mundo["A2"])]["estado_al_corte"] == "En progreso"                                            # CA-140: sin registros en el período
     assert e[str(mundo["A4"])]["motivo_inclusion"] == ["planificada_en_el_periodo", "pendiente_al_corte"] and e[str(mundo["A4"])]["estado_al_corte"] == "Pendiente"
     assert e[str(mundo["A5"])]["motivo_inclusion"] == ["con_avances_en_el_periodo"] and e[str(mundo["A5"])]["estado_al_corte"] == "Completada"                                       # completada en el período: ya no está pendiente
     assert e[str(mundo["A7"])]["propietaria_id"] == str(mundo["supt"])                                                                                                                  # CA-142: las propias
     assert c["totales_por_estado"] == {"Pendiente": 2, "En progreso": 1, "Bloqueada": 1, "Completada": 1}
-    assert [x["estado_al_corte"] for x in c["elementos"]] == ["Pendiente", "Pendiente", "En progreso", "Bloqueada", "Completada"]                                                       # orden por estado
+    assert [x["estado_al_corte"] for x in c["elementos"][:5]] == ["Pendiente", "Pendiente", "En progreso", "Bloqueada", "Completada"]                                                  # orden por estado
 
 
 def test_lo_completado_antes_del_periodo_y_lo_marcado_por_error_no_aparecen(mundo):
@@ -196,11 +198,11 @@ def test_una_continuacion_planificada_posterior_al_corte_no_cambia_el_estado_al_
 
 def test_el_periodo_puede_ser_futuro_y_las_planificaciones_conservadas_no_cuentan_como_trabajo_de_nadie(mundo):
     c = supervision(entrar("supt"), d(0), d(10)).json()                                                       # D-M4-04
-    titulos = {e["actividad"]["titulo"] for e in c["elementos"]}
+    titulos = {e["actividad"]["titulo"] for e in c["elementos"] if "titulo" in e["actividad"]}
     assert "Conservada de Fina" not in titulos and "Conservada de Gina" not in titulos                       # CA-274: ni vigentes ni pendientes de ningún equipo (D-M4-07)
     assert "Conservada de Fina" not in json.dumps(c) and "Conservada de Gina" not in json.dumps(c)
     assert {"Informe de Ana", "Revisión antigua de Ana", "Plan de Beto", "Plan de la supervisora"} <= titulos      # lo pendiente de los integrantes actuales sigue ahí
-    assert sum(c["totales_por_estado"].values()) == len(c["elementos"])
+    assert sum(c["totales_por_estado"].values()) + sum(c["sin_estado_al_corte"].values()) == len(c["elementos"])
 
 
 # ------------------------------------------------------------------------------------------------------ información derivada y falla cerrado (M4-T4)
@@ -215,24 +217,6 @@ def test_lo_de_otros_equipos_no_cambia_ni_los_totales_ni_la_lista(mundo):
     assert despues == antes
 
 
-def test_las_actividades_heredadas_y_el_estado_determinado_por_otro_equipo_fallan_cerrado(mundo):
-    c = supervision(entrar("supt"), d(-20), d(0)).json()
-    texto = json.dumps(c)
-    assert str(mundo["A11"]) not in texto and "Tarea heredada de Luis" not in texto                          # origen de otro equipo (T4: referencia mínima)
-    assert str(mundo["A9"]) not in texto and "Tarea de Pablo" not in texto                                   # el último avance hasta el corte es de U (T4: CA-230)
-    for filtrado in ("resumen reservado", "motivo reservado de T", "bloqueo en T", "continúa en U", "trabajo previo en U", "Equipo U", "Equipo T", "Tarea de Celia"):
-        assert filtrado not in texto, filtrado
-    assert "referencias_minimas" not in c                                                                     # el recuento llega con M4-T4: no se anuncia algo que no se muestra
-    # y lo que es del equipo sigue siendo exactamente lo calculado: lo omitido no se cuenta
-    assert sum(c["totales_por_estado"].values()) == 5
-
-
-def test_el_equipo_nuevo_no_ve_lo_que_empezo_en_el_anterior(mundo):
-    u = supervision(entrar("supu"), d(-20), d(0)).json()
-    texto = json.dumps(u)
-    assert "Tarea de Pablo" not in texto and "Informe de Ana" not in texto and sum(u["totales_por_estado"].values()) == 1
-
-
 # ------------------------------------------------------------------------------------------------------ paginación y parámetros
 
 @pytest.mark.parametrize("limite", [1, 2, 3, 100])
@@ -241,8 +225,8 @@ def test_la_paginacion_es_estable_sin_duplicados_ni_omisiones_y_los_totales_no_d
     todos = supervision(supt, d(-20), d(0), limite="100").json()
     elementos, tamanos, totales = todas_las_paginas(supt, d(-20), d(0), limite)
     assert [e["actividad"]["id"] for e in elementos] == [e["actividad"]["id"] for e in todos["elementos"]]
-    assert len({e["actividad"]["id"] for e in elementos}) == len(elementos) == 5
-    assert all(t == limite for t in tamanos[:-1]) and sum(tamanos) == 5
+    assert len({e["actividad"]["id"] for e in elementos}) == len(elementos) == 7
+    assert all(t == limite for t in tamanos[:-1]) and sum(tamanos) == 7
     assert all(t == todos["totales_por_estado"] for t in totales)                                              # los totales son de todo el período, no de la página
 
 
@@ -285,7 +269,8 @@ def test_un_cursor_con_un_estado_inexistente_o_forjado_no_entrega_nada_que_la_co
     assert r.status_code == 400
     forjado = paginacion.emitir_cursor("En progreso", "00000000-0000-4000-8000-000000000000", "00000000-0000-4000-8000-000000000000")
     c = supervision(entrar("supt"), d(-20), d(0), continuar_desde=forjado).json()
-    assert {e["actividad"]["titulo"] for e in c["elementos"]} <= {"Revisión antigua de Ana", "Informe de Ana", "Terminada en el período"}               # solo lo autorizado posterior a esa posición
+    assert {e["actividad"].get("titulo") for e in c["elementos"]} <= {"Revisión antigua de Ana", "Informe de Ana", "Terminada en el período", "Tarea de Pablo", None}      # solo lo autorizado posterior a esa posición
+    assert "Tarea heredada de Luis" not in json.dumps(c)
 
 
 # ------------------------------------------------------------------------------------------------------ la política compartida
