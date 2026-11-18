@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     # configurables; no son reglas del producto (PA-13).
     pagination_default_limit: int = Field(default=20, gt=0)
     pagination_max_limit: int = Field(default=100, gt=0)
+    # Amplitud máxima, en días (extremos incluidos), del rango de fechas laborales de las consultas de M4 (M4-02 y M4-03; convenciones 6.1 y 9; PA-13).
+    # 92 días, valor confirmado el 2026-11-17 (D-M4-03): cubre un trimestre y acota el coste y el sondeo. Superarlo es SOLICITUD_INVALIDA con el máximo en ``detalles``.
+    query_max_range_days: int = Field(default=92, gt=0)
 
     argon2_memory_kib: int = Field(default=19456, gt=0)
     argon2_iterations: int = Field(default=2, gt=0)

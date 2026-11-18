@@ -252,4 +252,4 @@ Un parámetro puede quedar configurable sin impedir que el contrato esté comple
 | Caducidad e intentos de los códigos; retardos y límite de intentos de inicio de sesión; inactividad y duración absoluta de la sesión | M1-01a, M1-03b, M1-09b | `CODIGO_NO_VALIDO`, `DEMASIADAS_SOLICITUDES`, `NO_IDENTIFICADA` | ADR-002 |
 | Límites de registros, tokens, tiempo, reintentos y presupuesto de un informe | M5-01, M5-02 | `INFORME_EXCEDE_LIMITES`, `INFORME_NO_GENERADO` | ADR-003 |
 
-Ningún contrato fija un valor numérico de estos parámetros.
+Ningún contrato fija un valor numérico de estos parámetros. **Excepción confirmada el 2026-11-17 (D-M4-03):** la amplitud máxima del rango de fechas de M4-02 y M4-03 es un parámetro de entorno `QUERY_MAX_RANGE_DAYS`, en días con los extremos incluidos, con **92** como valor inicial; el valor sigue siendo configurable.

@@ -2,8 +2,8 @@
 
 | Campo | Contenido |
 |---|---|
-| **Estado** | `[PROPUESTO]`, pendiente de revisión. **Implementación:** M4-01 implementado (M4-T1, 2026-11-17); M4-02, M4-03 y M4-04 sin implementar |
-| **Versión** | 0.6 |
+| **Estado** | `[PROPUESTO]`, pendiente de revisión. **Implementación:** M4-01 (M4-T1) y M4-02 (M4-T2) implementados el 2026-11-17; M4-03 y M4-04 sin implementar |
+| **Versión** | 0.7 |
 | **Fecha** | 2026-11-17 |
 | **Convenciones** | `docs/api/convenciones.md` |
 
@@ -48,6 +48,7 @@ Todas las operaciones de este módulo son de **solo lectura**. Aplican la polít
 | **Errores** | `SOLICITUD_INVALIDA` (incluidas la búsqueda por texto, CA-136, y la falta o el exceso del rango) · `ACCESO_DESACTIVADO` · `SIN_PERTENENCIA_VIGENTE` · `NO_IDENTIFICADA` |
 | **Auditoría y transacción** | Lectura |
 | **Criterios vinculados** | CA-134, CA-135, CA-136, CA-19, CA-20, CA-299, CA-300, **CA-30, CA-256** (vinculados el 2026-11-17: el histórico de un rango incluye los registros de personas finalizadas o con el acceso desactivado) |
+| **Aplicación (M4-T2, 2026-11-17)** | Implementado en `app/modulos/consulta` con utilidad de paginación propia de M4 (`app/compartido/paginacion.py`; M2 y M3 no se tocan, D-M4-08). **Parámetros admitidos:** `desde`, `hasta`, `persona_id`, `limite` y `continuar_desde`; cualquier otro, o uno repetido, es `SOLICITUD_INVALIDA` (`parametro_no_soportado` o `parametro_repetido`). **Rango (D-M4-03 y D-M4-04, confirmadas):** `desde` y `hasta` obligatorios (`obligatorio`), `desde` ≤ `hasta` (`posterior_a_hasta`), `hasta` puede ser una fecha futura y la amplitud —`hasta − desde + 1` días, extremos incluidos— no puede superar `QUERY_MAX_RANGE_DAYS` (por defecto **92**; `rango_excede_el_maximo` con `maximo_dias` en `detalles`). **Elementos:** `persona_id`, `fecha_laboral`, `estado`, `resumen` y `actividades` (`ActividadVisible`: `forma` `completa` o `neutral`; las ocultas no aparecen), sin ningún campo más. **Orden:** `fecha_laboral`, `persona_id` e identificador de la bitácora (único por persona y fecha). **Paginación:** `limite` (por defecto 20, máximo 100) y `continuar_desde`, un cursor opaco con la posición del último elemento entregado; es solo una posición: la autorización se aplica siempre al seleccionar, así que un cursor fabricado no entrega nada que la consulta no entregaría, y uno inválido se rechaza (`cursor_invalido`). `siguiente` es nulo cuando no hay más. **Autorización:** el predicado `condicion_lectura` de la política de M1 se aplica **en la propia consulta, antes de ordenar y de paginar**: lo no autorizado no cambia los elementos, su orden, el tamaño de las páginas, el cursor ni `siguiente`. **Persona:** si se indica `persona_id`, solo los registros autorizados de esa persona; una persona no autorizada, de otra organización o inexistente da la misma lista vacía (200), sin revelar su existencia. Sin `persona_id`, los de las personas que la política permite, siempre incluidos los propios. Una persona trasladada se ve por el equipo de cada fecha; los registros de personas finalizadas o con el acceso desactivado siguen siendo visibles para su equipo de esa fecha. La ruta solo admite `GET` (405 con `Allow: GET`). Sin búsqueda por texto. **Índice (migración 0018, aprobada y aplicada el 2026-11-18):** `bitacora_historico_idx` sobre `bitacora (fecha_laboral, persona_id, id)`, con el mismo orden que la paginación; es un detalle de rendimiento y no cambia ningún resultado, ni el contrato |
 | **Decisiones pendientes** | D-08 y D-10 (confirmadas o aceptadas) |
 
 ## M4-03 — Obtener la vista de supervisión del equipo en un período

@@ -503,7 +503,7 @@ def test_solo_el_modulo_de_m4_usa_la_politica_de_visibilidad_historica():
     módulo de M4 (``app/modulos/consulta``); M2 y M3 siguen sin usarla (M4-T6 decidirá, con aprobación, su 403 y la auditoría del supervisor)."""
     usos = sorted(f.relative_to(RAIZ).as_posix() for f in (RAIZ / "app" / "modulos").rglob("*.py")
                   if "compartido.visibilidad" in f.read_text(encoding="utf-8") or "import visibilidad" in f.read_text(encoding="utf-8"))
-    assert usos == ["app/modulos/consulta/servicio.py"]
+    assert usos and all(u.startswith("app/modulos/consulta/") for u in usos), usos                    # M4-T1: servicio; M4-T2: también su repositorio
 
 
 def test_la_definicion_del_intervalo_de_pertenencia_esta_en_un_solo_lugar():
