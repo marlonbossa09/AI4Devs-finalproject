@@ -146,6 +146,8 @@ class _SupervisionPageState extends ConsumerState<SupervisionPage> {
       return;
     }
     setState(() => _rangeError = null);
+    // Asking is always asking the server again (see the team page): nothing loaded before stays on screen after a rejection
+    ref.invalidate(supervisionFeedProvider(from, to));
     ref.read(supervisionSelectionProvider.notifier).ask(from, to);
   }
 }
@@ -160,14 +162,14 @@ class _SupervisionResult extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final result = ref.watch(supervisionFeedProvider(from, to));
-    if (result.isLoading && !result.hasValue) {
+    if (result.isLoading) {
       return const Padding(
         key: Key('supervision-loading'),
         padding: EdgeInsets.all(28),
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (result.hasError && !result.hasValue) {
+    if (result.hasError) {
       final error = result.error;
       return ErrorBox(
         message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la supervisión.',

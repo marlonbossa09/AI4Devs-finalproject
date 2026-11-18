@@ -203,6 +203,31 @@ def test_los_equipos_ven_solo_los_registros_de_su_periodo_tras_un_traslado(mundo
     assert leer(entrar("supu"), mundo["pablo"], d(-30)).status_code == 404 and leer(entrar("supu"), mundo["pablo"], d(-3)).status_code == 200
 
 
+def test_una_planificacion_de_una_fecha_posterior_al_traslado_es_del_equipo_nuevo_aunque_se_registrara_antes(mundo):
+    """CA-216 y CA-217 (RN-87): la fecha laboral de la planificación decide su equipo; Pablo pasó de T a U en d(-10) y planificó para d(+3) con el traslado ya hecho."""
+    with get_owner_engine().begin() as c:
+        b = _bitacora(c, mundo["pablo"], d(3), "jornada futura de Pablo")
+        a = _actividad(c, mundo["pablo"], b, "Plan futuro de Pablo", estado="Pendiente")
+        _plan(c, a, b, descripcion="plan para después del traslado")
+    r = leer(entrar("celia"), mundo["pablo"], d(3))                                                    # un integrante de U la consulta (CA-216)
+    assert r.status_code == 200 and [p["descripcion"] for p in r.json()["planificaciones"]] == ["plan para después del traslado"]
+    assert leer(entrar("beto"), mundo["pablo"], d(3)).status_code == 404 and leer(entrar("supt"), mundo["pablo"], d(3)).status_code == 404     # uno de T no (CA-217)
+
+
+def test_con_un_traslado_programado_para_manana_la_bitacora_de_hoy_sigue_siendo_del_equipo_anterior(mundo):
+    """CA-249 (H-1 del plan de M4): la consulta ajena antes de la fecha efectiva. Dario es de T y su traslado a U tiene efecto MAÑANA: lo que registró hoy es de T."""
+    with get_owner_engine().begin() as c:
+        dario = crear_persona(c, "dario")
+        crear_pertenencia(c, dario, mundo["t"], "colaborador", desde=d(-60), hasta=d(1))
+        crear_pertenencia(c, dario, mundo["u"], "colaborador", desde=d(1))
+        _bitacora(c, dario, d(0), "jornada de hoy de Dario")
+        _bitacora(c, dario, d(1), "jornada de mañana de Dario")
+    for quien, esperado in (("beto", 200), ("supt", 200), ("celia", 404), ("supu", 404)):               # hoy sigue en T: lo lee T y no lo lee U
+        assert leer(entrar(quien), dario, d(0)).status_code == esperado, quien
+    for quien, esperado in (("beto", 404), ("supt", 404), ("celia", 200), ("supu", 200)):               # desde mañana es de U
+        assert leer(entrar(quien), dario, d(1)).status_code == esperado, quien
+
+
 def test_quien_se_incorpora_despues_lee_lo_del_equipo_en_esa_fecha_pero_no_lo_del_otro(mundo):
     quique = entrar("quique")                                                                         # CA-176 y CA-177
     assert leer(quique, mundo["pablo"], d(-30)).status_code == 200 and leer(quique, mundo["pablo"], d(-3)).status_code == 404

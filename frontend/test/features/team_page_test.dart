@@ -322,6 +322,35 @@ void main() {
     });
   });
 
+  group('losing the authorization while looking at data', () {
+    testWidgets('asking again for a logbook or the history after a rejection shows the rejection and NO earlier data', (tester) async {
+      final team = FakeTeamRepository()
+        ..logbooks['p2|2026-11-06'] = peerLogbook(summary: 'Resumen que no debe quedar a la vista')
+        ..history = [historyEntry('p2', DateTime.utc(2026, 11, 3), summary: 'Histórico que no debe quedar a la vista')]
+        ..pageSize = 10;
+      await openTeam(tester, team);
+      await choose(tester, 'peer-select', 'Ana Compañera');
+      await tapKey(tester, 'peer-submit');
+      expect(find.text('Resumen que no debe quedar a la vista'), findsOneWidget);
+      team.logbookError = const ApiError(code: 'ACCESO_DESACTIVADO', message: 'PAYLOAD');
+      await tapKey(tester, 'peer-submit');
+      expect(team.logbookRequests.length, 2);
+      expect(find.textContaining('Tu acceso está desactivado'), findsOneWidget);
+      expect(find.text('Resumen que no debe quedar a la vista'), findsNothing);
+
+      await tapKey(tester, 'team-mode');
+      await tester.tap(find.text('Histórico'));
+      await tester.pumpAndSettle();
+      await tapKey(tester, 'history-submit');
+      expect(find.text('Histórico que no debe quedar a la vista'), findsOneWidget);
+      team.historyError = const ApiError(code: 'SIN_PERTENENCIA_VIGENTE', message: 'PAYLOAD');
+      await tapKey(tester, 'history-submit');
+      expect(team.historyRequests.length, 2);
+      expect(find.textContaining('No tienes una pertenencia vigente'), findsOneWidget);
+      expect(find.text('Histórico que no debe quedar a la vista'), findsNothing);
+    });
+  });
+
   group('layout', () {
     for (final (name, size) in [('mobile', mobile), ('tablet', tablet), ('desktop', desktop)]) {
       testWidgets('both views fit on $name without overflow', (tester) async {

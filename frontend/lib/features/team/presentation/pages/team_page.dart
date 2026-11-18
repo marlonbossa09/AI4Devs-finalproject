@@ -96,14 +96,14 @@ class _TeamPageState extends ConsumerState<TeamPage> {
   }
 
   Widget _body(AsyncValue<List<TeamMember>> members, String? myId, bool mobile) {
-    if (members.isLoading && !members.hasValue) {
+    if (members.isLoading) {
       return const Padding(
         key: Key('team-loading'),
         padding: EdgeInsets.all(32),
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (members.hasError && !members.hasValue) {
+    if (members.hasError) {
       final error = members.error;
       return ErrorBox(
         message: error is ApiError ? errorMessage(error) : 'No se pudo cargar tu equipo.',
@@ -161,7 +161,7 @@ class _TeamPageState extends ConsumerState<TeamPage> {
           child: PrimaryButton(
             key: const Key('peer-submit'),
             label: 'Ver bitácora',
-            onPressed: _personId == null ? null : () => setState(() => _logbookQuery = (personId: _personId!, date: _date!)),
+            onPressed: _personId == null ? null : _submitLogbook,
           ),
         ),
         const SizedBox(height: 18),
@@ -171,6 +171,13 @@ class _TeamPageState extends ConsumerState<TeamPage> {
           _PeerLogbookResult(personId: query.personId, date: query.date, ownerName: nameOf(query.personId)),
       ],
     );
+  }
+
+  /// Asking is always asking the server again: it never reuses what an earlier answer left in memory, so if the user lost
+  /// access in the meantime the answer is the rejection and nothing from before stays on screen.
+  void _submitLogbook() {
+    ref.invalidate(peerLogbookProvider(_personId!, _date!));
+    setState(() => _logbookQuery = (personId: _personId!, date: _date!));
   }
 
   // ------------------------------------------------------------------------------------------ Histórico
@@ -262,9 +269,11 @@ class _TeamPageState extends ConsumerState<TeamPage> {
       });
       return;
     }
+    final personId = _historyPerson == _allPeople ? null : _historyPerson;
+    ref.invalidate(historyViewProvider(_from!, _to!, personId));
     setState(() {
       _rangeError = null;
-      _historyQuery = (from: _from!, to: _to!, personId: _historyPerson == _allPeople ? null : _historyPerson);
+      _historyQuery = (from: _from!, to: _to!, personId: personId);
     });
   }
 }
@@ -279,14 +288,14 @@ class _PeerLogbookResult extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final result = ref.watch(peerLogbookProvider(personId, date));
-    if (result.isLoading && !result.hasValue) {
+    if (result.isLoading) {
       return const Padding(
         key: Key('peer-loading'),
         padding: EdgeInsets.all(28),
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (result.hasError && !result.hasValue) {
+    if (result.hasError) {
       final error = result.error;
       return ErrorBox(
         message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la bitácora.',
@@ -316,14 +325,14 @@ class _HistoryResult extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final result = ref.watch(historyViewProvider(from, to, personId));
-    if (result.isLoading && !result.hasValue) {
+    if (result.isLoading) {
       return const Padding(
         key: Key('history-loading'),
         padding: EdgeInsets.all(28),
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (result.hasError && !result.hasValue) {
+    if (result.hasError) {
       final error = result.error;
       return ErrorBox(
         message: error is ApiError ? errorMessage(error) : 'No se pudo cargar el histórico.',

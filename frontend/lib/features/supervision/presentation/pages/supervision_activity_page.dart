@@ -63,13 +63,13 @@ class SupervisionActivityPage extends ConsumerWidget {
       body = const EmptyState('Elige una actividad en la supervisión para ver su historial.', key: Key('supervision-activity-none'));
     } else {
       final result = ref.watch(activityHistoryProvider(target.id));
-      if (result.isLoading && !result.hasValue) {
+      if (result.isLoading) {
         body = const Padding(
           key: Key('supervision-activity-loading'),
           padding: EdgeInsets.all(28),
           child: Center(child: CircularProgressIndicator()),
         );
-      } else if (result.hasError && !result.hasValue) {
+      } else if (result.hasError) {
         final error = result.error;
         body = ErrorBox(
           message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la actividad.',

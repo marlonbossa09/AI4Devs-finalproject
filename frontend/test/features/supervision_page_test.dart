@@ -345,6 +345,43 @@ void main() {
     });
   });
 
+  group('losing the authorization while looking at data', () {
+    testWidgets('asking again after the server rejects the supervisor shows the rejection and NO earlier data', (tester) async {
+      final s = Setup(supervision: withItems()..pageSize = 10);
+      await openSupervision(tester, s);
+      expect(find.text('Informe mensual'), findsOneWidget);
+      s.supervision.supervisionError = const ApiError(code: 'OPERACION_NO_PERMITIDA', message: 'PAYLOAD');
+      await tapKey(tester, 'supervision-submit');
+      expect(s.supervision.supervisionRequests.length, 2, reason: 'asking again asks the server again, it does not reuse what was loaded');
+      expect(find.textContaining('no está permitida para tu rol'), findsOneWidget);
+      expect(find.text('Informe mensual'), findsNothing);
+      expect(find.byKey(const Key('supervision-totals')), findsNothing);
+      expect(find.byKey(const Key('supervision-result')), findsNothing);
+      s.supervision.supervisionError = const ApiError(code: 'ACCESO_DESACTIVADO', message: 'PAYLOAD');
+      await tapKey(tester, 'supervision-submit');
+      expect(find.textContaining('Tu acceso está desactivado'), findsOneWidget);
+      expect(find.text('Informe mensual'), findsNothing);
+    });
+
+    testWidgets('retrying the history of an activity after a rejection does not bring back the earlier history', (tester) async {
+      final server = withItems()..pageSize = 10;
+      server.histories['a1'] = ActivityHistoryDetail(
+        activity: fullActivity('a1', 'Informe mensual'),
+        plannings: const [],
+        progress: [PeerProgress(activityId: 'a1', date: today, status: ActivityStatus.inProgress, description: 'Avance que no debe quedar a la vista')],
+      );
+      final s = Setup(supervision: server);
+      await openSupervision(tester, s);
+      await tapKey(tester, 'supervision-open-a1');
+      expect(find.text('Avance que no debe quedar a la vista'), findsOneWidget);
+      await tapKey(tester, 'supervision-activity-back');
+      s.supervision.historyError = const ApiError(code: 'OPERACION_NO_PERMITIDA', message: 'x');
+      await tapKey(tester, 'supervision-open-a1');
+      expect(find.textContaining('no está permitida para tu rol'), findsOneWidget);
+      expect(find.text('Avance que no debe quedar a la vista'), findsNothing);
+    });
+  });
+
   group('layout', () {
     for (final (name, size) in [('mobile', mobile), ('tablet', tablet), ('desktop', desktop)]) {
       testWidgets('the view and the history fit on $name without overflow', (tester) async {
