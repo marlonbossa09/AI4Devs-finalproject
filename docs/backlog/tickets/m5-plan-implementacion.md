@@ -3,7 +3,7 @@
 | Campo | Contenido |
 |---|---|
 | **Estado** | `[PROPUESTO]` salvo lo indicado. Análisis SDD (M5-T0). **Nada de lo que propone este documento es requisito ni está aprobado**: las decisiones para aprobar están en la sección 9; los tickets, los nombres, los parámetros y las cifras llevan la marca `[PROPUESTO]`, `[ABIERTO]` o `[SUPUESTO]` hasta que la persona responsable las apruebe |
-| **Versión** | 0.3 |
+| **Versión** | 0.5 |
 | **Fecha** | 2026-11-18 |
 | **Base** | HEAD `2c45ba5` (cierre técnico de M4 consolidado en dos commits locales). M1 a M4 cerrados en su alcance; M4 «cerrado con reservas». **Estado a 2026-11-18:** análisis M5-T0 aprobado por la persona responsable con las resoluciones de la sección 12; **M5-T1 implementado y probado localmente; cierre en un único commit local** (sección 14); D-M5-04 y D-M5-06 pendientes de detalle (sección 13) |
 | **Fuentes leídas** | `docs/producto/alcance-mvp.md` y `prd.md` (RN-03, RN-06, RN-26, RN-29 a RN-31, RN-36, RN-53 a RN-58, RN-60, RN-82 a RN-90, RN-101; RF-29, RF-30, RF-32, RF-33, RF-46 a RF-51, RF-74 a RF-76, RF-78, RF-83, RF-87, RF-93, RF-94, RF-96, RF-98, RF-100, RF-111; RNF-04, RNF-06, RNF-08, RNF-12, RNF-13; PA-09, PA-13, PP-11, PP-33); las cinco historias de `docs/backlog/M5-…/` (HU-5.1 a HU-5.5); `docs/api/m5-informes.md` (0.1), `m1-m5-dependencias.md`, `convenciones.md` (secciones 3, 4 y 9); `docs/arquitectura/adr/ADR-001`, `ADR-002` y `ADR-003` (0.3, con la decisión del 2026-11-18); `docs/arquitectura/arquitectura-general.md` (secuencia 6.4, DT-03, DT-06, R-03, R-05, R-07); `docs/modelo-datos/modelo-datos.md` (P7, RA-09, DM-08); `docs/backlog/tickets/{backend,frontend,base-de-datos,indice}.md` (BE-15, BE-16, FE-10); `docs/backlog/tickets/m4-plan-implementacion.md`; las matrices de trazabilidad de M1 a M4; `CLAUDE.md`; y el código real de M4 y de la política de visibilidad: `app/compartido/{visibilidad,pertenencias,politica_acceso,paginacion}.py`, `app/modulos/consulta/{supervision,servicio,repositorio,proyecciones}.py`, `app/modulos/bitacoras/{esquemas,secuencia}.py`, `app/config.py`, `pyproject.toml` y la estructura de `frontend/lib/features` |
@@ -338,6 +338,7 @@ M5-T8 cierre técnico de M5
 
 ### M5-T3 — Interfaz de generación, seudonimización, validación y fallo (con generador simulado)
 
+- **Estado:** **implementado, probado y aprobado técnicamente el 2026-11-18; consolidado en un commit local.** Detalle, propuesta de límites y riesgos en la sección 17; decisiones en la 18. Contrato interno en `docs/api/m5-integracion-ia.md`.
 - **Objetivo:** dotar al dominio de una interfaz de generación independiente del proveedor, con seudonimización, validación determinista de la salida, límites previos y fallo explícito. **Sin AWS.**
 - **Contratos:** contrato interno (sección 6.4, documento nuevo `m5-integracion-ia.md`); ADR-003, secciones 6, 8, 9, 10, 12 y 14; D-M5-01, D-M5-05, D-M5-06, D-M5-07.
 - **Criterios:** CA-161, CA-163 (en lo verificable), CA-166, CA-174, CA-175, CA-200, CA-05 (informes), CA-159 (sin persistencia).
@@ -484,7 +485,7 @@ Modelo y región (se deciden con M5-T7), marco legal (B7), valores definitivos d
 - Este documento nació como el entregable de M5-T0 y se amplía con las secciones 12 a 14 (resoluciones de la persona responsable, extracción de D-M5-04 y D-M5-06 y registro de M5-T1).
 - Del resto de la documentación solo se añadió el borrador del contrato M5-01 0.2 (`docs/api/m5-01-borrador-0.2.md`); no se modificó ningún contrato vigente, ADR, criterio ni matriz.
 - M5-T1 está consolidado en un único commit local (`1ad5463`, sin push). **M5-T2 está aprobado técnicamente y se consolida en un commit local** (secciones 15 y 16).
-- M5-T3 a M5-T8 no se inician sin aprobación.
+- **M5-T3 está aprobado técnicamente y consolidado en un commit local** (sección 17 y 18). M5-T4 se implementa sin commit (sección 19). M5-T5 a M5-T8 no se inician sin aprobación.
 
 ## 12. Resoluciones de la persona responsable tras M5-T0 (2026-11-18)
 
@@ -756,3 +757,118 @@ El contrato M5-02 (0.1) describe la respuesta en prosa («agregaciones del equip
 | C-6 | **Confirmada** | Primero rol y acceso efectivo, después el equipo solicitado, con 403/404 según el contrato |
 | D-M5-04 | **Confirmado** | El catálogo de seis métricas y sus reglas de cálculo aprobadas en M5-T1 y M5-T2. **No** se declara cerrado todo el contrato de respuesta: P-3, P-5, P-6 y P-8 siguen abiertas |
 | D-M5-06 | **Abierto** | No se aprueban ni se codifican valores numéricos por suposición |
+
+## 17. M5-T3 — registro de la implementación
+
+### 17.1 Estado
+
+**Implementado, probado y aprobado técnicamente. Consolidado en un commit local.** Servicio **interno**: sin endpoints, sin transporte, sin AWS (no se importa ni se instala ninguna dependencia de AWS ni de red), sin persistencia, sin reintentos ni colas. No se tocó Flutter. M5-T4 a M5-T8 no se iniciaron. El contrato interno está en [`docs/api/m5-integracion-ia.md`](../../api/m5-integracion-ia.md) (`[PROPUESTO]`).
+
+### 17.2 Arquitectura interna
+
+| Pieza | Archivo | Responsabilidad |
+|---|---|---|
+| Contrato | `generacion.py` | `EntradaDeGeneracion` (campos cerrados, una persona, seudonimizada), `construir_entrada` (lista cerrada), `SalidaDeGeneracion`, `Clase`, `ErrorDeGeneracion`, la interfaz `GeneradorDeTexto`, `GeneradorDesactivado` y `LimitesDeContexto` (sin valores) |
+| Validación | `validacion.py` | `validar_salida`: esquema cerrado y comprobaciones deterministas de contenido; no modifica nada |
+| Orquestación | `narrativa.py` | `generar_narrativa_individual` y `generar_narrativa_consolidado`: sin datos, entrada, límites, una llamada por persona, clasificación de fallos, validación y reconstrucción del nombre; sin contenido parcial |
+| Generador simulado | `generador_simulado.py` | Plantillas fijas y modos de fallo; trabaja solo con lo que viajaría; solo para desarrollo y pruebas |
+
+Capas separadas: datos autorizados (M5-T1 y M5-T2) → métricas deterministas → contexto mínimo → narrativa propuesta (no confiable) → validación → respuesta de error segura. La narrativa **no tiene dónde llevar cifras** y los objetos del informe son inmutables.
+
+### 17.3 Validaciones implementadas y fallos tratados
+
+Esquema cerrado (campos desconocidos o ausentes, tipos, secciones, referencias y uso); referencias existentes; sin enlaces, marcado, correos ni UUID; sin porcentajes; solo el alias recibido; fechas de la entrada; cifras permitidas y sin contradecir los recuentos de avances y jornadas. Clases de fallo: `ERROR_TECNICO`, `RESPUESTA_MALFORMADA`, `RECHAZADA_POR_VALIDACION`, `TIEMPO_AGOTADO`, `CONTEXTO_NO_ADMISIBLE` y el resultado no fallido `SIN_DATOS`. Los errores llevan solo la clase y motivos de un vocabulario fijo (sin el mensaje original, el prompt ni los registros) y se mapean a `INFORME_NO_GENERADO` o `INFORME_EXCEDE_LIMITES` con la indicación de si es reintentable. La tabla completa está en el contrato interno.
+
+### 17.4 Propuesta de valores de D-M5-06 (`[PROPUESTO]`; **decididos el 2026-11-18 en la sección 18: lo confirmado sustituye a esta tabla**)
+
+D-M5-06 **sigue abierta**. Estos valores son una propuesta para su aprobación posterior; **no están codificados**: `LimitesDeContexto` no tiene valores por defecto y no existe ningún parámetro en `config.py`. Los fundamentos citan los supuestos de ADR-003 (`[SUPUESTO]`, no datos del producto) y no se ha medido nada.
+
+| Parámetro | Valor recomendado `[PROPUESTO]` | Fundamento | Forma de aplicarlo | Consecuencia al alcanzarlo |
+|---|---|---|---|---|
+| `INFORME_MAX_RANGE_DAYS` | **31** días (extremos incluidos) | El escenario de ADR-003 es mensual (22 jornadas). El 92 de M4 es solo de M4 (D-M4-03) y no se traslada | Se valida con `hasta − desde + 1` al recibir la petición, tras autorizar y **antes** de consultar datos | `INFORME_EXCEDE_LIMITES` (422); no se consulta ni se genera nada |
+| `INFORME_MAX_HECHOS` | **400** por llamada (es decir, por persona) | ADR-003: 22 jornadas × 4 avances = 88 avances por persona y mes; 400 deja un margen de unas 4,5 veces | Se cuenta tras la selección, ya acotada por el período, y **antes** de construir la llamada (`verificar_contexto`, ya implementado con límite configurable). En el consolidado se verifica a todas las personas antes de la primera llamada | `INFORME_EXCEDE_LIMITES`; no se invoca al generador. Si una persona excede, se rechaza el informe completo |
+| `INFORME_MAX_TOKENS_ENTRADA` | **64.000** por llamada | 400 hechos × 150 tokens (ADR-003) + 1.500 de instrucciones + metadatos ≈ 62.000. La ventana del modelo candidato (1 millón) no es el límite | Estimación previa del tamaño de la entrada serializada (≈ 4 caracteres por token, `[SUPUESTO]`, hasta medir con el tokenizador real en M5-T7) y rechazo antes de invocar; se pasa también como tope al adaptador | `INFORME_EXCEDE_LIMITES` |
+| `INFORME_MAX_TOKENS_SALIDA` | **2.000** por llamada | ADR-003 estima 800 tokens para un individual; una narrativa por persona no necesita más; margen de 2,5 veces | Tope entregado al generador; la validación comprobará que `uso.tokens_salida` no lo supere | Salida excedida: `RECHAZADA_POR_VALIDACION` (`INFORME_NO_GENERADO`) |
+| `INFORME_PLAZO_TOTAL_SEGUNDOS` | **120** s por informe | **Sin dato medido**: es un `[SUPUESTO]` de espera interactiva tolerable. Un consolidado de 10 personas, en serie, dejaría unos 12 s por persona: probablemente insuficiente, por lo que depende de la concurrencia (siguiente fila) y de medirlo en M5-T7 | Plazo global que engloba todas las llamadas y el reintento; el adaptador aplica a cada llamada el tiempo restante | `TIEMPO_AGOTADO` → `INFORME_NO_GENERADO`, reintentable |
+| `INFORME_REINTENTOS_VALIDACION` | **1** | ADR-003, secciones 9 y 12 («como máximo un reintento») | Solo ante `RESPUESTA_MALFORMADA` o `RECHAZADA_POR_VALIDACION`, sobre la misma persona y dentro del plazo. **M5-T3 no reintenta** | Tras el reintento fallido: `INFORME_NO_GENERADO` |
+| `INFORME_CONCURRENCIA_MAXIMA` | **4** llamadas simultáneas al generador por proceso | Sin cuota de Bedrock verificada. Con 4, un consolidado de unas 10 personas se hace en tres rondas. Sin tabla de consumo (D-M5-07) el límite es **por proceso**, no global | Semáforo en memoria con **rechazo inmediato** (sin colas) | `INFORME_NO_GENERADO` reintentable |
+| `INFORME_HABILITADO` | **desactivado** por defecto | RNF-06 (`[PROPUESTO]`) y D-M5-08: ningún dato real sale hasta resolver modelo, región, retención y marco de privacidad | Variable de entorno leída por `config.py`; desactivada, se usa `GeneradorDesactivado` | `ERROR_TECNICO` → `INFORME_NO_GENERADO`; no se envía nada |
+
+**Orientación de costes (no es un presupuesto).** Con los precios verificados de la API directa de Anthropic para Sonnet 5.5 (2 USD por millón de tokens de entrada y 10 de salida, ADR-003, sección 1.1) y los topes anteriores, una llamada en el peor caso costaría unos 0,13 USD de entrada y 0,02 USD de salida (≈ 0,15 USD) y un consolidado de 10 personas, unos 1,5 USD. Un informe típico (88 hechos) costaría unos 0,04 USD. **El precio de Bedrock no está verificado** (ADR-003, 1.1): no se estima ningún coste de Bedrock ni de Lambda. **No se conecta ningún servicio con coste ni se añade tabla de consumo.**
+
+### 17.5 Medidas de privacidad
+
+**La seudonimización por alias NO es anonimización completa:** evita enviar el nombre y el identificador, pero los textos libres pueden contener nombres propios y otros datos personales, y los datos siguen siendo datos personales (B7 abierta). Lista cerrada de campos; persona seudonimizada con alias por llamada y nombre reconstruido solo en memoria y tras validar; ningún identificador de la base de datos, correo, credencial, nombre de equipo ni resumen libre en lo que viaja; textos libres como valores de datos con `campos_no_confiables`; el contexto de una persona no lleva el de otra; la sección de equipo del consolidado no se envía; una persona no autorizada no llega al generador porque el filtrado ocurre antes (M5-T1 y M5-T2); errores sin contenido; nada se persiste.
+
+### 17.6 Pruebas y evidencia
+
+- `tests/test_generacion_informes.py`: **25 superadas** (13 funciones, dos parametrizadas). Con `test_informe_consolidado.py`, `test_informe_individual.py` y `test_visibilidad_historica.py`: **96 superadas**. PostgreSQL **desechable** `smartwork_test` (puerto 55432); no se tocó `smartwork_app` ni el puerto 5432. Sin red, sin AWS y sin credenciales. No se ejecutaron mutaciones ni la suite completa.
+- Cubren: generación individual y consolidada simuladas (una llamada por persona sin mezclar contextos); separación de narrativa y métricas y el informe intacto; campos inesperados, ausentes y mal tipados; cifras contradictorias, inventadas, porcentajes, fechas, alias, referencias, enlaces e identificadores; validador sin efectos; generador no disponible, tiempo agotado y error inesperado sin filtrar el mensaje y con un solo intento; fallo de una persona sin informe parcial; lo que viajaría (campos cerrados, sin UUID ni credenciales ni equipos ni lo protegido del equipo anterior); informe sin datos sin invocar al generador; instrucción maliciosa que viaja solo como dato y cuya obediencia detectable se rechaza; límites de contexto con valores de prueba; ausencia de clientes de red y de persistencia.
+
+### 17.7 Evidencia por criterio (parcial)
+
+Ningún criterio se declara cumplido ni se modifica.
+
+| Criterios | Evidencia en M5-T3 | Pendiente |
+|---|---|---|
+| CA-161, RNF-04 | Las referencias existen y las cifras son las calculadas | Que cada frase diga lo que el hecho dice: **no es determinista**; evaluación por muestras (M5-T7) |
+| CA-163 | Sin porcentajes ni rankings estructurales | **Sin garantía determinista del tono**: riesgo residual |
+| CA-166, RNF-12 | La orden viaja solo como dato; su obediencia con enlaces o cifras se rechaza | La obediencia con prosa inocua no es detectable: riesgo residual; pruebas adversariales reales en M5-T7 |
+| CA-172, CA-173 | Sin datos no se invoca al generador | Ruta: M5-T4 |
+| CA-174, CA-175 | Fallo del generador o salida inválida: sin contenido parcial, ni siquiera si falla una persona del consolidado | Ruta y aviso en pantalla: M5-T4 y M5-T6 |
+| CA-05, RNF-08 | Ninguna credencial viaja al generador | Informes completos: M5-T4 y M5-T8 |
+| CA-200 | — | La declaración `base`: M5-T4 (P-6) |
+
+### 17.8 Riesgos restantes
+
+| Riesgo | Tratamiento |
+|---|---|
+| Valoraciones subjetivas y afirmaciones plausibles pero inventadas en el texto | Sin control determinista: evaluación por muestras (D-M5-05) y revisión por una persona ajena al desarrollo |
+| Obediencia a una orden en prosa inocua | Separación estructural en el adaptador (M5-T5) y pruebas adversariales (M5-T7) |
+| Datos personales en el texto libre citado | Minimización; el texto libre viaja por defecto, pero el resumen no; marco legal abierto (B7) |
+| Un validador estricto rechaza texto legítimo (falsos positivos) | Deliberado: falla cerrado; se medirá la tasa en M5-T7 |
+| Coste y latencia | Sin valores aprobados (D-M5-06); sin tabla de consumo; precio de Bedrock sin verificar |
+| El simulado podría usarse como si fuera real | Solo para desarrollo y pruebas; M5-T4 no permitirá seleccionarlo fuera de ellos |
+| Superficie de entrada sin límite de amplitud hasta M5-T4 | El servicio no se expone todavía |
+
+### 17.9 Preguntas pendientes
+
+| Id | Estado |
+|---|---|
+| P-3, P-5, P-6, P-8 | **Abiertas** (definiciones exactas en los borradores M5-01 y M5-02, sección de preguntas) |
+| P-11 (nueva) | Forma pública de la narrativa: texto único por persona o lista de secciones |
+| D-M5-06 | **Abierta**; propuesta en 17.4 |
+| Idioma de la narrativa | `[SUPUESTO]`: español (PA-13) |
+| Código de fin en la salida del adaptador | Sin decidir; hoy no existe en el esquema |
+
+**Incompatibilidades:** ninguna bloqueante. Diferencias con ADR-003 y el contrato 0.1 en la sección 10 del contrato interno (narrativa por persona, sin cifras de equipo en la entrada, alias por llamada, referencias por sección y un solo intento).
+
+### 17.10 Recomendación para M5-T4
+
+Antes de programar los endpoints conviene aprobar: **a)** los valores de `INFORME_MAX_RANGE_DAYS` y `INFORME_MAX_HECHOS` (los necesarios para `INFORME_EXCEDE_LIMITES`; el resto puede esperar a M5-T5 y M5-T7); **b)** P-5 (campos públicos de hechos y actividades) y P-3 (unidad de bloqueos); **c)** P-6 (texto de la declaración `base`) y P-11 (forma de la narrativa pública). M5-T4 añadiría los códigos `INFORME_*` al catálogo de errores, el parámetro `INFORME_HABILITADO` (desactivado) y la elección del generador (ninguno por defecto; el simulado solo en desarrollo y pruebas), y ensamblaría la respuesta con `generado_en` y `base`, sin persistir nada.
+
+## 18. Decisiones del 2026-11-18 (cuarta comunicación): cierre de M5-T3 y D-M5-06
+
+### 18.1 M5-T3
+
+| Elemento | Resolución |
+|---|---|
+| M5-T3 | **Aprobado técnicamente.** Se mantienen la separación entre hechos, cifras y narrativa y el esquema cerrado de generación |
+| P-11 | **Confirmada** la lista de secciones para el **contrato interno** de generación. La estructura **pública** debe quedar definida expresamente en los contratos y **sigue abierta** |
+| Seudonimización | El alias **no** se presenta como anonimización completa (ver 17.5) |
+| Riesgos que se mantienen documentados | Información personal en el texto libre, instrucciones maliciosas y afirmaciones subjetivas (17.8 y sección 9 del contrato interno) |
+
+### 18.2 D-M5-06
+
+| Parámetro | Estado | Valor y alcance |
+|---|---|---|
+| `INFORME_MAX_RANGE_DAYS` | **CONFIRMADO** | **31** días, con **ambos extremos incluidos**. Las solicitudes que lo excedan se rechazan |
+| `INFORME_MAX_HECHOS` | **CONFIRMADO** | **400**, **total por solicitud**: en el consolidado incluye a **todas** las personas (no 400 por persona). Sustituye a la propuesta «400 por llamada» de 17.4. No se trunca ningún resultado en silencio: si se excede, error contractual controlado sin datos sensibles |
+| `INFORME_REINTENTOS_VALIDACION` | **CONFIRMADO** | **0** inicialmente (sustituye a la propuesta de 1 de 17.4; ADR-003 admitía como máximo uno) |
+| `INFORME_HABILITADO` | **CONFIRMADO** | **false** por defecto |
+| `INFORME_MAX_TOKENS_ENTRADA` | **ABIERTO** | Propuesta 64.000 |
+| `INFORME_MAX_TOKENS_SALIDA` | **ABIERTO** | Propuesta 2.000 |
+| `INFORME_PLAZO_TOTAL_SEGUNDOS` | **ABIERTO** | Propuesta 120 |
+| `INFORME_CONCURRENCIA_MAXIMA` | **ABIERTO** | Propuesta 4 por proceso |
+
+No se activa ninguna invocación externa mientras haya valores abiertos. Sin contadores persistentes ni presupuestos (D-M5-07).

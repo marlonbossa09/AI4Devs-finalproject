@@ -82,7 +82,7 @@ Todas son recuentos deterministas, sin porcentajes (RN-57), calculados solo sobr
 |---|---|---|
 | `generado_en` | momento real UTC | M5-T4 (RF-48, RN-29): se fija al generar |
 | `base` | texto fijo | M5-T4 (RF-87). **El texto exacto no está decidido `[ABIERTO: P-6]`** |
-| `narrativa` | texto o nulo | M5-T3 y M5-T5. Es **la única parte generada por IA**; nula si `sin_datos`. No contiene valoraciones ni rankings (RF-47) y no afirma nada que no conste en los hechos (RF-32) |
+| `narrativa` | texto o nulo | M5-T3 (interfaz interna y validación, **implementadas con un generador simulado**) y M5-T5 (integración). Es **la única parte generada por IA**; nula si `sin_datos`. No contiene valoraciones ni rankings (RF-47) y no afirma nada que no conste en los hechos (RF-32); la validación determinista no garantiza esto último ni lo primero (riesgo residual y evaluación por muestras en `m5-integracion-ia.md`). Forma pública: `[ABIERTA]` P-11 |
 
 ## 5. Errores
 
@@ -123,6 +123,12 @@ No se inventa ninguna respuesta. Lo que M5-T1 implementó para P-3 y P-5 es **pr
 | **P-5** Campos públicos de `hechos` | Contrato 0.1: `hechos` = «Registros del período: fecha laboral, ActividadVisible, estado histórico, descripción y, si procede, motivo de bloqueo». Convenciones 7: `ActividadVisible` tiene las formas `completa` y `neutral` | Qué campos de `ActividadVisible` lleva cada hecho (por ejemplo, si se informa `estado_actual`, sujeto a D-M4-05) y si el hecho repite la actividad o la referencia en una lista | Una lista de actividades con referencia y, en cada hecho, la referencia; la actividad lleva solo `forma`, `texto` y `planificada`. No hay `estado_actual` |
 | **P-6** Texto de `base` | Contrato 0.1: `base` = «Declaración fija de que el informe se basa únicamente en los registros disponibles y autorizados del período y no representa información que nunca fue registrada (RF-87)». RF-87 y CA-200 exigen esa indicación en todo informe | El **texto exacto** de la declaración | Nada: es de M5-T4 |
 | **P-8** Valores de los límites | `convenciones.md` sección 9: la amplitud máxima de un rango de fechas (M4-02, M4-03, M5-01, M5-02) incumplida da `SOLICITUD_INVALIDA` y, en M5, `INFORME_EXCEDE_LIMITES` (PA-13); los límites de registros, tokens, tiempo, reintentos y presupuesto de un informe dan `INFORME_EXCEDE_LIMITES` o `INFORME_NO_GENERADO` (ADR-003). «Ningún contrato fija un valor numérico de estos parámetros». El 92 de M4 (D-M4-03) es solo de M4. ADR-003, sección 9: «como máximo un reintento» (propuesto) | Los valores (D-M5-06) | Ningún límite: no se implementó ningún valor numérico |
+
+### 6.2 bis Nueva pregunta abierta (M5-T3)
+
+| Id | Qué dicen las fuentes | Qué falta decidir |
+|---|---|---|
+| **P-11** | Contrato 0.1: `narrativa` = «Texto generado a partir de los hechos y las agregaciones recibidos» | Si la narrativa pública es un único texto (lo propuesto: las secciones validadas unidas con una línea en blanco) o una lista de secciones. Las referencias de cada sección son internas y no se muestran (PP-11 no aprobada) |
 
 ### 6.3 Pregunta que se planteó y quedó resuelta
 
