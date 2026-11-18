@@ -15,6 +15,7 @@ from app.compartido.dependencias import Operador
 from app.compartido.fechas import parsear_fecha_laboral
 from app.compartido.idempotencia import Resultado, calcular_huella, ejecutar_con_clave
 from app.compartido.politica_acceso import fecha_cubierta
+from app.compartido.visibilidad import Registro, consultante_de, decidir_lectura
 from app.config import get_settings
 from app.errores import AppError
 from app.modulos.bitacoras import repositorio, secuencia
@@ -50,6 +51,25 @@ def validar_texto(valor: str | None, campo: str, *, obligatorio: bool, maximo: i
     if len(recortado) > maximo:
         raise AppError("TEXTO_DEMASIADO_LARGO", [{"campo": campo, "maximo": maximo}])
     return valor or ""
+
+
+def _error_de_registro_ajeno(db: Session, op: Operador, datos) -> AppError:
+    """Convenciones 3.1 (M4-T6): el registro NO es mío. Si no existe, o no me es visible según la política de visibilidad histórica de M1 (``decidir_lectura`` sobre la propietaria
+    y la fecha laboral que determina el equipo del registro), es ``RECURSO_NO_DISPONIBLE``, indistinguible. Si me es visible (un compañero de su equipo en esa fecha o su
+    supervisor) pero la operación es solo de la propietaria, es ``OPERACION_NO_PERMITIDA``. Es solo la elección del código: nunca se modifica nada ni se concede escribir."""
+    if datos is None:
+        return AppError("RECURSO_NO_DISPONIBLE")
+    consultante = consultante_de(db, op.persona_id, hoy=op.contexto.fecha_actual)
+    visible = decidir_lectura(db, consultante, Registro(datos.propietaria_id, datos.fecha_laboral)).visible
+    return AppError("OPERACION_NO_PERMITIDA" if visible else "RECURSO_NO_DISPONIBLE")
+
+
+def _error_de_actividad_no_propia(db: Session, op: Operador, actividad_id: UUID) -> AppError:
+    return _error_de_registro_ajeno(db, op, repositorio.propietaria_y_fecha_de_actividad(db, actividad_id))
+
+
+def _error_de_avance_no_propio(db: Session, op: Operador, avance_id: UUID) -> AppError:
+    return _error_de_registro_ajeno(db, op, repositorio.propietaria_y_fecha_de_avance(db, avance_id))
 
 
 def _exigir_fecha_cubierta(db: Session, op: Operador, fecha: date) -> None:
@@ -177,10 +197,10 @@ def registrar_avance(
     settings = get_settings()
 
     def ejecutar() -> tuple[int, dict]:
-        # Visibilidad primero (T-01): una actividad ajena es indistinguible de una inexistente.
+        # Visibilidad primero (T-01): una actividad ajena que no me es visible es indistinguible de una inexistente; una visible responde 403 (convenciones 3.1, M4-T6).
         actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
         if actividad is None:
-            raise AppError("RECURSO_NO_DISPONIBLE")
+            raise _error_de_actividad_no_propia(db, op, actividad_id)
         if actividad.registrada_por_error:
             raise AppError("ACTIVIDAD_MARCADA_POR_ERROR")
         estado, descripcion, motivo = _validar_avance(entrada, settings.text_max_description)
@@ -476,10 +496,10 @@ def planificar_continuacion(
     settings = get_settings()
 
     def ejecutar() -> tuple[int, dict]:
-        # Visibilidad primero (T-01): una actividad ajena es indistinguible de una inexistente.
+        # Visibilidad primero (T-01): una actividad ajena que no me es visible es indistinguible de una inexistente; una visible responde 403 (convenciones 3.1, M4-T6).
         actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
         if actividad is None:
-            raise AppError("RECURSO_NO_DISPONIBLE")
+            raise _error_de_actividad_no_propia(db, op, actividad_id)
         if actividad.registrada_por_error:
             raise AppError("ACTIVIDAD_MARCADA_POR_ERROR")
         descripcion = validar_texto(entrada.descripcion, "descripcion", obligatorio=False,
@@ -640,10 +660,10 @@ def reactivar_actividad(
     settings = get_settings()
 
     def ejecutar() -> tuple[int, dict]:
-        # Visibilidad primero (T-01): una actividad ajena es indistinguible de una inexistente.
+        # Visibilidad primero (T-01): una actividad ajena que no me es visible es indistinguible de una inexistente; una visible responde 403 (convenciones 3.1, M4-T6).
         actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
         if actividad is None:
-            raise AppError("RECURSO_NO_DISPONIBLE")
+            raise _error_de_actividad_no_propia(db, op, actividad_id)
         if actividad.registrada_por_error:
             raise AppError("ACTIVIDAD_MARCADA_POR_ERROR")
         if entrada.estado == secuencia.COMPLETADA:
@@ -732,10 +752,10 @@ def marcar_actividad_por_error(
     huella = calcular_huella({"actividad_id": str(actividad_id), "motivo": entrada.motivo})
 
     def ejecutar() -> tuple[int, dict]:
-        # Visibilidad primero (T-01): una actividad ajena es indistinguible de una inexistente.
+        # Visibilidad primero (T-01): una actividad ajena que no me es visible es indistinguible de una inexistente; una visible responde 403 (convenciones 3.1, M4-T6).
         actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
         if actividad is None:
-            raise AppError("RECURSO_NO_DISPONIBLE")
+            raise _error_de_actividad_no_propia(db, op, actividad_id)
         motivo = entrada.motivo or ""
         if not motivo.strip():
             raise AppError("MOTIVO_OBLIGATORIO", [{"campo": "motivo", "motivo": "obligatorio"}])
@@ -802,7 +822,7 @@ def revertir_marca_de_error(db: Session, op: Operador, actividad_id: UUID, clave
     def ejecutar() -> tuple[int, dict]:
         actividad = repositorio.obtener_actividad_propia(db, op.persona_id, actividad_id, bloquear=True)
         if actividad is None:
-            raise AppError("RECURSO_NO_DISPONIBLE")
+            raise _error_de_actividad_no_propia(db, op, actividad_id)
         if not actividad.registrada_por_error:
             raise AppError("MARCA_NO_VIGENTE")
         if repositorio.existe_avance_posterior_al_origen(db, actividad.id, actividad.fecha_laboral_origen):
@@ -897,7 +917,7 @@ def corregir_avance(
     def ejecutar() -> tuple[int, dict]:
         inicial = repositorio.obtener_avance_propio(db, op.persona_id, avance_id)
         if inicial is None:
-            raise AppError("RECURSO_NO_DISPONIBLE")
+            raise _error_de_avance_no_propio(db, op, avance_id)
         # Se bloquea la actividad antes que la bitácora (el orden de M2-05, M3-04 y M3-05) y se relee el avance ya
         # bloqueado: lo que cuenta es lo que hay tras esperar a quien lo tuviera
         actividad = repositorio.obtener_actividad_propia(db, op.persona_id, inicial.actividad_id, bloquear=True)

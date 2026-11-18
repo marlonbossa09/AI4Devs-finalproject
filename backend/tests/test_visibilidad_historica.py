@@ -498,12 +498,15 @@ def test_la_politica_no_escribe_nada(db, mundo):
     assert {t: db.execute(text(f"select count(*) from {t}")).scalar() for t in tablas} == antes
 
 
-def test_solo_el_modulo_de_m4_usa_la_politica_de_visibilidad_historica():
-    """Actualizada a propósito en M4-T1 (la prueba anterior prohibía todo uso hasta que M4 existiera). La política de visibilidad histórica la usa SOLO el
-    módulo de M4 (``app/modulos/consulta``); M2 y M3 siguen sin usarla (M4-T6 decidirá, con aprobación, su 403 y la auditoría del supervisor)."""
+def test_la_politica_de_visibilidad_historica_solo_la_usan_los_modulos_aprobados():
+    """Actualizada a propósito en M4-T1 y de nuevo en M4-T6 (D-M4-01, aprobada): la política de visibilidad histórica la usa el módulo de M4 (``app/modulos/consulta``) y, para elegir
+    entre 403 y 404 en las escrituras sobre registros ajenos (convenciones 3.1) y para autorizar la auditoría del supervisor (RA-10), SOLO el servicio de M2/M3 y el servicio y el
+    repositorio de la auditoría. Ningún otro archivo (otro servicio, repositorio o ruta) puede usarla: una lista cerrada, no «cualquier cosa fuera de M4»."""
     usos = sorted(f.relative_to(RAIZ).as_posix() for f in (RAIZ / "app" / "modulos").rglob("*.py")
                   if "compartido.visibilidad" in f.read_text(encoding="utf-8") or "import visibilidad" in f.read_text(encoding="utf-8"))
-    assert usos and all(u.startswith("app/modulos/consulta/") for u in usos), usos                    # M4-T1: servicio; M4-T2: también su repositorio
+    permitidos = {"app/modulos/bitacoras/servicio.py", "app/modulos/auditoria/servicio.py", "app/modulos/auditoria/repositorio.py"}
+    assert usos and all(u.startswith("app/modulos/consulta/") or u in permitidos for u in usos), usos
+    assert permitidos <= set(usos), "la lista de permitidos no debe tener entradas que ya no usan la política"
 
 
 def test_la_definicion_del_intervalo_de_pertenencia_esta_en_un_solo_lugar():

@@ -301,16 +301,22 @@ def test_un_traslado_rechazado_no_cambia_nada_y_la_persona_sigue_operando(mundo)
 
 # ===================================================== autorización antes y después =======================================
 
+# (detalle propio M2-07, avance ajeno M2-05, auditoría M3-07) que recibe cada persona. Actualizada a propósito en M4-T6 (antes todo era el 404 provisional de T-01): el detalle propio sigue siendo
+# 404 (el contrato M2-07 remite a M4-04 a las demás personas); un avance sobre la actividad VISIBLE de otra persona (la de su equipo en esa fecha, T) es 403 y sobre la que no lo es, 404;
+# y la auditoría de ese registro la consulta la supervisora del equipo de su fecha (ST), también tras el traslado, y nadie más.
+ESPERADO = {"Q": (404, 403, 404), "R": (404, 404, 404), "ST": (404, 403, 200), "SU": (404, 404, 404)}
+
+
 @pytest.mark.parametrize("quien", ["Q", "R", "ST", "SU"])
-def test_ninguna_otra_persona_accede_a_la_actividad_ni_antes_ni_despues_del_traslado(mundo, quien):
-    """404 provisional de M2 y M3 hasta M4 (T-01): ni el equipo de origen, ni el de destino, ni sus supervisoras la consultan o la modifican."""
+def test_el_acceso_de_otras_personas_a_la_actividad_es_el_del_equipo_de_su_fecha_antes_y_despues_del_traslado(mundo, quien):
+    """T-01 y convenciones 3.1 (M4-T6): ni el equipo de origen, ni el de destino, ni sus supervisoras la modifican; los del equipo de su fecha (T) reciben 403 y los demás 404."""
     trabajo_en_t(mundo)
     ajena = mundo.entrar(quien)
 
     def comprobar():
-        assert ajena.cliente.get(f"{API}/mi/actividades/{mundo.actividad}").status_code == 404
-        assert avanzar(ajena.cliente, ajena.csrf, mundo.actividad, iso(mundo.reloj["hoy"]), "En progreso", "Intruso").status_code == 404
-        assert ajena.cliente.get(f"{API}/auditoria", params={"tipo_objeto": "actividad", "objeto_id": mundo.actividad}).status_code == 404
+        assert ajena.cliente.get(f"{API}/mi/actividades/{mundo.actividad}").status_code == ESPERADO[quien][0]
+        assert avanzar(ajena.cliente, ajena.csrf, mundo.actividad, iso(mundo.reloj["hoy"]), "En progreso", "Intruso").status_code == ESPERADO[quien][1]
+        assert ajena.cliente.get(f"{API}/auditoria", params={"tipo_objeto": "actividad", "objeto_id": mundo.actividad}).status_code == ESPERADO[quien][2]
 
     comprobar()                                                  # antes del traslado
     trasladar(mundo)

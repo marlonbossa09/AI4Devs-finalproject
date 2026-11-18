@@ -452,7 +452,8 @@ def test_un_supervisor_del_mismo_equipo_tampoco_corrige(esc):
     s = nuevo_cliente()
     csrf_s = iniciar_sesion(s, "sara.sup", "contraseña-de-prueba-123").json()["csrf_token"]
     r = corregir(s, csrf_s, v, descripcion="Intento")
-    assert r.status_code == 404 and r.json()["codigo"] == "RECURSO_NO_DISPONIBLE" and fila_avance(v).descripcion == "Avancé"
+    # M4-T6: el avance de un integrante de su equipo le es VISIBLE a la supervisora (decidir_lectura), así que no corregirlo es un 403 y ya no un 404 (convenciones 3.1, CA-101, CA-107, CA-178)
+    assert r.status_code == 403 and r.json()["codigo"] == "OPERACION_NO_PERMITIDA" and fila_avance(v).descripcion == "Avancé"
 
 
 def test_la_visibilidad_se_evalua_antes_que_el_cuerpo(sesion, serie):

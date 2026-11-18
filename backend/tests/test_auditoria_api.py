@@ -280,8 +280,9 @@ def test_un_tipo_que_no_corresponde_al_registro_responde_igual_que_uno_inexisten
     assert consultar(cliente, "avance", registros["bitacora"]).status_code == 404
 
 
-def test_un_supervisor_del_mismo_equipo_todavia_no_consulta_la_auditoria_ajena(esc):
-    """El acceso del supervisor es de M4: hasta entonces solo consulta la propietaria (CA-111 queda pendiente)."""
+def test_un_supervisor_del_mismo_equipo_consulta_la_auditoria_de_su_equipo(esc):
+    """Actualizada a propósito en M4-T6 (antes afirmaba el 404 provisional): la supervisora vigente del equipo del registro por su fecha laboral consulta la misma auditoría que la
+    propietaria (RA-10, CA-111)."""
     cliente, csrf = sesion_iniciada(esc)
     registros = _registros(cliente, csrf)
     with get_owner_engine().begin() as c:
@@ -292,7 +293,7 @@ def test_un_supervisor_del_mismo_equipo_todavia_no_consulta_la_auditoria_ajena(e
     iniciar_sesion(s, "sara.sup", "contraseña-de-prueba-123")
     for tipo, objeto in registros.items():
         r = consultar(s, tipo, objeto)
-        assert r.status_code == 404 and r.json()["codigo"] == "RECURSO_NO_DISPONIBLE", tipo
+        assert r.status_code == 200 and r.json() == consultar(cliente, tipo, objeto).json(), tipo
 
 
 def test_una_persona_solo_ve_sus_propias_entradas(sesion):

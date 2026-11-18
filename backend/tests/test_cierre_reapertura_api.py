@@ -780,7 +780,8 @@ def test_un_supervisor_no_modifica_la_jornada_pasada_de_su_colaboradora(esc):
         avanzar(sup, csrf_sup, a, iso(-6)),
         sup.post(f"{API}/mi/actividades/{a}/continuaciones-planificadas", json={"fecha_laboral": iso(3)}, headers=con_clave(csrf_sup)),
     ]
-    assert intentos[1].status_code == 404 and intentos[2].status_code == 404                                                     # CA-107
+    assert intentos[1].status_code == 403 and intentos[2].status_code == 403                                                     # CA-107 (M4-T6: visible para su supervisor, 403 y ya no 404)
+    assert intentos[1].json()["codigo"] == intentos[2].json()["codigo"] == "OPERACION_NO_PERMITIDA"
     assert filas("select resumen from bitacora where persona_id = :p and fecha_laboral = :f", p=esc.persona, f=hoy() - timedelta(days=6))[0].resumen == "Resumen original"
     assert contar("avance") == 0
     propias = filas("select persona_id from bitacora where fecha_laboral = :f", f=hoy() - timedelta(days=6))

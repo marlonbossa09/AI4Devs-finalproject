@@ -160,6 +160,23 @@ def obtener_actividad_propia(db: Session, persona_id: UUID, actividad_id: UUID, 
     ).one_or_none()
 
 
+def propietaria_y_fecha_de_actividad(db: Session, actividad_id: UUID):
+    """``(propietaria_id, fecha laboral de su bitácora de origen)`` de CUALQUIER actividad, o ``None`` si no existe: lo único que la política de visibilidad necesita para decidir si
+    la actividad ajena le es visible a quien opera (convenciones 3.1, M4-T6). No devuelve nada más de la actividad."""
+    return db.execute(
+        text("select a.propietaria_id, b.fecha_laboral from actividad a join bitacora b on b.id = a.bitacora_origen_id where a.id = :a"),
+        {"a": actividad_id},
+    ).one_or_none()
+
+
+def propietaria_y_fecha_de_avance(db: Session, avance_id: UUID):
+    """``(propietaria_id de la actividad, fecha laboral de la bitácora del avance)`` de CUALQUIER avance, o ``None``: la fecha de un avance es la de su bitácora (RA-01, sección 12.2)."""
+    return db.execute(
+        text("select a.propietaria_id, b.fecha_laboral from avance av join bitacora b on b.id = av.bitacora_id join actividad a on a.id = av.actividad_id where av.id = :v"),
+        {"v": avance_id},
+    ).one_or_none()
+
+
 def listar_avances_de_actividad(db: Session, actividad_id: UUID):
     """La secuencia de la actividad con la fecha laboral de la bitácora de cada avance (IR-09)."""
     return db.execute(

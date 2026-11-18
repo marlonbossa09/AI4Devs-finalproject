@@ -286,9 +286,12 @@ def test_un_supervisor_del_mismo_equipo_tampoco_marca_ni_revierte(esc):
         crear_identidad(c, sup, "sara.sup", "contraseña-de-prueba-123")
     s = nuevo_cliente()
     csrf_s = iniciar_sesion(s, "sara.sup", "contraseña-de-prueba-123").json()["csrf_token"]
-    assert marcar(s, csrf_s, a).status_code == 404 and fila_actividad(a).registrada_por_error is False
+    # M4-T6: la actividad es visible para la supervisora de su equipo: 403 y ya no 404 (convenciones 3.1, CA-118, CA-123)
+    r = marcar(s, csrf_s, a)
+    assert r.status_code == 403 and r.json()["codigo"] == "OPERACION_NO_PERMITIDA" and fila_actividad(a).registrada_por_error is False
     marcar(cliente, csrf, a)
-    assert revertir(s, csrf_s, a).status_code == 404 and fila_actividad(a).registrada_por_error is True
+    r = revertir(s, csrf_s, a)
+    assert r.status_code == 403 and r.json()["codigo"] == "OPERACION_NO_PERMITIDA" and fila_actividad(a).registrada_por_error is True
 
 
 def test_la_visibilidad_se_evalua_antes_que_el_cuerpo(sesion, actividad):

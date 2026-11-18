@@ -17,9 +17,8 @@ from starlette.routing import Match, Mount
 logger = logging.getLogger("smartwork")
 
 # Código -> (estado HTTP, mensaje fijo). Solo los códigos que usan las operaciones implementadas.
-# OPERACION_NO_PERMITIDA (403) la emite M4-03 desde M4-T3 (la vista de supervisión es solo del supervisor con acceso efectivo, RN-13). M2 y M3 todavía no la
-# emiten: una actividad o bitácora ajena se responde con RECURSO_NO_DISPONIBLE (404), sin revelar si existe. Es una diferencia provisional respecto a los contratos de M2
-# y M3, que distinguen 403 (recurso visible) de 404 (no visible); se resuelve en M4-T6.
+# OPERACION_NO_PERMITIDA (403): M4-03 y M4-04 la emiten a quien no es supervisor con acceso efectivo (RN-13) y, desde M4-T6, seis operaciones de M2 y M3 sobre un registro ajeno
+# que le es VISIBLE según la política de visibilidad histórica (convenciones 3.1). Lo no visible o inexistente sigue siendo RECURSO_NO_DISPONIBLE (404), sin revelar si existe.
 CATALOGO: dict[str, tuple[int, str]] = {
     "SOLICITUD_INVALIDA": (400, "La solicitud no es válida."),
     "CLAVE_IDEMPOTENCIA_OBLIGATORIA": (400, "Falta la cabecera Idempotency-Key."),

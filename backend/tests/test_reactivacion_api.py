@@ -354,7 +354,8 @@ def test_un_supervisor_del_mismo_equipo_tampoco_la_reactiva(esc):
     s = nuevo_cliente()
     csrf_s = iniciar_sesion(s, "sara.sup", "contraseña-de-prueba-123").json()["csrf_token"]
     r = reactivar(s, csrf_s, a, iso(-2))
-    assert r.status_code == 404 and r.json()["codigo"] == "RECURSO_NO_DISPONIBLE" and estado_de(a) == "Completada"
+    # M4-T6: la actividad es visible para la supervisora de su equipo: 403 y ya no 404 (convenciones 3.1, CA-127)
+    assert r.status_code == 403 and r.json()["codigo"] == "OPERACION_NO_PERMITIDA" and estado_de(a) == "Completada"
 
 
 def test_la_visibilidad_se_evalua_antes_que_el_cuerpo(sesion, completada):

@@ -1,4 +1,4 @@
-"""M3-07: consultar la auditoría de un registro (solo lectura)."""
+"""M3-07: consultar la auditoría de un registro (solo lectura). La autorizan la propietaria y, desde M4-T6, el supervisor vigente del equipo del registro por su fecha laboral (RA-10, CA-111)."""
 
 import base64
 import binascii
@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.compartido.dependencias import Operador
+from app.compartido.visibilidad import EntradaDeAuditoria, consultante_de, decidir_lectura_de_auditoria
 from app.config import get_settings
 from app.errores import AppError
 from app.modulos.auditoria import repositorio
@@ -85,15 +86,16 @@ def _entrada_a_dict(fila) -> dict:
 
 
 def consultar_auditoria(db: Session, op: Operador, parametros: dict[str, list[str]]) -> dict:
-    """M3-07. La auditoría de UN registro propio: bitácora, actividad, avance o planificación.
+    """M3-07. La auditoría de UN registro: bitácora, actividad, avance o planificación, para quien está autorizado a verla (RA-10): su propietaria y el supervisor vigente del equipo del
+    registro por su fecha laboral (CA-110, CA-111). La decisión es la de la política de M1 (``decidir_lectura_de_auditoria``) y el filtro de cada entrada, su equivalente SQL.
 
     Orden de evaluación (convenciones 3.2): primero el FORMATO de los parámetros, sin consultar nada; después la
     visibilidad del registro; solo entonces se leen las entradas. El filtro de autorización se aplica antes de
     construir la respuesta y antes de paginar (3.3).
 
     - ``tipo_objeto`` y ``objeto_id`` son obligatorios: no existe consulta sin objeto ni listado global.
-    - Un registro inexistente y uno de otra persona (compañera o supervisora, hasta que M4 defina la visibilidad
-      histórica) responden lo mismo, ``RECURSO_NO_DISPONIBLE``, sin revelar si existe (CA-112, CA-286).
+    - Un registro inexistente y uno que quien consulta no está autorizado a ver (un compañero que no es la propietaria ni el supervisor, o el supervisor de otro equipo, o uno
+      trasladado o sin rol vigente) responden lo mismo, ``RECURSO_NO_DISPONIBLE``, sin revelar si existe (CA-112, CA-113, CA-286).
     - Solo se devuelven entradas hechas por personas; las de provisión no aparecen (CA-285, D-11).
     - Cada entrada trae lo necesario para reconstruir el cambio: autor, momento real, operación, motivo, valor
       anterior y nuevo, y la fecha laboral del registro (CA-106, CA-108, CA-109). Una operación que modifica varios
@@ -122,10 +124,14 @@ def consultar_auditoria(db: Session, op: Operador, parametros: dict[str, list[st
     cantidad = _limite_de(unico.get("limite"))
     cursor = _cursor_de(unico.get("continuar_desde"))
 
-    if not repositorio.registro_es_de(db, tipo_objeto, objeto_id, op.persona_id):
+    # La autorización se decide ANTES de leer ninguna entrada, con la política compartida de M1 y la fecha laboral del propio registro; las entradas se vuelven a filtrar al
+    # seleccionarlas (``condicion_lectura_auditoria``), así que ni la lista, ni el orden, ni el cursor, ni ``siguiente`` dependen de lo que no se puede ver.
+    registro = repositorio.propietaria_y_fecha_del_registro(db, tipo_objeto, objeto_id)
+    consultante = consultante_de(db, op.persona_id, hoy=op.contexto.fecha_actual)
+    if registro is None or not decidir_lectura_de_auditoria(db, consultante, EntradaDeAuditoria(registro.propietaria_id, registro.fecha_laboral, "persona")).visible:
         raise AppError("RECURSO_NO_DISPONIBLE")
 
-    filas = repositorio.listar_entradas(db, op.persona_id, tipo_objeto, objeto_id, operacion, cursor, cantidad + 1)
+    filas = repositorio.listar_entradas(db, consultante, tipo_objeto, objeto_id, operacion, cursor, cantidad + 1)
     pagina = filas[:cantidad]
     return {
         "elementos": [_entrada_a_dict(f) for f in pagina],
