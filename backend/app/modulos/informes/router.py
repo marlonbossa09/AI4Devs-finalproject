@@ -18,6 +18,7 @@ from app.config import Settings, get_settings
 from app.db import get_db
 from app.modulos.informes import presentacion, servicio
 from app.modulos.informes.generacion import GeneradorDeTexto, GeneradorDesactivado
+from app.modulos.informes.generador_ollama import GeneradorOllama
 from app.modulos.informes.generador_simulado import GeneradorSimulado
 
 router = APIRouter(prefix="/informes", tags=["M5 Informes"])
@@ -42,8 +43,10 @@ class InformeConsolidadoEntrada(BaseModel):
 
 
 def obtener_generador(settings: Settings = Depends(get_settings)) -> GeneradorDeTexto:
-    """El generador que corresponde a la configuración, SIN alternativas silenciosas: ``simulado`` solo si se pidió expresamente (y la configuración ya lo limita a desarrollo y pruebas); en cualquier otro caso
-    ``GeneradorDesactivado``, que no genera nada. No existe ningún proveedor real (M5-T5)."""
+    """El generador que corresponde a la configuración, SIN alternativas silenciosas entre proveedores: ``ollama`` (local, M5-T5) o ``simulado`` solo si se pidieron expresamente; en cualquier otro caso
+    ``GeneradorDesactivado``, que no genera nada. Si Ollama falla, la solicitud falla: no se usa el simulado ni otro proveedor."""
+    if settings.informe_generador == "ollama":
+        return GeneradorOllama(settings.informe_ollama_url, settings.informe_ollama_modelo, settings.informe_ollama_timeout_segundos, settings.informe_ollama_num_ctx)
     if settings.informe_generador == "simulado":
         return GeneradorSimulado()
     return GeneradorDesactivado()

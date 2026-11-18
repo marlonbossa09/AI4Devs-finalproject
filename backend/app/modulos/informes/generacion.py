@@ -162,7 +162,11 @@ class GeneradorNoDisponible(ErrorDelGenerador):
 
 
 class GeneradorNoConfigurado(ErrorDelGenerador):
-    """No hay ningún generador configurado (no es un fallo transitorio)."""
+    """No hay ningún generador configurado, o el modelo no está instalado (no es un fallo transitorio)."""
+
+
+class ContextoNoAdmitido(ErrorDelGenerador):
+    """El contexto no cabe en la ventana del generador (M5-T5): se rechaza en lugar de dejar que el proveedor lo trunque en silencio."""
 
 
 class TiempoAgotado(ErrorDelGenerador):

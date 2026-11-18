@@ -171,3 +171,18 @@ No hay **ninguna incompatibilidad bloqueante**. Diferencias que conviene conocer
 - **Reintento (P-12, confirmada).** `ErrorDeGeneracion.reintentable` es verdadero solo para fallos técnicos transitorios (generador no disponible, plazo agotado, error inesperado). Se añade `GeneradorNoConfigurado`: un generador desactivado o sin configurar es `ERROR_TECNICO` con el motivo `generador_no_configurado` y **no** es reintentable. Una salida malformada o rechazada por la validación tampoco lo es.
 - **Límites.** El de hechos es **por solicitud** (400 en total) y lo aplica la canalización de M5-T4; `LimitesDeContexto.max_hechos` (por persona) de M5-T3 queda sin uso. `INFORME_REINTENTOS_VALIDACION` es 0: un solo intento.
 - **Presentación.** `presentacion.py` ensambla la respuesta pública con proyecciones cerradas; no expone referencias ni identificadores internos.
+
+## 13. Adaptador de Ollama local (M5-T5)
+
+`GeneradorOllama` (`app/modulos/informes/generador_ollama.py`) implementa `GeneradorDeTexto` para el **desarrollo local** (decisión del 2026-11-18; Bedrock y Lambda quedan aplazados). **El contrato de este documento no cambia**: recibe la misma entrada de campos cerrados y devuelve la salida bruta de la sección 4, que el dominio valida siempre.
+
+| Aspecto | Detalle |
+|---|---|
+| Transporte | `POST /api/chat` de la API HTTP local de Ollama, sin flujo, con el cliente HTTP de la biblioteca estándar (sin dependencias nuevas, sin redirecciones, sin proxies del entorno) |
+| Destino | Solo `127.0.0.1`, `localhost` o `::1`, con puerto explícito, sin credenciales, ruta, parámetros ni fragmento; las rutas de la API las fija el adaptador |
+| Mensajes | **Sistema:** instrucciones fijas (nunca textos laborales). **Usuario:** un único objeto JSON delimitado con los datos de la sección 3; `<` y `>` se escapan para que ningún texto laboral cierre el delimitador |
+| Respuesta pedida | JSON Schema (`format`): solo `secciones` (`texto` y `refs`), con las `refs` restringidas a las referencias de los hechos recibidos; el adaptador añade `version` y `uso` (los tokens que informa Ollama) |
+| Campos de más | No se pulen: el validador los rechaza (`campo_desconocido`), también si el modelo escribe `version` o `uso` |
+| Fallos | Sin conexión o error del servidor: `ERROR_TECNICO` (reintentable). Plazo agotado: `TIEMPO_AGOTADO`. Modelo no instalado (404): `ERROR_TECNICO` con `generador_no_configurado` (no reintentable). Contexto que no cabe en `num_ctx`: `CONTEXTO_NO_ADMISIBLE` (`INFORME_EXCEDE_LIMITES`), antes de llamar o descartando la respuesta. Cuerpo o contenido ilegible: respuesta malformada |
+| Privacidad | Sin registros en el adaptador: ni prompts, ni textos laborales, ni respuestas. El cuerpo de error del servidor no se propaga |
+| Configuración | `INFORME_GENERADOR=ollama` exige `INFORME_OLLAMA_URL`, `INFORME_OLLAMA_MODELO`, `INFORME_OLLAMA_TIMEOUT_SEGUNDOS` e `INFORME_OLLAMA_NUM_CTX`, sin valores por defecto. **Son parámetros de desarrollo y no confirman** los límites abiertos de D-M5-06 (tokens, plazo total, concurrencia) |

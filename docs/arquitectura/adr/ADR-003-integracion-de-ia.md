@@ -3,10 +3,12 @@
 | | |
 |---|---|
 | **Estado** | **PROPUESTO** en lo operativo. **`[CONFIRMADO]` el 2026-11-18, para planificación futura: Amazon Bedrock (modelos de IA), AWS Lambda (integración) y AWS como plataforma de infraestructura relacionada.** No están aprobados el modelo, la región, la retención de información ni servicios adicionales |
-| **Versión** | 0.3 |
+| **Versión** | 0.4 |
 | **Fecha** | 2026-11-06 |
 | **Relacionado con** | PA-09, RNF-06 (PP-33), RN-26, RN-29, RN-30, RN-31, RN-53 a RN-58, RN-86, RN-101, RNF-04, RNF-12, PP-11, ADR-001 |
 | **Documentos complementarios** | `docs/api/m1-m5-dependencias.md`, `docs/api/convenciones.md`, `docs/modelo-datos/modelo-datos.md` |
+
+**Ajuste del 2026-11-18 (persona responsable del producto, posterior): Ollama LOCAL es el proveedor confirmado para el DESARROLLO local de M5** (restricciones actuales de Amazon Bedrock Agents Classic). **Amazon Bedrock y AWS Lambda se conservan como arquitectura futura, aplazada**; el diseño AWS aprobado no se elimina ni se modifica (sección 20). **El MVP no depende de una Knowledge Base** (ni de agentes ni de recuperación de documentos): la narrativa se genera solo a partir de los hechos autorizados. No se implementa ni se configura AWS en M5-T5.
 
 **Decisión del 2026-11-18 (persona responsable del producto):** la IA de M5 utilizará Amazon Bedrock como servicio de modelos de IA y AWS Lambda para la integración, con AWS como plataforma de infraestructura relacionada. Queda registrada como decisión confirmada para planificación futura, **sin implementar ni configurar AWS**: el modelo, la región, la retención y cualquier servicio adicional se deciden en la revisión SDD de M5, y no se elige ninguno por anticipado. Lo que sigue es la comparación original (2026-11-06), conservada como antecedente: AWS Bedrock era el candidato prioritario de evaluación y la API directa de Anthropic, la alternativa. Compara ambas opciones con datos consultados el 2026-11-06 y marca lo que **no se pudo verificar**. No contiene credenciales y no modifica el alcance, el PRD, las historias ni el modelo de datos.
 
@@ -271,6 +273,25 @@ El proveedor, el modelo, la región, los valores de límites y tiempos, la base 
 
 | Versión | Cambios |
 |---|---|
+| 0.4 | Se añade la sección 20: Ollama local como proveedor confirmado para el desarrollo local (2026-11-18); Bedrock y Lambda quedan como integración futura aplazada, sin cambios en su diseño; sin dependencia de una Knowledge Base. |
 | 0.3 | Se añade la sección 16.1 con riesgos, parámetros y dependencias para la implementación. El proveedor, el modelo, la región y la retención siguen sin aprobar; AWS Bedrock sigue como candidato prioritario |
 | 0.2 | Se separa la evidencia de precios de la API directa y de Bedrock (sección 1.1), se explicitan los criterios de selección (sección 1.2) y se detalla la evaluación previa, incluida la calidad en español (sección 13). El resumen libre queda excluido del envío por defecto. El proveedor, el modelo, la región y la retención siguen sin aprobar |
 | 0.1 | Primera propuesta |
+
+## 20. Ollama local para el desarrollo (decisión del 2026-11-18)
+
+**Estado: `[CONFIRMADO]` para el desarrollo local.** Debido a las restricciones actuales de Amazon Bedrock Agents Classic, el desarrollo de M5 continúa con **Ollama local** a través de la misma interfaz interna (`GeneradorDeTexto`, DT-03): el dominio, las métricas, la validación y los contratos públicos M5-01 y M5-02 versión 0.2 no cambian.
+
+| Aspecto | Decisión |
+|---|---|
+| Proveedor para desarrollo | Ollama, API HTTP local (`POST /api/chat`), implementado en M5-T5 (`generador_ollama.py`) |
+| Amazon Bedrock y AWS Lambda | **Integración futura, aplazada.** Las secciones 1 a 19 y D-M5-01 (FastAPI → Lambda síncrona → Bedrock con el SDK oficial) **se conservan sin cambios**. No se implementa ni se configura AWS ahora |
+| Knowledge Base | **Sin dependencia para el MVP**: la narrativa no usa recuperación de documentos ni agentes |
+| Datos | **No salen de la máquina**: el destino solo puede ser local (`127.0.0.1`, `localhost` o `::1`). Esto no sustituye las condiciones de D-M5-08 para usar datos **reales** (modelo, marco de privacidad): hoy solo se usan datos ficticios |
+| Selección | `INFORME_GENERADOR=ollama` con URL, modelo, tiempo de espera y ventana de contexto **explícitos**; la generación sigue **desactivada por defecto** (`INFORME_HABILITADO=false`); el simulado se conserva para pruebas; **sin fallback silencioso** entre proveedores |
+
+**Limitaciones de los modelos locales (riesgos, no garantías).**
+- *Rendimiento:* en CPU, una narrativa individual de unas decenas de tokens de entrada por hecho tarda de decenas de segundos a varios minutos según el modelo (en las pruebas reales: unos 30 s con un modelo de 3.100 millones de parámetros y unos 230 s con uno de 8.000 millones). Un consolidado hace una llamada por persona.
+- *Calidad:* los modelos pequeños incumplen con frecuencia las reglas del validador (cifras, referencias, fechas) y escriben en español con calidad irregular; pueden resumir o citar una orden escrita en un texto libre aunque no la obedezcan. La validación determinista no lo garantiza detectar; la evaluación por muestras sigue siendo necesaria (D-M5-05).
+- *Ventana de contexto:* Ollama trunca el prompt en silencio si excede `num_ctx`; el adaptador lo previene con una estimación y con el recuento real de Ollama.
+- *Comparabilidad:* los resultados no son extrapolables a Bedrock; la evaluación previa de la sección 13 sigue pendiente para cualquier proveedor que reciba datos reales.

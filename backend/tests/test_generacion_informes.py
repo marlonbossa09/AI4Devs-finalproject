@@ -223,8 +223,10 @@ def test_un_contexto_que_rebasa_un_limite_no_invoca_al_generador_y_se_distingue_
 
 def test_el_paquete_de_informes_no_importa_ningun_cliente_de_red_ni_de_aws_y_no_persiste(db, mundo2):
     raiz = Path(__file__).resolve().parent.parent / "app" / "modulos" / "informes"
-    prohibidos = re.compile(r"^\s*(import|from)\s+(boto3|botocore|httpx|requests|urllib|socket|aiohttp|anthropic|openai)\b", re.MULTILINE)
+    prohibidos = re.compile(r"^\s*(import|from)\s+(boto3|botocore|httpx|requests|urllib3|aiohttp|anthropic|openai|socket|urllib\.request)\b", re.MULTILINE)
     assert [f.name for f in raiz.glob("*.py") if prohibidos.search(f.read_text(encoding="utf-8"))] == []
+    # M5-T5: la única comunicación de red es el cliente HTTP de la biblioteca estándar del adaptador local de Ollama; ningún otro módulo del paquete abre conexiones
+    assert [f.name for f in raiz.glob("*.py") if re.search(r"^\s*(import|from)\s+http\.client\b", f.read_text(encoding="utf-8"), re.MULTILINE)] == ["generador_ollama.py"]
     tablas = ("bitacora", "actividad", "planificacion", "avance", "auditoria", "persona", "pertenencia", "equipo")
     antes = {t: db.execute(text(f"select count(*) from {t}")).scalar() for t in tablas}
     generar_narrativa_individual(individual_de_ana(db, mundo2), GeneradorSimulado())

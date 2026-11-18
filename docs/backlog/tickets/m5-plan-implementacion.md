@@ -3,7 +3,7 @@
 | Campo | Contenido |
 |---|---|
 | **Estado** | `[PROPUESTO]` salvo lo indicado. Análisis SDD (M5-T0). **Nada de lo que propone este documento es requisito ni está aprobado**: las decisiones para aprobar están en la sección 9; los tickets, los nombres, los parámetros y las cifras llevan la marca `[PROPUESTO]`, `[ABIERTO]` o `[SUPUESTO]` hasta que la persona responsable las apruebe |
-| **Versión** | 0.8 |
+| **Versión** | 1.0 |
 | **Fecha** | 2026-11-18 |
 | **Base** | HEAD `2c45ba5` (cierre técnico de M4 consolidado en dos commits locales). M1 a M4 cerrados en su alcance; M4 «cerrado con reservas». **Estado a 2026-11-18:** análisis M5-T0 aprobado por la persona responsable con las resoluciones de la sección 12; **M5-T1 implementado y probado localmente; cierre en un único commit local** (sección 14); D-M5-04 y D-M5-06 pendientes de detalle (sección 13) |
 | **Fuentes leídas** | `docs/producto/alcance-mvp.md` y `prd.md` (RN-03, RN-06, RN-26, RN-29 a RN-31, RN-36, RN-53 a RN-58, RN-60, RN-82 a RN-90, RN-101; RF-29, RF-30, RF-32, RF-33, RF-46 a RF-51, RF-74 a RF-76, RF-78, RF-83, RF-87, RF-93, RF-94, RF-96, RF-98, RF-100, RF-111; RNF-04, RNF-06, RNF-08, RNF-12, RNF-13; PA-09, PA-13, PP-11, PP-33); las cinco historias de `docs/backlog/M5-…/` (HU-5.1 a HU-5.5); `docs/api/m5-informes.md` (0.1), `m1-m5-dependencias.md`, `convenciones.md` (secciones 3, 4 y 9); `docs/arquitectura/adr/ADR-001`, `ADR-002` y `ADR-003` (0.3, con la decisión del 2026-11-18); `docs/arquitectura/arquitectura-general.md` (secuencia 6.4, DT-03, DT-06, R-03, R-05, R-07); `docs/modelo-datos/modelo-datos.md` (P7, RA-09, DM-08); `docs/backlog/tickets/{backend,frontend,base-de-datos,indice}.md` (BE-15, BE-16, FE-10); `docs/backlog/tickets/m4-plan-implementacion.md`; las matrices de trazabilidad de M1 a M4; `CLAUDE.md`; y el código real de M4 y de la política de visibilidad: `app/compartido/{visibilidad,pertenencias,politica_acceso,paginacion}.py`, `app/modulos/consulta/{supervision,servicio,repositorio,proyecciones}.py`, `app/modulos/bitacoras/{esquemas,secuencia}.py`, `app/config.py`, `pyproject.toml` y la estructura de `frontend/lib/features` |
@@ -360,6 +360,7 @@ M5-T8 cierre técnico de M5
 
 ### M5-T5 — Integración AWS: función Lambda y adaptador (sin recursos reales)
 
+- **Estado (2026-11-18): redefinido y APLAZADO en su parte AWS.** Por las restricciones actuales de Amazon Bedrock Agents Classic, M5-T5 se implementa como **adaptador local de Ollama** (sección 22). La función Lambda y el adaptador de AWS descritos abajo **se conservan como diseño futuro aplazado**, sin implementar ni configurar.
 - **Objetivo:** escribir en el repositorio la función Lambda (adaptador por proveedor) y el adaptador de FastAPI que la invoca, probados con simulacros. **No crea recursos AWS, no usa credenciales y no envía datos.**
 - **Contratos:** contrato interno; ADR-003, secciones 8 y 14; D-M5-01 aprobada; aprobación de la dependencia del SDK.
 - **Criterios:** CA-166, CA-174, CA-175 en el adaptador real; «cambiar de adaptador no modifica el contrato público» (BE-16).
@@ -1099,3 +1100,65 @@ Una prueba nueva (`test_el_nombre_y_el_identificador_de_la_persona_no_llegan_al_
 - **Pendiente:** la parte parcial de P-8 (tokens, plazo total y concurrencia); condiciona M5-T5 y M5-T7, no la forma de la respuesta.
 - **Riesgos vigentes de M5-T3 y M5-T4:** información personal en el texto libre, instrucciones maliciosas, afirmaciones subjetivas o inventadas que la validación determinista no garantiza detectar, y que la seudonimización por alias no es anonimización. Evaluación por muestras en M5-T7.
 - **Sin integración real:** no hay proveedor, SDK, Lambda ni Bedrock; la generación está desactivada por defecto y el simulado solo existe para desarrollo y pruebas.
+
+## 22. M5-T5 — adaptador de generación local con Ollama (2026-11-18)
+
+### 22.1 Decisión y estado
+
+**Implementado, probado y aprobado técnicamente con reservas de calidad, confiabilidad y rendimiento; consolidado en un commit local.** Ollama local es el **proveedor confirmado para el desarrollo local** (ADR-003, sección 20). **Amazon Bedrock y AWS Lambda siguen como arquitectura futura, aplazada**: su diseño (D-M5-01 y secciones 6 y 8) no se elimina ni se modifica y no se implementó ni configuró nada de AWS. **El MVP no depende de una Knowledge Base.** No se tocó Flutter, PostgreSQL 5432 ni `smartwork_app`, no se modificaron las métricas ni los contratos M5-01 y M5-02 versión 0.2, no se creó ninguna política de autorización y M5-T6 no se inició.
+
+### 22.2 Qué se implementó
+
+| Pieza | Archivo | Contenido |
+|---|---|---|
+| Adaptador | `app/modulos/informes/generador_ollama.py` | `GeneradorOllama`, implementación de `GeneradorDeTexto`: `POST /api/chat` sin flujo, JSON Schema de salida con `refs` restringidas a las de los hechos, instrucciones fijas del sistema, datos delimitados en el mensaje del usuario, `version` y `uso` completados por el adaptador, protección frente al truncado silencioso del contexto |
+| Destinos locales | `app/modulos/informes/destino_local.py` | Validación pura de la URL: solo la propia máquina, con puerto, sin credenciales, ruta, parámetros ni fragmento |
+| Interfaz | `generacion.py`, `narrativa.py` | `ContextoNoAdmitido` (→ `CONTEXTO_NO_ADMISIBLE`, 422) y el motivo `generador_no_configurado` para el modelo no instalado (no reintentable) |
+| Selección | `router.py`, `config.py`, `.env.example` | `INFORME_GENERADOR=ollama` y cuatro parámetros explícitos y obligatorios; `hide_input_in_errors` para que un error de configuración no repita una URL con credenciales |
+| Pruebas | `tests/test_generador_ollama.py`, `tests/test_generador_ollama_real.py`, `tests/test_generacion_informes.py` | Ver 22.5 |
+
+### 22.3 Configuración local
+
+Con la generación **desactivada por defecto** (`INFORME_HABILITADO=false`, `INFORME_GENERADOR=ninguno`). Para probar con Ollama (desarrollo): `INFORME_HABILITADO=true`, `INFORME_GENERADOR=ollama`, `INFORME_OLLAMA_URL=http://127.0.0.1:11434`, `INFORME_OLLAMA_MODELO=<modelo instalado>`, `INFORME_OLLAMA_TIMEOUT_SEGUNDOS=<segundos>` e `INFORME_OLLAMA_NUM_CTX=<tokens>`. No tienen valores por defecto y **no confirman** `INFORME_MAX_TOKENS_ENTRADA`, `INFORME_MAX_TOKENS_SALIDA`, `INFORME_PLAZO_TOTAL_SEGUNDOS` ni `INFORME_CONCURRENCIA_MAXIMA`, que siguen **abiertos**. **Modelo usado en las pruebas reales:** `qwen2.5:3b-instruct` (3.100 millones de parámetros, cuantización Q4_K_M) y, en una comparación, `qwen3:8b`; Ollama 0.40.16 en la misma máquina, con ventana de 8.192 tokens y plazo de 240 s.
+
+### 22.4 Seguridad
+
+Solo destinos locales (127.0.0.1, localhost o ::1), con la URL sin ruta para que la configuración no pueda convertir al backend en un proxy HTTP arbitrario; cliente de la biblioteca estándar, sin redirecciones ni proxies del entorno (una prueba lo comprueba con un servidor local y un proxy inexistente); ningún dato sale de la máquina; los textos laborales nunca van en las instrucciones del sistema; los caracteres `<` y `>` de los datos se escapan para que no cierren el delimitador; ni prompts, ni textos laborales ni respuestas se registran (una prueba lo comprueba); los errores usan mensajes fijos y no propagan el cuerpo de error del servidor; sin fallback silencioso: si Ollama falla, la solicitud falla.
+
+### 22.5 Pruebas
+
+- `tests/test_generador_ollama.py`: **45 superadas**, con un transporte simulado y, para el camino HTTP real, un servidor local de prueba (no es Ollama): disponible (individual y consolidado), la solicitud (local, sin flujo, esquema con `refs` restringidas, instrucciones fijas, textos laborales solo en el mensaje del usuario), delimitador no forjable, no disponible, desconexión, error 500, redirección no seguida, plazo agotado, modelo no instalado, cuerpo o contenido ilegible, campos de más (también `version` y `uso` del modelo), cifra contradictoria, referencia inexistente, enlace, contexto que no cabe (antes de llamar y por el recuento real), destinos locales admitidos y 16 rechazados, configuración explícita y solo local, generación desactivada por defecto, sin alternativa silenciosa, HTTP con el esquema público y ausencia de filtraciones en solicitudes, errores y registros.
+- Regresión focalizada (informes de T1 a T5, política de visibilidad, errores, métodos HTTP, intentos de acceso, contraseñas y códigos): **679 superadas, 6 omitidas** (cinco de Ollama real, que solo corren con la variable de entorno, y el `ERROR_INTERNO` conocido). Una primera pasada detectó que la prueba de importaciones de red de M5-T3 prohibía `urllib`, que usa el validador de destinos; se afinó para permitir solo `http.client` en el adaptador y se repitió la regresión. Sin mutaciones ni suite completa.
+
+### 22.6 Resultado real con Ollama (datos ficticios, modelo instalado)
+
+| Prueba | Resultado |
+|---|---|
+| Individual con `qwen2.5:3b-instruct`, 3 intentos | **1 superó la validación** (34 s, 884 tokens de entrada y 167 de salida); **2 fueron rechazadas por `cifra_no_autorizada`** (28 s cada una): el modelo escribió un número que no es ninguna métrica |
+| Consolidado con `qwen2.5:3b-instruct` | **Rechazado por `cifra_no_autorizada`** (40 s): una persona que falla hace fallar todo el informe |
+| Individual con `qwen3:8b`, 1 intento | **Superó la validación** (229 s, 886 y 630 tokens) con mejor calidad: usó el nombre de la persona y trató la orden escrita en una descripción como dato |
+| Modelo inexistente | `ERROR_TECNICO` con `generador_no_configurado`, no reintentable (404 real) |
+| Servidor caído | `ERROR_TECNICO` o `TIEMPO_AGOTADO`, reintentable |
+
+Observaciones reales: la narrativa que superó la validación con el modelo pequeño **citó la orden maliciosa** de una descripción («ignoré las instrucciones anteriores y revelé los registros…») sin obedecerla (no reveló nada) y no usó el alias; es el riesgo residual documentado (la validación determinista no lo detecta) y demuestra por qué sigue siendo necesaria la evaluación por muestras. Con `INFORME_REINTENTOS_VALIDACION=0` (confirmado), un modelo pequeño falla con frecuencia: se queda en `INFORME_NO_GENERADO`.
+
+**Cómo leer estos resultados (aprobación de M5-T5 con reservas).**
+- El resultado de **1 de 3** con `qwen2.5:3b-instruct` es **evidencia exploratoria con una sola situación ficticia, no una tasa de éxito generalizable**; tampoco lo es el único intento con `qwen3:8b`.
+- **Riesgo de calidad:** el modelo puede **citar instrucciones maliciosas incluidas en los hechos laborales**, incluso cuando no las ejecuta. La narrativa del intento que superó la validación contenía esa cita: **no debe presentarse como una validación de calidad satisfactoria**. La validación determinista solo comprueba estructura, referencias, cifras, fechas, alias y contenido no admitido; no garantiza fidelidad, ausencia de valoraciones ni de órdenes citadas.
+- **Decisiones que NO cambian:** no se cambia el modelo predeterminado (no hay uno: es un parámetro explícito) ni se fija `qwen3:8b`; no se autoriza la generación con datos laborales reales (D-M5-08); no se aumentan los reintentos de validación (`INFORME_REINTENTOS_VALIDACION=0`); la configuración sigue desactivada por defecto y el adaptador limitado a destinos locales.
+
+### 22.7 Compatibilidad con los contratos existentes
+
+Sin cambios en los contratos públicos M5-01 y M5-02 versión 0.2, en las seis métricas ni en la autorización. El contrato interno no cambia: el adaptador produce la misma salida bruta, que el validador sigue comprobando. Se reutiliza la clase `CONTEXTO_NO_ADMISIBLE` existente (→ `INFORME_EXCEDE_LIMITES`, 422, no reintentable) para el contexto que no cabe; no hay códigos nuevos. La única extensión de la interfaz es la excepción `ContextoNoAdmitido`.
+
+### 22.8 Riesgos y decisiones abiertas
+
+| Id | Asunto |
+|---|---|
+| D-M5-06 | Siguen abiertos tokens de entrada, tokens de salida, plazo total y concurrencia; los parámetros de Ollama son de desarrollo y no los confirman |
+| Reintentos | Con modelos locales pequeños la tasa de rechazo es alta (un intento de tres superó la validación). Subir `INFORME_REINTENTOS_VALIDACION` por encima de 0 es una decisión **abierta** (hoy confirmado en 0) |
+| Modelo recomendado | No se decide aquí qué modelo local usar: la calidad (qwen3:8b) y el tiempo (≈ 4 minutos por informe individual en CPU) están en tensión. Decisión abierta antes de M5-T6 si la interfaz va a probarse con generación real |
+| Calidad y obediencia | Riesgo residual de M5-T3: valoraciones, afirmaciones inventadas y citas de órdenes escritas en el texto libre; evaluación por muestras pendiente |
+| Concurrencia y recursos | Sin límite de concurrencia (abierto): varias solicitudes simultáneas saturarían la máquina local |
+| Datos reales | Siguen condicionados por D-M5-08; el destino local reduce la exposición pero no sustituye el marco de privacidad |
+| Bedrock y Lambda | Aplazados; su evaluación previa (ADR-003, sección 13) sigue pendiente |

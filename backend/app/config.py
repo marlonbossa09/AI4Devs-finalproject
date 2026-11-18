@@ -14,7 +14,8 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # ``hide_input_in_errors``: un error de configuración no repite el valor recibido (podría ser una URL con credenciales).
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
     # Solo existen entornos de desarrollo y de pruebas; no hay configuración de producción.
     app_env: Literal["development", "test"] = "development"
@@ -106,11 +107,17 @@ class Settings(BaseSettings):
     informe_habilitado: bool = False
     # Qué generador se usa cuando está habilitado. ``ninguno`` (por defecto): no hay generador. ``simulado``: SOLO desarrollo y pruebas (se rechaza fuera de ellos); nunca se elige solo ni como alternativa
     # silenciosa a un proveedor real no configurado. M5-T5 añadirá la integración real; hoy no existe ningún proveedor.
-    informe_generador: Literal["ninguno", "simulado"] = "ninguno"
+    informe_generador: Literal["ninguno", "simulado", "ollama"] = "ninguno"
     # Amplitud máxima del período de un informe, en días con AMBOS extremos incluidos: 31. Superarla es INFORME_EXCEDE_LIMITES.
     informe_max_range_days: int = Field(default=31, gt=0)
     # Máximo de hechos (avances autorizados) de UNA SOLICITUD: en el consolidado, de TODAS las personas juntas (no por persona): 400. Superarlo es INFORME_EXCEDE_LIMITES; nada se trunca.
     informe_max_hechos: int = Field(default=400, gt=0)
+    # Ollama LOCAL (M5-T5; proveedor confirmado para el desarrollo local el 2026-11-18). Con ``INFORME_GENERADOR=ollama`` los cuatro son OBLIGATORIOS y EXPLÍCITOS (sin valores por defecto): URL (solo la propia máquina:
+    # 127.0.0.1, localhost o ::1, con puerto y sin ruta), modelo instalado, tiempo de espera en segundos y ventana de contexto en tokens. NO confirman los parámetros abiertos de D-M5-06 (tokens, plazo total, concurrencia).
+    informe_ollama_url: str | None = None
+    informe_ollama_modelo: str | None = None
+    informe_ollama_timeout_segundos: float | None = Field(default=None, gt=0)
+    informe_ollama_num_ctx: int | None = Field(default=None, gt=0)
     # Reintentos de la generación tras una validación fallida: 0 inicialmente. Hasta que se implementen (M5-T5) solo se admite 0.
     informe_reintentos_validacion: int = Field(default=0, ge=0, le=0)
 
@@ -130,10 +137,22 @@ class Settings(BaseSettings):
     def _pepper_vacio_es_ausente(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
 
+    @field_validator("informe_ollama_url", "informe_ollama_modelo", "informe_ollama_timeout_segundos", "informe_ollama_num_ctx", mode="before")
+    @classmethod
+    def _ollama_en_blanco_es_ausente(cls, value):
+        return None if isinstance(value, str) and not value.strip() else value
+
     @model_validator(mode="after")
     def _validar_generador_de_informes(self) -> "Settings":
         if self.informe_generador == "simulado" and self.app_env not in ("development", "test"):
             raise ValueError("INFORME_GENERADOR=simulado solo se admite en desarrollo y pruebas")
+        if self.informe_generador == "ollama":
+            from app.modulos.informes.destino_local import validar_destino_local
+            faltan = [nombre for nombre, valor in (("INFORME_OLLAMA_URL", self.informe_ollama_url), ("INFORME_OLLAMA_MODELO", self.informe_ollama_modelo),
+                                                   ("INFORME_OLLAMA_TIMEOUT_SEGUNDOS", self.informe_ollama_timeout_segundos), ("INFORME_OLLAMA_NUM_CTX", self.informe_ollama_num_ctx)) if valor is None]
+            if faltan:
+                raise ValueError("INFORME_GENERADOR=ollama exige configurar explícitamente: " + ", ".join(faltan))
+            validar_destino_local(self.informe_ollama_url)           # solo la propia máquina; el mensaje de error no repite la URL
         return self
 
     @model_validator(mode="after")

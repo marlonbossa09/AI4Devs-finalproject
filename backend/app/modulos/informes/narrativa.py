@@ -20,7 +20,7 @@ from app.modulos.informes.consolidado import ConsolidadoBase
 from app.modulos.informes.estructura import ActividadDelInforme, Hecho, Persona
 from app.modulos.informes.generacion import (
     SIN_LIMITES, Clase, EntradaDeGeneracion, ErrorDeGeneracion, ErrorDelGenerador, GeneradorDeTexto, LimitesDeContexto, SalidaDeGeneracion, SeccionDeNarrativa,
-    GeneradorNoConfigurado, TiempoAgotado, UsoDeTokens, construir_entrada, verificar_contexto,
+    ContextoNoAdmitido, GeneradorNoConfigurado, TiempoAgotado, UsoDeTokens, construir_entrada, verificar_contexto,
 )
 from app.modulos.informes.agregaciones import Agregaciones
 from app.modulos.informes.individual import InformeBase
@@ -49,6 +49,8 @@ def _invocar(generador: GeneradorDeTexto, entrada: EntradaDeGeneracion) -> objec
         return generador.generar(entrada)
     except TiempoAgotado:
         raise ErrorDeGeneracion(Clase.TIEMPO_AGOTADO, ("tiempo_agotado",)) from None
+    except ContextoNoAdmitido:
+        raise ErrorDeGeneracion(Clase.CONTEXTO_NO_ADMISIBLE, ("contexto_no_admitido",)) from None
     except GeneradorNoConfigurado:
         raise ErrorDeGeneracion(Clase.ERROR_TECNICO, ("generador_no_configurado",)) from None
     except ErrorDelGenerador:
