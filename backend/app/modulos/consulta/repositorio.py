@@ -111,3 +111,41 @@ def actividades_con_planificacion_autorizada(db: Session, consultante: Consultan
     sql = ("select distinct pl.actividad_id from planificacion pl join bitacora bp on bp.id = pl.bitacora_id join actividad a on a.id = pl.actividad_id "
            f"where pl.actividad_id = any(:ids) and bp.fecha_laboral <= :hasta and {autorizado}")
     return {fila[0] for fila in db.execute(text(sql), {"ids": actividades, "hasta": hasta, **parametros}).all()}
+
+
+# =============================== M4-04: historial de una actividad ====================================
+
+def actividad_con_hechos_de_autorizacion(db: Session, consultante: Consultante, actividad: UUID):
+    """La actividad (o ``None`` si no existe) con el hecho ``origen_autorizado`` que decide la política (``condicion_equipo`` sobre la fecha de su jornada de origen). Si el origen NO
+    está autorizado, el título, el origen, el motivo y la fecha de la marca, la fecha de creación y la fecha de origen salen de la base como nulos: lo protegido no abandona la consulta.
+    ``registrada_por_error`` sí sale (el servicio lo necesita para ocultar la actividad, RA-08)."""
+    c_origen, p_origen = condicion_equipo(consultante, "a.propietaria_id", "ob.fecha_laboral", prefijo="eo")
+    sql = (
+        "with h as (select a.id, a.propietaria_id, a.titulo, a.origen, a.estado_actual, a.registrada_por_error, a.motivo_error, a.marcada_en, a.creada_en,"
+        f"  ob.fecha_laboral as fecha_laboral_origen, ({c_origen}) as origen_autorizado"
+        " from actividad a join bitacora ob on ob.id = a.bitacora_origen_id where a.id = :actividad)"
+        " select id, propietaria_id, case when origen_autorizado then titulo end as titulo, case when origen_autorizado then origen end as origen, estado_actual,"
+        "  registrada_por_error, case when origen_autorizado then motivo_error end as motivo_error, case when origen_autorizado then marcada_en end as marcada_en,"
+        "  case when origen_autorizado then creada_en end as creada_en, case when origen_autorizado then fecha_laboral_origen end as fecha_laboral_origen,"
+        "  origen_autorizado from h")
+    return db.execute(text(sql), {"actividad": actividad, **p_origen}).one_or_none()
+
+
+def avances_autorizados_de_la_actividad(db: Session, consultante: Consultante, actividad: UUID):
+    """Los avances de la actividad cuya fecha laboral es de un período en que su propietaria era del equipo del supervisor (``condicion_equipo``), con su detalle propio. Los demás NO
+    salen de la consulta."""
+    autorizado, parametros = condicion_equipo(consultante, "a.propietaria_id", "bx.fecha_laboral", prefijo="ea")
+    sql = ("select av.id, av.actividad_id, av.estado, av.descripcion, av.motivo_bloqueo, av.es_reactivacion, av.registrado_en, av.modificado_en, bx.fecha_laboral "
+           "from avance av join bitacora bx on bx.id = av.bitacora_id join actividad a on a.id = av.actividad_id "
+           f"where av.actividad_id = :actividad and {autorizado}")
+    return db.execute(text(sql), {"actividad": actividad, **parametros}).all()
+
+
+def planificaciones_autorizadas_de_la_actividad(db: Session, consultante: Consultante, actividad: UUID):
+    """Las planificaciones (original y continuaciones) autorizadas de la actividad, con su fecha laboral. Una planificación conservada (fecha no cubierta por la propietaria) no es de
+    ningún equipo y no sale. Las demás no salen de la consulta."""
+    autorizado, parametros = condicion_equipo(consultante, "a.propietaria_id", "bp.fecha_laboral", prefijo="ep")
+    sql = ("select pl.id, pl.actividad_id, pl.tipo, pl.descripcion, pl.registrada_en, bp.fecha_laboral "
+           "from planificacion pl join bitacora bp on bp.id = pl.bitacora_id join actividad a on a.id = pl.actividad_id "
+           f"where pl.actividad_id = :actividad and {autorizado}")
+    return db.execute(text(sql), {"actividad": actividad, **parametros}).all()

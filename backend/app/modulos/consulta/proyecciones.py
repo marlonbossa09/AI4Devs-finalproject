@@ -38,6 +38,18 @@ def actividad_neutral(fila) -> dict:
 REFERENCIA_MINIMA = "referencia_minima"
 
 
+def avance_de_historial(fila) -> dict:
+    """Avance de M4-04: SOLO los campos que el contrato permite (fecha laboral, estado histórico, descripción y motivo de bloqueo del propio avance). No reutiliza ``avance_a_dict`` de M2:
+    ni el identificador, ni ``registrado_en``, ni ``modificado_en`` (momentos reales y señal de una corrección, que pertenecen a la auditoría de M3-07), ni ``es_reactivacion`` se exponen
+    a otra persona. Un campo nuevo de M2 no llega aquí por sí solo: hay que añadirlo a esta lista a propósito."""
+    return {"fecha_laboral": fila.fecha_laboral.isoformat(), "estado": fila.estado, "descripcion": fila.descripcion, "motivo_bloqueo": fila.motivo_bloqueo}
+
+
+def planificacion_de_historial(fila) -> dict:
+    """Planificación autorizada de M4-04 (todas vigentes por selección): solo fecha laboral, tipo (original o continuación) y descripción. Sin identificadores ni momentos de registro."""
+    return {"fecha_laboral": fila.fecha_laboral.isoformat(), "tipo": fila.tipo, "descripcion": fila.descripcion}
+
+
 def referencia_minima(fila, *, estado_actual: str, fecha_ultimo_avance: date | None) -> dict:
     """``ReferenciaMínima`` (convenciones 7, RA-06, RN-84, RN-89, D-09, D-M4-06): elemento de la vista de supervisión para una actividad iniciada en otro equipo sin registros del
     equipo. Lista CERRADA de campos: ``tipo`` (la distingue del acceso completo), ``actividad`` (forma neutral), ``propietaria_id``, ``iniciada_en_otro_equipo`` (siempre verdadero, sin
