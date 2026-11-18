@@ -22,6 +22,8 @@ import 'unplanned_page.dart';
 import '../../../supervision/presentation/pages/supervision_activity_page.dart';
 import '../../../supervision/presentation/pages/supervision_page.dart';
 import '../../../team/presentation/pages/team_page.dart';
+import '../../../reports/presentation/pages/individual_report_page.dart';
+import '../../../reports/presentation/pages/team_report_page.dart';
 
 /// Signed-in area: the app frame with the page chosen in the sidebar.
 class HomePage extends ConsumerWidget {
@@ -44,6 +46,8 @@ class HomePage extends ConsumerWidget {
     AppPage.team: 'Mi equipo',
     AppPage.supervision: 'Supervisión del equipo',
     AppPage.supervisionActivity: 'Historial de la actividad',
+    AppPage.individualReport: 'Informe individual',
+    AppPage.teamReport: 'Informe del equipo',
   };
 
   @override
@@ -91,6 +95,21 @@ class HomePage extends ConsumerWidget {
               icon: Icons.fact_check_outlined,
               itemKey: Key('nav-supervision'),
             ),
+          // Reports (M5): the individual one is offered to everyone (the server decides whose report each person may ask for);
+          // the team one only to a supervisor, and the server is the authority here too.
+          const NavItem(
+            id: AppPage.individualReport,
+            label: 'Informe individual',
+            icon: Icons.summarize_outlined,
+            itemKey: Key('nav-report'),
+          ),
+          if (session.role == Role.supervisor)
+            const NavItem(
+              id: AppPage.teamReport,
+              label: 'Informe del equipo',
+              icon: Icons.groups_2_outlined,
+              itemKey: Key('nav-team-report'),
+            ),
         ],
         // The detail belongs to the activities area: that item stays highlighted while it is open
         selected: switch (page) {
@@ -124,6 +143,8 @@ class HomePage extends ConsumerWidget {
           AppPage.team => const TeamPage(),
           AppPage.supervision => const SupervisionPage(),
           AppPage.supervisionActivity => const SupervisionActivityPage(),
+          AppPage.individualReport => const IndividualReportPage(),
+          AppPage.teamReport => const TeamReportPage(),
         },
       ),
     );

@@ -116,6 +116,7 @@ Cliente web en Flutter Web (ADR-001). Cada ticket consume contratos ya definidos
   - Ante un registro no autorizado se muestra el mismo mensaje que ante uno inexistente.
 
 #### FE-10 — Informes
+- **Extensión (M5-T6, 2026-11-18):** implementado y probado localmente, sin commit (plan de M5, sección 23): «Informe individual» e «Informe del equipo» (solo supervisión) con los contratos M5-01 y M5-02 v0.2, estados de generación sin porcentaje, sin datos, límites, fallo (reintento manual solo si el servidor lo admite) y pérdida de autorización. La generación real con Ollama desde la interfaz, la generación larga con servicios intermedios y la accesibilidad con lector de pantalla siguen sin verificar; M5 no está cerrado.
 - **Prioridad:** P2 · **Capa:** Frontend · **Condicionado a la integración de IA (ADR-003)**
 - **Objetivo:** Solicitar y leer informes individuales y consolidados.
 - **Historias y criterios:** HU-5.1 (CA-152 a CA-160), HU-5.2 (CA-161 a CA-167), HU-5.3 (CA-168 a CA-171), HU-5.4 (CA-172, CA-173, CA-199 a CA-202), HU-5.5 (CA-174, CA-175).

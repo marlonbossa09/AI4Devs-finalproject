@@ -24,6 +24,8 @@ enum AppPage {
   team,
   supervision,
   supervisionActivity,
+  individualReport,
+  teamReport,
 }
 
 /// Page being shown. It goes back to the dashboard with every new session.

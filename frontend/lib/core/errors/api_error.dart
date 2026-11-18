@@ -29,6 +29,21 @@ class ApiError implements Exception {
 
   bool get isNotSignedIn => code == notSignedIn;
 
+  /// What the server says about repeating the request (`reintento`, P-12): `true` only for a transient technical failure,
+  /// `false` for everything else it classifies, and `null` when it says nothing. The two fields it sends (`reintento` and
+  /// `motivo`) are read together and must agree; a contradictory answer counts as "says nothing" (never retry on doubt).
+  bool? get retryAllowed {
+    for (final detail in details) {
+      if (detail['campo'] != 'reintento') continue;
+      final flag = detail['reintento'];
+      final reason = detail['motivo'];
+      if (flag == true && reason == 'posible') return true;
+      if (flag == false && reason == 'no_aplicable') return false;
+      return null;
+    }
+    return null;
+  }
+
   /// A temporary restriction on attempts (429): the client must wait [retryAfterSeconds].
   bool get isTooManyRequests => code == tooManyRequests;
 

@@ -1162,3 +1162,64 @@ Sin cambios en los contratos públicos M5-01 y M5-02 versión 0.2, en las seis m
 | Concurrencia y recursos | Sin límite de concurrencia (abierto): varias solicitudes simultáneas saturarían la máquina local |
 | Datos reales | Siguen condicionados por D-M5-08; el destino local reduce la exposición pero no sustituye el marco de privacidad |
 | Bedrock y Lambda | Aplazados; su evaluación previa (ADR-003, sección 13) sigue pendiente |
+
+## 23. M5-T6 — Flutter: informes individual y consolidado (2026-11-18)
+
+### 23.1 Estado
+
+**Implementado y probado localmente; sin commit** (queda como cambios de trabajo en `final-project-eq`, sobre el commit del adaptador de M5-T5). **M5 no está cerrado**: faltan M5-T7 (evaluación del servicio de IA) y M5-T8 (cierre técnico). No se tocó el backend, ni los contratos M5-01 y M5-02 (versión 0.2), ni las seis métricas, ni la autorización, ni PostgreSQL de desarrollo; no se configuró AWS. Ollama sigue siendo el proveedor de desarrollo, el generador simulado el de las pruebas, Bedrock y Lambda siguen aplazados, D-M5-06 sigue parcialmente abierta y D-M5-08 sigue condicionando el uso de datos reales.
+
+### 23.2 Qué se implementó
+
+| Pieza | Ubicación | Contenido |
+|---|---|---|
+| Dominio | `frontend/lib/features/reports/domain/` | Entidades del informe (período, persona, seis cifras, actividades completas o neutrales, hechos, bloqueos, narrativa), regla del período (máximo 31 días, solo orientativa: el servidor decide) y repositorio |
+| Datos | `data/` | Análisis explícito y cerrado del JSON de los contratos v0.2: se rechaza una forma desconocida, una referencia de actividad inexistente o un estado no reconocido; una actividad neutral ignora cualquier título u origen; el motivo de bloqueo solo se lee si el hecho es «Bloqueada»; de la narrativa solo se lee `texto`. Dos llamadas: `POST /api/v1/informes/individuales` y `/consolidados` |
+| Estado | `presentation/providers/` | Un controlador por tipo de informe (Riverpod, destruido al salir de la pantalla): fases `idle`, `generating`, `ready`, `failed`; una solicitud por acción; empezar a generar oculta el informe anterior; la respuesta de una sesión terminada o distinta se descarta; una sesión no reconocida lleva al inicio de sesión; sin reintento automático; un cuerpo ilegible es un error técnico |
+| Pantallas | `presentation/pages/` | **Informe individual** (todas las personas con sesión): período, selector de persona solo para supervisión («Mi informe» más los integrantes actuales, M4-05), botón «Generar informe». **Informe del equipo** (solo supervisión; para una persona sin ese rol la pantalla no ofrece el formulario) |
+| Componentes | `presentation/widgets/` | Declaración fija de base, seis cifras etiquetadas «CALCULADO», registros y bloqueos etiquetados «REGISTRADO» (el bloqueo se presenta como registro histórico, no como estado actual), narrativa etiquetada «REDACTADO CON IA» con aviso, aparte y al final; estados de generación y de fallo |
+| Navegación | `home_page.dart`, `navigation.dart` | «Informe individual» para todas las personas; «Informe del equipo» solo para supervisión; la «Supervisión» de M4 sigue siendo una pantalla independiente |
+| Errores | `api_error.dart`, `error_messages.dart` | `retryAllowed` (verdadero solo con `reintento: true` y `motivo: posible`); textos fijos para `INFORME_EXCEDE_LIMITES` (máximo de días o de registros, sin cifras reales) e `INFORME_NO_GENERADO` (con o sin posibilidad de reintento); se ignora el mensaje del servidor |
+
+### 23.3 Comportamiento de la experiencia
+
+- **Estados:** formulario sin informe; «Preparando la solicitud y generando el informe…» sin porcentaje ni barra (el servidor no informa avance); informe disponible; «sin datos» (declaración de base, sin cifras ni narrativa inventadas); límites excedidos; el informe no pudo generarse (con el botón «Intentarlo de nuevo» **solo** si el servidor admite el reintento y siempre manual); rechazo de autorización; error técnico.
+- **Una solicitud por acción:** mientras se genera, el formulario y el botón no aceptan nuevas pulsaciones; no hay cancelación, sondeo, cola ni persistencia.
+- **Autorización perdida:** una nueva solicitud rechazada (por ejemplo, la persona deja de ser supervisora) oculta de inmediato el informe visible y muestra el texto fijo del rechazo; no queda ningún dato anterior en pantalla.
+- **Consolidado:** muestra solo a las personas con registros autorizados, ordenadas alfabéticamente y con una nota de que no es una clasificación; cifras del equipo (deterministas) separadas de las cifras y la narrativa de cada persona; sin rankings, puntuaciones ni indicadores de rendimiento. Las personas sin registros no aparecen como informes vacíos.
+- **Proyección neutral:** las actividades iniciadas en otro equipo se muestran solo como «Actividad en continuidad», sin título, descripciones ni motivos.
+- **Nada interno:** no se muestra ningún dato de Ollama, instrucciones, trazas, motivos internos ni texto rechazado; el texto generado se muestra como texto plano seleccionable (nunca como marcado ni enlace).
+- **Seguridad:** el servidor es la autoridad final; Flutter no aplica ninguna política de autorización (solo oculta la opción del consolidado a quien no es supervisión, y el servidor rechaza igualmente con 403); sin almacenamiento persistente del navegador; sin registro del cuerpo de las respuestas; sin cambios en tiempos de espera globales.
+
+### 23.4 Pruebas y evidencia (ejecutadas)
+
+- **`flutter analyze`:** sin incidencias.
+- **Pruebas de Flutter:** informes (datos y pantallas) **33 superadas**; **suite completa 739 superadas**. Cubren informe individual propio y de una persona del equipo, consolidado, colaborador sin acceso al consolidado, fechas válidas e inválidas (más de 31 días no se envía), sin datos, diferencia entre cifras y narrativa, actividad neutral, límites excedidos, generador desactivado, error técnico con reintento manual y sin él, pérdida de autorización con un informe visible, descarte de la respuesta de una sesión terminada, texto hostil mostrado como texto plano y navegación en móvil. La mayor parte usa un repositorio simulado; no se usó Ollama.
+- **Recorrido real en Chrome** (FastAPI real que sirve el cliente compilado, base PostgreSQL desechable en el clúster de pruebas, generador **simulado** pedido expresamente, datos ficticios; la base y los archivos temporales se eliminaron): supervisora con ambas opciones de informe y la «Supervisión» aparte; informe propio sin datos; informe de una persona del equipo con cifras, registros, bloqueo y narrativa (distinguidos); actividad neutral sin datos protegidos; informe del equipo con tres personas con registros (no aparecen quien no tiene avances ni los registros de una persona hechos ya en otro equipo); vista móvil de 400 px; pérdida del rol en plena sesión (el informe visible desaparece y se muestra el rechazo); colaboradora con solo el informe individual; con la configuración por defecto (generación desactivada) un informe con datos muestra «no pudo generarse» sin reintento ni contenido parcial y un informe sin datos se sigue mostrando. Comprobaciones HTTP en la misma ejecución: 403 al pedir el consolidado o el informe de otra persona siendo colaboradora, 404 uniforme para una persona de otro equipo, estructura exacta del consolidado, referencias opacas, ausencia de datos protegidos y rechazo de más de 31 días.
+- **No verificado:** el rechazo en pantalla de un período mayor de 31 días **con el selector de fechas del navegador** (cubierto por una prueba de widget y por la comprobación HTTP del servidor); la generación con Ollama real desde la interfaz (no se ejecutó); la revisión con lector de pantalla.
+- Hallazgo corregido durante la verificación: con `SelectableText` el texto de la narrativa no se exponía a las tecnologías de apoyo de Flutter Web; se sustituyó por `Text` dentro de `SelectionArea` (texto plano igualmente seleccionable).
+
+### 23.5 Evidencia por criterio (parte de interfaz; no cambia el estado de ningún criterio)
+
+| Criterios | Evidencia de interfaz |
+|---|---|
+| CA-152 a CA-154, CA-156, CA-157 | Informe individual propio y de una persona autorizada con período, persona, cifras y registros (pruebas de pantalla y Chrome) |
+| CA-158, CA-159, CA-162 | Declaración de base y distinción entre cifras, registros y narrativa |
+| CA-168 a CA-171 | Informe del equipo solo para supervisión, personas incluidas, cifras del equipo y por persona, sin clasificaciones |
+| CA-172, CA-173, CA-199 a CA-202 | «Sin datos» sin inventar narrativa; límites excedidos con texto fijo |
+| CA-174, CA-175 | Fallo del generador: mensaje sin contenido parcial; el reintento solo si el servidor lo indica |
+| CA-155, CA-160, CA-161, CA-163 a CA-167 | Dependen del servidor o de la calidad de la narrativa: no se declaran verificados aquí |
+
+La matriz de trazabilidad completa de M5 queda para M5-T8.
+
+### 23.6 Limitaciones y riesgos (registrados, no resueltos)
+
+| Asunto | Detalle |
+|---|---|
+| Motivo del fallo | El contrato v0.2 no distingue generación desactivada, generador no configurado y texto rechazado por la validación (todos `no_aplicable`). La pantalla solo puede dar un mensaje genérico. **Posible propuesta para revisión (P-14, `[PROPUESTO]`)**: un motivo adicional en el contrato. No se implementa |
+| HTTP síncrono frente a generación larga | La interfaz espera la respuesta de la misma solicitud. La generación local medida en M5-T5 tarda de decenas de segundos a varios minutos (de 28 a 229 s por llamada; el consolidado hace una por persona). Los navegadores, los servidores intermedios y el propio servidor pueden cortar una solicitud tan larga. No se cambió ningún tiempo de espera global. **Para M5-T7**: confirmar los plazos que admite la infraestructura elegida (navegador, servidores intermedios, servidor y generador) frente a la duración medida; un trabajo asíncrono con consulta posterior (opción D de la sección 6.2) **no es una alternativa libre**, porque RN-56 y RF-75 excluyen que el informe tenga identificador o recurso consultable, y exigiría una decisión de producto nueva (`[ABIERTO]`); sin esa confirmación, el uso real con Ollama y con servicios intermedios es incierto |
+| Sin recuperación | El informe vive solo en la memoria de la pantalla: al salir se pierde y, si se sale durante una generación, el resultado se descarta aunque el servidor siga trabajando (sin cancelación ni persistencia, por diseño) |
+| Rendimiento | Sin medición de tiempos del cliente; la espera depende por completo del generador |
+| Calidad de la narrativa | Sin cambios respecto de 22.6: el modelo puede citar instrucciones maliciosas de los hechos; la interfaz marca la narrativa como generada con un aviso y la separa de las cifras y los registros, pero no puede garantizar su fidelidad |
+| Personas que ya no integran el equipo | La pantalla solo ofrece integrantes actuales (H-M5-11), aunque el servidor admite el informe de una persona anterior |
+| Accesibilidad | Sin revisión con lector de pantalla; el riesgo R-11 sigue abierto |

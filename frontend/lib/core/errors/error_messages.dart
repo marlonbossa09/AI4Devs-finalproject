@@ -96,6 +96,28 @@ String errorMessage(ApiError error) {
         default:
           return 'La solicitud no es válida.';
       }
+    case 'INFORME_EXCEDE_LIMITES':
+      // Fixed text per limit; the server sends only the maximum (never the real count nor any data of the records).
+      final limit = error.details.isNotEmpty ? error.details.first : const <String, dynamic>{};
+      switch (limit['motivo']) {
+        case 'rango_excede_el_maximo':
+          return limit['maximo_dias'] != null
+              ? 'El período de un informe puede abarcar como máximo ${limit['maximo_dias']} días. Elige un período más corto.'
+              : 'El período supera el máximo permitido. Elige un período más corto.';
+        case 'hechos_exceden_el_maximo':
+          return limit['maximo_hechos'] != null
+              ? 'Ese período tiene más de ${limit['maximo_hechos']} registros, que es el máximo de un informe. Elige un período más corto.'
+              : 'Ese período tiene demasiados registros para un informe. Elige un período más corto.';
+        default:
+          return 'El informe supera un límite. Elige un período más corto.';
+      }
+    case 'INFORME_NO_GENERADO':
+      // The contract distinguishes only whether repeating can help (P-12). It does not say WHY (generation switched off, no
+      // provider configured, a technical failure or text that did not pass the checks), so the message does not claim to know.
+      return error.retryAllowed == true
+          ? 'El informe no pudo generarse en este momento. Puedes intentarlo de nuevo.'
+          : 'El informe no pudo generarse y repetir la solicitud con los mismos datos no lo resolverá. '
+                'La generación de informes puede no estar disponible, o el texto generado no superó las comprobaciones.';
     case 'CLAVE_IDEMPOTENCIA_OBLIGATORIA':
       return 'La solicitud no es válida.';
     case ApiError.network:
