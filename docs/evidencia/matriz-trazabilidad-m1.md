@@ -221,3 +221,23 @@ Registrados para que no se den por resueltos. **M1 no se amplía para resolverlo
 - El uso con lectores de pantalla reales: el recorrido en Chrome usó el árbol de semántica de Flutter.
 - Que cada persona operadora real siga el procedimiento de verificación de identidad: el sistema registra lo que declara.
 - Que M4 y M5 se integren sin cambios: M1 deja la política de visibilidad lista y probada, pero ningún endpoint de M4 la usa todavía.
+
+
+## Adenda M4-T9 (2026-11-18): reconciliación con la matriz de M4
+
+Esta matriz es el cierre de M1 y **no se reescribe**. La evidencia ejecutada en M4 (matriz completa en [`matriz-trazabilidad-m4.md`](matriz-trazabilidad-m4.md)) resuelve las dependencias que aquí constaban como «sin consulta ajena hasta M4». No hay ninguna contradicción real con lo que M1 declaró «implementado y probado».
+
+| CA | Estado en esta matriz | Con la evidencia de M4 | Evidencia nueva (resumen) |
+|---|---|---|---|
+| CA-03, CA-04 | Parcial / bloqueado por M4 | **Implementados y probados** | El colaborador no tiene la vista y recibe 403 al pedirla; el supervisor la tiene (pruebas de M4-03, pruebas de Flutter y recorrido en Chrome) |
+| CA-15, CA-16, CA-17, CA-18 | Parcial | **Implementados y probados** | `test_consulta_bitacora.py::los_equipos_ven_solo_los_registros_de_su_periodo_tras_un_traslado` con un traslado real |
+| CA-19, CA-20 | Parcial | **Siguen parciales** | La parte de consultas está probada (M4-01 a M4-04 y los accesos directos de M2/M3); la de informes es de M5 |
+| CA-30, CA-256 | Parcial | **Implementados y probados** | Lectura HTTP por compañeros y supervisor de registros de personas finalizadas o con el acceso desactivado |
+| CA-176, CA-177 | Parcial | **Implementados y probados** | `quien_se_incorpora_despues_lee_lo_del_equipo_en_esa_fecha_pero_no_lo_del_otro` |
+| CA-178 | Parcial | **Implementado y probado** | Las seis escrituras sobre un registro visible ajeno responden 403 sin cambios en la base y M4 no tiene rutas de escritura (M4-T6) |
+| CA-216, CA-217 | Parcial | **Implementados y probados** | `una_planificacion_de_una_fecha_posterior_al_traslado_es_del_equipo_nuevo_aunque_se_registrara_antes` (M4-T9) |
+| CA-249 | Implementado y probado | Sin cambios; se añade la consulta ajena | `con_un_traslado_programado_para_manana_la_bitacora_de_hoy_sigue_siendo_del_equipo_anterior` (M4-T9) |
+| CA-260, CA-261 | Implementados y probados | Sin cambios | M4 añade que un colaborador de un equipo sin supervisión efectiva recibe 403 en la supervisión y conserva la lectura entre pares |
+| CA-05 | Parcial | **Sigue parcial** | Las respuestas de M4 no llevan credenciales; faltan los informes (M5) |
+
+Queda para M5 lo que esta matriz ya dejaba en esa columna (CA-02, CA-05, CA-19, CA-20 en lo que alcanza a los informes).

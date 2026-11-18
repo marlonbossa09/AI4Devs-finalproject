@@ -503,3 +503,16 @@ Este documento es el cierre técnico de M2 y M3 del 2026-11-11 y no se reescribe
 | CA-178 y CA-194 (escritura sobre registros de otra persona, también de una persona trasladada) | CA-178, CA-194, CA-131 | B extensiones_m2_m3::las_seis_escrituras… (el supervisor del equipo de T sobre una actividad de una persona ya trasladada a U); M4 no tiene ninguna ruta de escritura (M4-T1) | Con evidencia; la clasificación formal de M1 (CA-178 «parcial») se revisa en la matriz de M4-T9 |
 
 Pruebas antiguas que se **actualizaron a propósito** (fijaban el 404 provisional): `correccion::un_supervisor_del_mismo_equipo_tampoco_corrige`, `marca_error::un_supervisor_del_mismo_equipo_tampoco_marca_ni_revierte`, `reactivacion::un_supervisor_del_mismo_equipo_tampoco_la_reactiva` y `cierre_reapertura::un_supervisor_no_modifica_la_jornada_pasada_de_su_colaboradora` (de 404 a 403: el supervisor ve el registro de su equipo); `auditoria::un_supervisor_del_mismo_equipo_todavia_no_consulta…` (ahora `…consulta_la_auditoria_de_su_equipo`: CA-111); `traslado_e2e::test_ninguna_otra_persona_accede…` (ahora una tabla por persona: 403 al equipo de la fecha, auditoría para su supervisora) y `visibilidad_historica::test_solo_el_modulo_de_m4_usa…` (ahora una lista cerrada de los archivos que usan la política). En ningún caso se debilitó una aserción: se reemplazó el código esperado por el contractual y se comprobó, como antes, que la base no cambia.
+
+
+## Adenda M4-T9 (2026-11-18): reconciliación con la matriz de M4
+
+Esta matriz es el cierre de M2 y M3 y **no se reescribe**. La matriz completa de M4 está en [`matriz-trazabilidad-m4.md`](matriz-trazabilidad-m4.md). Lo que cambia respecto a lo que aquí figuraba como «pendiente de M4»:
+
+- **CA-15 a CA-18, CA-21, CA-176 a CA-178, CA-216, CA-217 y CA-249** (visibilidad histórica de la consulta ajena): ya se prueban como consulta HTTP (M4-01) con traslados reales; CA-249 se confirma con una prueba nueva de M4-T9, de modo que **el hallazgo H-1 del plan de M4 queda resuelto sin contradicción** entre las dos matrices. CA-19 y CA-20 siguen parciales por los informes (M5).
+- **CA-111** (auditoría por el supervisor): implementado y probado en M4-T6 y con interfaz en M4-T8; CA-112 y CA-113 se mantienen y se amplían a la consulta del supervisor.
+- **403 frente a 404** (M2-04, M2-05, M3-03 a M3-06): sin cambios respecto a la adenda de M4-T6. M2-07 conserva su 404 por contrato y la escritura sobre una actividad heredada que el supervisor ve neutral o como referencia mínima responde 404 (D-M4-10, confirmada el 2026-11-18).
+- **Planificación conservada (DM-08)** en las vistas de M4: proyectada aparte y no alcanzable por la API en el MVP (CA-274 con evidencia sobre los datos).
+- **Defecto de interfaz corregido en M4-T9** (datos anteriores visibles tras un rechazo del servidor): afectaba solo a las pantallas de M4 y no a los criterios de M2 ni M3; el detalle está en la matriz de M4.
+
+La regresión completa del backend de M4-T9 (2.987 superadas, 1 omitida) incluye todas las pruebas de M2 y M3, que siguen pasando.
