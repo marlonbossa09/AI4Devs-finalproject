@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Estado** | `[PROPUESTO]`. Contratos **públicos**, independientes de cualquier proveedor de IA |
+| **Estado** | **SUPERADO el 2026-11-18** por `m5-01-informe-individual-v0.2.md` y `m5-02-informe-consolidado-v0.2.md` (versión 0.2, aprobada). Se conserva **sin cambios de contenido** como historial de la versión 0.1 `[PROPUESTO]`; no es la referencia vigente |
 | **Versión** | 0.1 |
 | **Fecha** | 2026-11-06 |
 | **Convenciones** | `docs/api/convenciones.md` |

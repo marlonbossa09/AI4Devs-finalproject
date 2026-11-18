@@ -101,6 +101,19 @@ class Settings(BaseSettings):
     # 92 días, valor confirmado el 2026-11-17 (D-M4-03): cubre un trimestre y acota el coste y el sondeo. Superarlo es SOLICITUD_INVALIDA con el máximo en ``detalles``.
     query_max_range_days: int = Field(default=92, gt=0)
 
+    # Informes (M5-T4; D-M5-06, valores confirmados el 2026-11-18). Los demás parámetros de D-M5-06 (tokens, plazo, concurrencia) siguen ABIERTOS y NO existen aquí.
+    # ``INFORME_HABILITADO`` es falso por defecto: con él desactivado ninguna solicitud ejecuta un generador (RNF-06, D-M5-08).
+    informe_habilitado: bool = False
+    # Qué generador se usa cuando está habilitado. ``ninguno`` (por defecto): no hay generador. ``simulado``: SOLO desarrollo y pruebas (se rechaza fuera de ellos); nunca se elige solo ni como alternativa
+    # silenciosa a un proveedor real no configurado. M5-T5 añadirá la integración real; hoy no existe ningún proveedor.
+    informe_generador: Literal["ninguno", "simulado"] = "ninguno"
+    # Amplitud máxima del período de un informe, en días con AMBOS extremos incluidos: 31. Superarla es INFORME_EXCEDE_LIMITES.
+    informe_max_range_days: int = Field(default=31, gt=0)
+    # Máximo de hechos (avances autorizados) de UNA SOLICITUD: en el consolidado, de TODAS las personas juntas (no por persona): 400. Superarlo es INFORME_EXCEDE_LIMITES; nada se trunca.
+    informe_max_hechos: int = Field(default=400, gt=0)
+    # Reintentos de la generación tras una validación fallida: 0 inicialmente. Hasta que se implementen (M5-T5) solo se admite 0.
+    informe_reintentos_validacion: int = Field(default=0, ge=0, le=0)
+
     argon2_memory_kib: int = Field(default=19456, gt=0)
     argon2_iterations: int = Field(default=2, gt=0)
     argon2_parallelism: int = Field(default=1, gt=0)
@@ -116,6 +129,12 @@ class Settings(BaseSettings):
     @classmethod
     def _pepper_vacio_es_ausente(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
+
+    @model_validator(mode="after")
+    def _validar_generador_de_informes(self) -> "Settings":
+        if self.informe_generador == "simulado" and self.app_env not in ("development", "test"):
+            raise ValueError("INFORME_GENERADOR=simulado solo se admite en desarrollo y pruebas")
+        return self
 
     @model_validator(mode="after")
     def _validar_proteccion_de_intentos(self) -> "Settings":

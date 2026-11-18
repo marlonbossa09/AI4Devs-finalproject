@@ -122,7 +122,7 @@ def test_el_validador_no_modifica_la_entrada_y_distingue_lo_correcto(db, mundo2)
 def test_un_generador_no_disponible_con_tiempo_agotado_o_roto_se_clasifica_sin_filtrar_nada(db, mundo2):
     informe = individual_de_ana(db, mundo2)
     for generador, clase, reintentable in ((GeneradorSimulado("no_disponible"), Clase.ERROR_TECNICO, True), (GeneradorSimulado("tiempo_agotado"), Clase.TIEMPO_AGOTADO, True),
-                                           (GeneradorSimulado("error_inesperado"), Clase.ERROR_TECNICO, True), (GeneradorDesactivado(), Clase.ERROR_TECNICO, True)):
+                                           (GeneradorSimulado("error_inesperado"), Clase.ERROR_TECNICO, True), (GeneradorDesactivado(), Clase.ERROR_TECNICO, False)):      # sin generador configurado: no es transitorio (P-12)
         e = fallo(generar_narrativa_individual, informe, generador)
         assert (e.clase, e.reintentable, e.codigo_publico) == (clase, reintentable, "INFORME_NO_GENERADO")
         visible = " ".join([str(e), repr(e), *e.motivos])

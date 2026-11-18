@@ -70,6 +70,12 @@ class Bloqueo:
     motivo: str
 
 
+def detalle_de_reintento(posible: bool) -> dict:
+    """Indica si el cliente puede reintentar (P-12, confirmada): ``reintento`` (booleano) y ``motivo`` (``posible`` o ``no_aplicable``), siempre coherentes entre sí. Los errores de autorización, de validación de
+    la entrada y de límites NO son reintentables; solo algunos fallos técnicos transitorios del generador lo admiten."""
+    return {"campo": "reintento", "reintento": posible, "motivo": "posible" if posible else "no_aplicable"}
+
+
 class Numerador:
     """Referencias opacas ``h1``, ``h2``… y ``a1``, ``a2``… ÚNICAS en todo el informe (también entre las personas del consolidado). No son identificadores de la base de datos."""
 

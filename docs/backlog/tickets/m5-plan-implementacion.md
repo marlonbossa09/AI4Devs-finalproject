@@ -3,7 +3,7 @@
 | Campo | Contenido |
 |---|---|
 | **Estado** | `[PROPUESTO]` salvo lo indicado. Análisis SDD (M5-T0). **Nada de lo que propone este documento es requisito ni está aprobado**: las decisiones para aprobar están en la sección 9; los tickets, los nombres, los parámetros y las cifras llevan la marca `[PROPUESTO]`, `[ABIERTO]` o `[SUPUESTO]` hasta que la persona responsable las apruebe |
-| **Versión** | 0.5 |
+| **Versión** | 0.8 |
 | **Fecha** | 2026-11-18 |
 | **Base** | HEAD `2c45ba5` (cierre técnico de M4 consolidado en dos commits locales). M1 a M4 cerrados en su alcance; M4 «cerrado con reservas». **Estado a 2026-11-18:** análisis M5-T0 aprobado por la persona responsable con las resoluciones de la sección 12; **M5-T1 implementado y probado localmente; cierre en un único commit local** (sección 14); D-M5-04 y D-M5-06 pendientes de detalle (sección 13) |
 | **Fuentes leídas** | `docs/producto/alcance-mvp.md` y `prd.md` (RN-03, RN-06, RN-26, RN-29 a RN-31, RN-36, RN-53 a RN-58, RN-60, RN-82 a RN-90, RN-101; RF-29, RF-30, RF-32, RF-33, RF-46 a RF-51, RF-74 a RF-76, RF-78, RF-83, RF-87, RF-93, RF-94, RF-96, RF-98, RF-100, RF-111; RNF-04, RNF-06, RNF-08, RNF-12, RNF-13; PA-09, PA-13, PP-11, PP-33); las cinco historias de `docs/backlog/M5-…/` (HU-5.1 a HU-5.5); `docs/api/m5-informes.md` (0.1), `m1-m5-dependencias.md`, `convenciones.md` (secciones 3, 4 y 9); `docs/arquitectura/adr/ADR-001`, `ADR-002` y `ADR-003` (0.3, con la decisión del 2026-11-18); `docs/arquitectura/arquitectura-general.md` (secuencia 6.4, DT-03, DT-06, R-03, R-05, R-07); `docs/modelo-datos/modelo-datos.md` (P7, RA-09, DM-08); `docs/backlog/tickets/{backend,frontend,base-de-datos,indice}.md` (BE-15, BE-16, FE-10); `docs/backlog/tickets/m4-plan-implementacion.md`; las matrices de trazabilidad de M1 a M4; `CLAUDE.md`; y el código real de M4 y de la política de visibilidad: `app/compartido/{visibilidad,pertenencias,politica_acceso,paginacion}.py`, `app/modulos/consulta/{supervision,servicio,repositorio,proyecciones}.py`, `app/modulos/bitacoras/{esquemas,secuencia}.py`, `app/config.py`, `pyproject.toml` y la estructura de `frontend/lib/features` |
@@ -349,6 +349,7 @@ M5-T8 cierre técnico de M5
 
 ### M5-T4 — Endpoints M5-01 y M5-02
 
+- **Estado:** **cerrado el 2026-11-18 y consolidado en un commit local.** Rutas registradas en la aplicación, contratos M5-01 y M5-02 versión 0.2 aprobados (P-6, P-13 y los nombres de campo confirmados), autorización, límites, interruptor, errores y generador simulado, con pruebas HTTP reales. Solo queda abierta la parte parcial de P-8. Detalle en las secciones 19 a 21.
 - **Objetivo:** exponer los dos contratos con autorización, errores y ausencia de persistencia, usando el generador simulado.
 - **Contratos:** M5-01 y M5-02 (versión 0.2); D-M5-02.
 - **Criterios:** CA-152 a CA-155, CA-158 a CA-160, CA-168 a CA-171, CA-154, CA-169, CA-170, CA-02, CA-19 y CA-20 (informes), y el resto de los 38 de extremo a extremo.
@@ -483,9 +484,9 @@ Modelo y región (se deciden con M5-T7), marco legal (B7), valores definitivos d
 ## 11. Estado de este documento y de Git
 
 - Este documento nació como el entregable de M5-T0 y se amplía con las secciones 12 a 14 (resoluciones de la persona responsable, extracción de D-M5-04 y D-M5-06 y registro de M5-T1).
-- Del resto de la documentación solo se añadió el borrador del contrato M5-01 0.2 (`docs/api/m5-01-borrador-0.2.md`); no se modificó ningún contrato vigente, ADR, criterio ni matriz.
+- Del resto de la documentación solo se añadió el borrador del contrato M5-01 0.2 (`docs/api/m5-01-informe-individual-v0.2.md`); no se modificó ningún contrato vigente, ADR, criterio ni matriz.
 - M5-T1 está consolidado en un único commit local (`1ad5463`, sin push). **M5-T2 está aprobado técnicamente y se consolida en un commit local** (secciones 15 y 16).
-- **M5-T3 está aprobado técnicamente y consolidado en un commit local** (sección 17 y 18). M5-T4 se implementa sin commit (sección 19). M5-T5 a M5-T8 no se inician sin aprobación.
+- **M5-T3 está aprobado técnicamente y consolidado en un commit local** (sección 17 y 18). **M5-T4 está cerrado y consolidado en un commit local** (secciones 19 a 21): contratos M5-01 y M5-02 versión 0.2 aprobados, rutas registradas y comprobadas con el generador simulado habilitado expresamente. M5-T5 a M5-T8 no se inician sin aprobación. M5-T5 a M5-T8 no se inician sin aprobación.
 
 ## 12. Resoluciones de la persona responsable tras M5-T0 (2026-11-18)
 
@@ -574,7 +575,7 @@ Fuente: contrato 0.1 (`INFORME_EXCEDE_LIMITES`, `INFORME_NO_GENERADO`), `convenc
 | `backend/app/compartido/pertenencias.py` | Se añade `solapa` (intervalo de pertenencia que comparte una fecha con un período), junto a `cubre`: sigue habiendo una sola definición del intervalo |
 | `backend/tests/test_informe_individual.py` | 16 pruebas nuevas |
 | `backend/tests/test_visibilidad_historica.py` | Se actualiza a propósito la lista cerrada de módulos que usan la política (como en M4-T1 y M4-T6): se añaden `informes/individual.py` e `informes/repositorio.py` |
-| `docs/api/m5-01-borrador-0.2.md` | Borrador del contrato M5-01 0.2 (nuevo) |
+| `docs/api/m5-01-informe-individual-v0.2.md` | Borrador del contrato M5-01 0.2 (nuevo) |
 | `docs/backlog/tickets/m5-plan-implementacion.md` | Este documento |
 
 ### 14.3 Datos seleccionados y excluidos
@@ -664,8 +665,8 @@ No quedó ninguna decisión indispensable sin resolver para M5-T1. **Riesgo cono
 | `backend/app/modulos/informes/repositorio.py` | Se añade `avances_autorizados_del_equipo` |
 | `backend/app/modulos/informes/agregaciones.py` | Sin cambios: las agregaciones del equipo son las mismas definiciones sobre el conjunto de hechos |
 | `backend/tests/test_informe_consolidado.py` | 13 pruebas nuevas (reutilizan y amplían el escenario de M5-T1); dos son del criterio de orden alfabético (C-3) |
-| `docs/api/m5-02-borrador-0.2.md` | Borrador del contrato M5-02 0.2 (nuevo; C-1) |
-| `docs/api/m5-01-borrador-0.2.md` | Se registran P-10 y D-M5-04 confirmados |
+| `docs/api/m5-02-informe-consolidado-v0.2.md` | Borrador del contrato M5-02 0.2 (nuevo; C-1) |
+| `docs/api/m5-01-informe-individual-v0.2.md` | Se registran P-10 y D-M5-04 confirmados |
 | `backend/tests/test_visibilidad_historica.py` | Se actualiza a propósito la lista cerrada de módulos que usan la política: `consolidado.py` y `estructura.py` |
 | `docs/backlog/tickets/m5-plan-implementacion.md` | Esta sección |
 
@@ -749,7 +750,7 @@ El contrato M5-02 (0.1) describe la respuesta en prosa («agregaciones del equip
 | Id | Estado | Resolución |
 |---|---|---|
 | P-10 | **Confirmada** | Persona autorizada y visible durante el período, sin avances: `sin_datos`. Sin visibilidad autorizada en ningún día del período: 404 uniforme. Inexistente o de otra organización sin autorización: 404 uniforme. Propietaria autorizada sin avances: `sin_datos`. No se amplían ni alteran las políticas de M1 a M4 (el comportamiento ya implementado coincide; las pruebas de M5-T1 lo cubren) |
-| C-1 | **Aprobada** | Borrador M5-02 0.2 con esquema completo (`docs/api/m5-02-borrador-0.2.md`). El contrato 0.1 se mantiene sin sustituir hasta la revisión contractual |
+| C-1 | **Aprobada** | Borrador M5-02 0.2 con esquema completo (`docs/api/m5-02-informe-consolidado-v0.2.md`). El contrato 0.1 se mantiene sin sustituir hasta la revisión contractual |
 | C-2 | **Confirmada** | El consolidado incluye solo personas con al menos un avance autorizado en el período |
 | C-3 | **Confirmada** | Orden alfabético estable por nombre con desempate por identificador interno; criterio de comparación documentado y probado (sección 15.8) |
 | C-4 | **Confirmada** | Las jornadas del equipo son las fechas laborales distintas del conjunto autorizado |
@@ -872,3 +873,229 @@ Antes de programar los endpoints conviene aprobar: **a)** los valores de `INFORM
 | `INFORME_CONCURRENCIA_MAXIMA` | **ABIERTO** | Propuesta 4 por proceso |
 
 No se activa ninguna invocación externa mientras haya valores abiertos. Sin contadores persistentes ni presupuestos (D-M5-07).
+
+## 19. M5-T4 — registro de la implementación (parcial)
+
+### 19.1 Estado
+
+**Sección histórica (primera parte de M5-T4; la segunda está en la sección 20).** Entonces: implementado parcialmente. Sin commit. Se avanzó en todo lo que **no** depende de la estructura pública de la respuesta y se **detuvo** esa parte, como se pidió: no existe ninguna respuesta pública provisional. La ruta **no está registrada** en `app/main.py` (la aplicación real responde 404 uniforme a `POST /api/v1/informes/…`, comprobado). La respuesta de éxito pasa por `presentacion.py`, que lanza `RespuestaPublicaNoDefinida`. No hay generador real, ni SDK, ni AWS, ni llamadas externas, ni persistencia, ni Flutter. M5-T5 a M5-T8 no se iniciaron.
+
+### 19.2 Qué se implementó
+
+| Pieza | Archivo | Contenido |
+|---|---|---|
+| Rutas | `app/modulos/informes/router.py` | `POST /api/v1/informes/individuales` y `POST /api/v1/informes/consolidados` (convenciones: prefijo `/api/v1`, `POST` con sesión por cookie, así que exigen CSRF y origen como las escrituras; sin clave de idempotencia ni identificador del informe). Cuerpo con campos cerrados: `desde`, `hasta` y `persona_id` o `equipo_id` opcionales; un campo desconocido es `SOLICITUD_INVALIDA` |
+| Canalización | `servicio.py` | Autorizar → límite de rango → selección con tope de hechos → `sin_datos` → interruptor → generación (M5-T3) → errores. Registro técnico sin contenido |
+| Autorización separada | `individual.py`, `consolidado.py` | `autorizar_informe_*` y `construir_informe_*` (la lógica de M5-T1 y M5-T2 no cambia; `preparar_*` las encadena como antes) |
+| Tope de lectura | `repositorio.py` | `limite` en las dos consultas: se leen como máximo `400 + 1` filas y, si se alcanzan, se rechaza; nunca se trunca ni se carga todo |
+| Presentación | `presentacion.py` | **Bloqueada** a propósito (ver 19.8) |
+| Catálogo de errores | `app/errores.py` | `INFORME_EXCEDE_LIMITES` (422) e `INFORME_NO_GENERADO` (503), ya listados en las convenciones |
+| Configuración | `app/config.py`, `.env.example` | `INFORME_HABILITADO` (falso), `INFORME_GENERADOR` (`ninguno`; `simulado` solo si se pide y solo en desarrollo y pruebas), `INFORME_MAX_RANGE_DAYS` (31), `INFORME_MAX_HECHOS` (400), `INFORME_REINTENTOS_VALIDACION` (solo admite 0) |
+
+### 19.3 Autorización y respuestas 403/404
+
+Orden (convenciones 3.2), **siempre antes de leer datos de registros**: sesión y CSRF → puede operar (`ACCESO_DESACTIVADO`, `SIN_PERTENENCIA_VIGENTE`) → formato (fechas e identificadores) → autorización con la política de M1 (sin política nueva) → límite de rango → selección. Individual: la propietaria, o su supervisor vigente con visibilidad en el período; un compañero visible sin permiso recibe **403** `OPERACION_NO_PERMITIDA`; una persona inexistente, de otra organización o sin visibilidad demostrable en el período recibe el **mismo 404** (`RECURSO_NO_DISPONIBLE`). Consolidado: solo el supervisor vigente con acceso efectivo; un colaborador, o quien fue supervisor, recibe 403; un equipo ajeno o inexistente, el mismo 404. Un límite no revela lo que la autorización oculta (una persona inexistente con un rango excesivo es 404, no 422). El filtro de pertenencia se aplica en SQL antes de agrupar.
+
+### 19.4 Límites implementados (D-M5-06 confirmada)
+
+| Límite | Valor | Cómo se aplica | Respuesta |
+|---|---|---|---|
+| `INFORME_MAX_RANGE_DAYS` | **31** días, ambos extremos incluidos | Tras autorizar y antes de leer datos | 422 `INFORME_EXCEDE_LIMITES` con `{campo: hasta, motivo: rango_excede_el_maximo, maximo_dias: 31}` |
+| `INFORME_MAX_HECHOS` | **400 en total por solicitud** (en el consolidado, todas las personas juntas) | Tope de lectura de `401` filas; si se alcanza, se rechaza. **Nunca se trunca** | 422 con `{campo: hechos, motivo: hechos_exceden_el_maximo, maximo_hechos: 400}`; no incluye el recuento real ni datos |
+| `INFORME_REINTENTOS_VALIDACION` | **0** | Un solo intento; la configuración no admite otro valor hasta que existan reintentos | — |
+| `INFORME_HABILITADO` | **falso** por defecto | Se comprueba antes de generar; falso: ninguna solicitud ejecuta el generador | 503 `INFORME_NO_GENERADO` |
+
+Sin contadores persistentes ni presupuestos. **No existen** los límites abiertos (tokens, plazo, concurrencia) y no se activa ninguna invocación externa. La verificación por persona de M5-T3 (`LimitesDeContexto.max_hechos`) queda **superada** por esta decisión (el límite es por solicitud) y no se usa aquí.
+
+### 19.5 Tratamiento de `sin_datos`
+
+Con autorización válida y sin avances autorizados, la canalización produce un resultado `SIN_DATOS`: **el generador no se invoca**, esté o no habilitado la integración (RN-57). Qué se devuelve al cliente en ese caso depende de la estructura pública, que está bloqueada: **no** se definió una respuesta provisional. El contrato 0.1 exige que «el informe solo indica que no hay datos disponibles» y que lleve período, fecha de generación y la declaración `base`; la parte pendiente es P-6.
+
+### 19.6 Integración con el generador simulado
+
+`obtener_generador` devuelve el simulado **solo** si `INFORME_GENERADOR=simulado` (y la configuración lo limita a desarrollo y pruebas); en cualquier otro caso, un generador que no genera nada. **No hay alternativa silenciosa**: habilitado sin generador configurado es `INFORME_NO_GENERADO`. Los fallos del generador y las salidas rechazadas por la validación (M5-T3) se traducen a `INFORME_NO_GENERADO` sin contenido parcial, sin el contenido rechazado, sin prompts y con solo la indicación de si puede reintentarse.
+
+### 19.7 Pruebas y evidencia HTTP
+
+- `tests/test_informes_http.py`: **18 superadas**, con la aplicación real, sesión, CSRF y PostgreSQL desechable `smartwork_test` (puerto 55432). El router se monta en cada prueba porque no está registrado. En el éxito, **solo en las pruebas**, se sustituye `presentacion.a_respuesta_publica` por una función que captura el resultado interno (no define ninguna respuesta).
+- `tests/test_informes_http_real.py` (+ `tests/app_informes_prueba.py`, solo pruebas): **2 superadas**, con **uvicorn en otro proceso y sockets reales**, la configuración por variables de entorno y dos servidores (desactivado por defecto; simulado habilitado expresamente).
+- Regresión focalizada: informes (T1 a T4), política de visibilidad, catálogo de errores y métodos HTTP: **494 superadas, 1 omitida** (`test_errores`, el `ERROR_INTERNO` ya conocido). Sin suite completa ni mutaciones.
+- Cubren los 14 puntos pedidos: individual propio y de persona supervisada; compañero sin permiso (403); persona invisible o inexistente (mismo 404); consolidado autorizado; colaborador y ex supervisor (403); supervisor desactivado con la sesión abierta; rango de 31 y de 32 días; 401 hechos autorizados (con la base de datos real) y el límite como **total** del consolidado; generación desactivada por defecto; simulado solo si se pide; sin datos; fallos del generador y salidas rechazadas (7 modos); datos y cifras idénticos a los del núcleo; formato y CSRF; ruta no expuesta en la aplicación real; sin escritura persistente; y un registro técnico sin nombres, identificadores ni textos.
+
+### 19.8 Bloqueos y estructura pública
+
+| Pieza | Estado |
+|---|---|
+| Rutas, formato, autorización, límites, interruptor, errores, canalización y generador simulado | **Hecho y probado** |
+| Presentación pública (200) y registro de la ruta en `main.py` | **BLOQUEADO** por P-3, P-5, P-6, P-11 y P-12 |
+
+No se creó ninguna respuesta pública provisional, y los contratos 0.1 no se sustituyeron.
+
+### 19.9 Análisis de las preguntas abiertas
+
+**P-3 — unidad de `bloqueos`**
+
+- *Texto contractual.* Contrato 0.1: `bloqueos` = «Actividades bloqueadas con su motivo (RN-55)». RF-74: «Los informes incluyen los bloqueos con sus motivos.» RN-55: «…los bloqueos con sus motivos, sin valoraciones de desempeño.» CA-165: «DADO un informe de un período con una actividad bloqueada CUANDO se genera ENTONCES muestra la actividad y su motivo de bloqueo.» M5-02 0.1: «por persona en orden alfabético, sus hechos y bloqueos».
+- *Implementado.* Estructura interna con una entrada por avance en estado Bloqueada (referencia del hecho, actividad, fecha y motivo).
+- *Diferencia real.* Los textos hablan de «actividades bloqueadas» y «los bloqueos con sus motivos»; la implementación es por avance. Una actividad bloqueada varias veces tiene varios motivos.
+- *Alternativas.* (a) Por avance bloqueado. (b) Por actividad, con el motivo del último bloqueo del período. (c) Por actividad, con la lista de sus bloqueos (fecha y motivo).
+- *Recomendación.* **(c)**: coincide con «la actividad y su motivo», conserva todos los motivos y encaja con la métrica `actividades_con_bloqueo`. Es una agrupación sobre la estructura interna actual.
+- *Consecuencia en M5-T4.* Define el campo `bloqueos` de la respuesta; sin ella no se puede cerrar. No afecta a la autorización ni a los límites.
+
+**P-5 — campos públicos de `hechos` y de `ActividadVisible`**
+
+- *Texto contractual.* Contrato 0.1: `hechos` = «Registros del período: fecha laboral, ActividadVisible, estado histórico, descripción y, si procede, motivo de bloqueo». Convenciones 7: `ActividadVisible` «tiene dos formas, `completa` y `neutral`»; la `completa` «se entrega a la propietaria y a quienes están autorizados sobre la jornada de origen» y la `neutral` «contiene `id` (opaco), `propietaria_id` y `referencia_neutral`».
+- *Implementado.* Lista de actividades (`id`, `forma`, título o referencia neutral, origen autorizado) y, en cada hecho, la referencia a su actividad. Sin `estado_actual`, sin `propietaria_id` y sin referencias internas de hecho.
+- *Diferencia real.* El contrato pone `ActividadVisible` dentro de cada hecho; `ActividadVisible.completa` es la vista de la propietaria (título, origen, estado actual, marca de error, fecha de origen), con campos que el informe no usa o que exige condicionar (`estado_actual`, D-M4-05).
+- *Alternativas.* (a) `ActividadVisible` completo repetido en cada hecho. (b) Lista `actividades` con un subconjunto cerrado (`id`, `forma`, título o `referencia_neutral`, origen) y hechos que la referencian por `id`. (c) (a) con el subconjunto de (b).
+- *Recomendación.* **(b)**: no repite el título en cada hecho, no expone `estado_actual` ni `propietaria_id` y respeta RN-101. Se aparta del texto literal («ActividadVisible» en cada hecho), por lo que requiere aprobación.
+- *Consecuencia en M5-T4.* Define `hechos` y `actividades`; sin ella no se puede cerrar.
+
+**P-6 — texto de `base`**
+
+- *Texto contractual.* Contrato 0.1: `base` = «Declaración fija de que el informe se basa únicamente en los registros disponibles y autorizados del período y no representa información que nunca fue registrada (RF-87)». RF-87 y CA-200: «deja claro que se basa únicamente en los registros disponibles y autorizados del período y que no representa información que nunca fue registrada». RN-57 añade que no se establecen umbrales ni porcentajes de cobertura.
+- *Implementado.* Nada.
+- *Diferencia real.* Existe el contenido obligatorio, pero no el texto exacto ni si lleva el mismo texto un informe sin datos (que además debe decir que no hay datos disponibles, CA-172).
+- *Alternativas.* (a) Texto fijo tomado literalmente de RF-87. (b) Una redacción más breve. (c) Un texto distinto para el informe sin datos.
+- *Recomendación.* **(a)**, como constante única: «Este informe se basa únicamente en los registros disponibles y autorizados del período y no representa información que nunca fue registrada.». Para `sin_datos`, el mismo texto más el indicador `sin_datos`.
+- *Consecuencia en M5-T4.* Bloquea el campo `base`, obligatorio en todo informe.
+
+**P-8 — valores de los límites**
+
+- *Texto contractual.* `convenciones.md`, sección 9: la amplitud máxima de un rango incumplida da `INFORME_EXCEDE_LIMITES` en M5; los límites de registros, tokens, tiempo, reintentos y presupuesto de un informe dan `INFORME_EXCEDE_LIMITES` o `INFORME_NO_GENERADO`; «Ningún contrato fija un valor numérico de estos parámetros».
+- *Implementado.* Los valores **confirmados** el 2026-11-18 (31 días, 400 hechos por solicitud, 0 reintentos, habilitación falsa). Nada de lo abierto.
+- *Diferencia real.* Ya solo faltan los límites de tokens de entrada (propuesta 64.000), de salida (2.000), el plazo total (120 s) y la concurrencia (4 por proceso).
+- *Alternativas.* Aprobar las propuestas, ajustarlas tras medir (M5-T7) o dejarlas abiertas hasta la integración.
+- *Recomendación.* Dejarlas abiertas hasta M5-T5 y M5-T7: solo condicionan la integración real y no la forma de la respuesta.
+- *Consecuencia en M5-T4.* **Ninguna**: no impiden cerrar la respuesta pública; impiden activar una invocación externa.
+
+**P-11 — estructura pública de la narrativa**
+
+- *Texto contractual.* Contrato 0.1: `narrativa` = «Texto generado a partir de los hechos y las agregaciones recibidos»; nula si `sin_datos`. M5-02 0.1: el consolidado devuelve las «agregaciones del equipo» y, «por persona en orden alfabético, sus hechos y bloqueos». Decisión del 2026-11-18: lista de secciones **solo** para el contrato interno.
+- *Implementado.* Solo el contrato interno (secciones con `texto` y referencias internas).
+- *Diferencia real.* El 0.1 define una narrativa de texto único para todo el informe; D-M5-03 la hace por persona, y el contrato interno devuelve secciones con referencias que no se pueden mostrar (PP-11 sin aprobar).
+- *Alternativas.* (a) Texto único por persona (secciones unidas con una línea en blanco). (b) Lista de secciones por persona, solo con `texto`. (c) (b) con las referencias de los hechos (requiere aprobar PP-11).
+- *Recomendación.* **(b)**: coherente con el contrato interno confirmado, permite a la pantalla pintar párrafos sin analizar texto y no muestra referencias. En el individual, `narrativa` queda en el informe; en el consolidado, dentro de cada persona.
+- *Consecuencia en M5-T4.* Define el campo `narrativa`; sin ella no se puede cerrar.
+
+**P-12 (nueva) — `detalles` de los errores de informe.** Convenciones 4: `INFORME_NO_GENERADO` «Indica si se puede reintentar». M5-T4 aplicó la forma propuesta `{campo: reintento, motivo: posible | no_aplicable}` y, para los límites, la de M4 (`campo`, `motivo` y el máximo). Requiere confirmación; no bloquea el enrutamiento.
+
+### 19.10 ¿Puede aprobarse ya el esquema público?
+
+**No hay un esquema público completo que aprobar todavía**: falta decidir P-3, P-5, P-6 y P-11 (más confirmar P-12). Con la recomendación de cada una, el esquema quedaría así, **solo como propuesta**: `tipo`, `periodo`, `generado_en`, `base`, `sin_datos`, `agregaciones` (las seis métricas ya confirmadas), `actividades`, `hechos`, `bloqueos` y `narrativa` (individual); en el consolidado, `personas` (cada una con esos campos) y `agregaciones_del_equipo`. Aprobadas esas cinco decisiones, el cierre de M5-T4 es pequeño: escribir `presentacion.py`, registrar la ruta y añadir la prueba HTTP de éxito sin sustituciones.
+
+### 19.11 Riesgos
+
+| Riesgo | Tratamiento |
+|---|---|
+| Registrar la ruta antes de aprobar el esquema publicaría una forma provisional | La ruta no está registrada; el éxito lanza `RespuestaPublicaNoDefinida` |
+| Una configuración con el simulado fuera de desarrollo o pruebas | La configuración lo rechaza; nunca es el valor por defecto ni una alternativa silenciosa |
+| Un informe grande consume tiempo antes de rechazarse | Tope de lectura de 401 filas; el rango de 31 días acota la consulta |
+| Un límite podría revelar existencia | Los límites van después de la autorización y los detalles no llevan recuentos reales |
+| Registros técnicos con datos | Una línea con tipo, resultado, hechos y duración; una prueba comprueba que no hay nombres, identificadores ni textos |
+| Riesgos de M5-T3 (texto libre, instrucciones maliciosas, afirmaciones subjetivas, seudonimización no es anonimización) | Siguen documentados (secciones 17 y 18) |
+| Sin plazo, sin concurrencia y sin tokens (abiertos) | No se activa ninguna invocación externa; M5-T5 y M5-T7 |
+
+### 19.12 Estado de D-M5-06
+
+**Confirmados:** `INFORME_MAX_RANGE_DAYS` (31), `INFORME_MAX_HECHOS` (400 por solicitud), `INFORME_REINTENTOS_VALIDACION` (0) e `INFORME_HABILITADO` (falso). **Abiertos:** `INFORME_MAX_TOKENS_ENTRADA` (propuesta 64.000), `INFORME_MAX_TOKENS_SALIDA` (2.000), `INFORME_PLAZO_TOTAL_SEGUNDOS` (120) e `INFORME_CONCURRENCIA_MAXIMA` (4 por proceso).
+
+## 20. M5-T4 — segunda parte: esquema público, rutas registradas y evidencia (2026-11-18)
+
+### 20.1 Estado
+
+**Implementado, sin commit y NO cerrado.** Las preguntas P-3, P-5, P-11 y P-12 están **confirmadas**; P-6 está **aprobada con verificación pero su texto sigue pendiente de aprobación**; P-8 sigue **parcial**. Las rutas `POST /api/v1/informes/individuales` y `/consolidados` están **registradas en la aplicación principal** (`app/main.py`). No hay generador real, SDK ni AWS, no se crearon tablas, no se tocó Flutter y M5-T5 no se inició.
+
+### 20.2 Decisiones registradas
+
+| Id | Estado | Resolución |
+|---|---|---|
+| P-3 | **Confirmada** | Bloqueos agrupados por actividad con la lista de bloqueos autorizados (fecha y motivo). No es estado actual; sin motivos de avances protegidos |
+| P-5 | **Confirmada** | `actividades` (proyección autorizada y cerrada), `hechos` (avances autorizados vinculados a una referencia de actividad) y `bloqueos`, con referencias opacas y locales al informe |
+| P-6 | **Aprobada con verificación; texto pendiente** | **RF-87** (PRD): «Todo informe deja claro que se basa únicamente en los registros disponibles y autorizados del período y que no representa información que nunca fue registrada.» Es una **obligación**, no una redacción normativa literal de la declaración (RN-57 y CA-200 la repiten igual; el contrato 0.1 la llama «declaración fija» sin dar el texto). Por eso se implementó **una única redacción propuesta**, tomada de RF-87 y marcada como pendiente de aprobación: «Este informe se basa únicamente en los registros disponibles y autorizados del período y no representa información que nunca fue registrada.» Aparece también en `sin_datos` |
+| P-8 | **Parcial** | Abiertos: tokens de entrada (propuesta 64.000), de salida (2.000), plazo total (120 s) y concurrencia (4 por proceso). No se activa AWS ni se inventan valores definitivos |
+| P-11 | **Confirmada** | Narrativa pública: lista de secciones por persona, solo con `texto`. En el consolidado, la sección de equipo y sus agregaciones siguen siendo deterministas; sin rankings ni evaluaciones |
+| P-12 | **Confirmada** | `reintento` (booleano) y `motivo` (`posible` o `no_aplicable`), coherentes. Autorización, validación y límites: no reintentables. Solo fallos técnicos transitorios lo admiten |
+| P-13 | **Abierta (nueva)** | La lista de campos del 2026-11-18 para el informe individual no incluye `persona`, pero el contrato 0.1 la incluye («con la persona (`id`, `nombre`)»). Se mantiene `persona` (también en cada elemento de `personas`); confirmar |
+
+### 20.3 Estructura pública definitiva (propuesta, en los borradores M5-01 y M5-02, secciones 4 y 5)
+
+- **Individual:** `tipo`, `periodo`, `generado_en`, `base`, `sin_datos`, `persona`, `agregaciones` (nulo si no hay datos), `actividades`, `hechos`, `bloqueos` y `narrativa` (nula si no hay datos). Elementos: `actividades[]` con `ref`, `forma` y, según la forma, `titulo` y `origen` o `referencia_neutral`; `hechos[]` con `fecha_laboral`, `actividad_ref`, `estado`, `descripcion` y, solo si Bloqueada, `motivo_bloqueo`; `bloqueos[]` con `actividad_ref` y `ocurrencias` (`fecha_laboral`, `motivo`); `narrativa[]` con `texto`.
+- **Consolidado:** `tipo`, `periodo`, `generado_en`, `base`, `sin_datos`, `personas` (cada una con `persona`, `agregaciones`, `actividades`, `hechos`, `bloqueos` y `narrativa`) y `agregaciones_del_equipo`; sin colecciones al nivel del informe.
+- Las seis métricas (D-M5-04) se representan igual en ambos y se copian de las deterministas sin recalcular.
+- **Diferencias frente a 0.1:** sin `ActividadVisible` dentro de cada hecho (P-5); bloqueos por actividad (P-3); narrativa como lista de secciones (P-11); `agregaciones` con esquema; errores con `OPERACION_NO_PERMITIDA` y con indicación de reintento (D-M5-02, P-12).
+- **Contradicciones detectadas:** ninguna que impida el esquema. Dos puntos se señalan en lugar de improvisarse: `persona` (P-13) y el texto de `base` (P-6). Los nombres de campo son una propuesta que se aprueba con el esquema. Los contratos 0.1 no se sustituyen.
+
+### 20.4 Implementación
+
+| Pieza | Detalle |
+|---|---|
+| `app/modulos/informes/presentacion.py` | Ensamblado de la respuesta con proyecciones cerradas, campo por campo; sin serializar modelos internos; referencias `a1`… opacas y locales (nunca identificadores de actividad); título, origen y motivos protegidos no salen; los bloqueos se agrupan por actividad; narrativa solo con `texto`; sin datos: `base` presente, listas vacías y `agregaciones` y `narrativa` nulas |
+| `app/main.py` | Registro del router de informes en la aplicación (la ruta ya no depende de un router montado en las pruebas) |
+| `estructura.py`, `generacion.py`, `narrativa.py`, `servicio.py`, `individual.py`, `consolidado.py` | Reintento coherente (P-12): `GeneradorNoConfigurado`; el detalle de reintento acompaña a los dos errores `INFORME_*`; sin cambios en la selección autorizada ni en las fórmulas de M5-T1 y M5-T2 |
+
+Autorización, límites (31 días con ambos extremos, 400 hechos por solicitud en total), interruptor desactivado por defecto, simulado solo si se pide y 403/404 indistinguibles: como en 19.3 a 19.6, sin cambios.
+
+### 20.5 Pruebas y evidencia HTTP
+
+- `tests/test_informes_http.py`: **21 superadas**, sobre la **aplicación principal** (sin montar el router en la prueba), con sesión, CSRF y PostgreSQL desechable. Comprueban el esquema campo por campo (claves cerradas, referencias opacas, consistencia entre colecciones, bloqueos agrupados, narrativa solo con `texto`), las cifras idénticas a las deterministas, el consolidado por persona con la suma de equipo, la actividad heredada neutral sin datos protegidos, `sin_datos` sin generador y con `base`, la ausencia de identificadores de actividad, credenciales y datos de equipo en el JSON, 403 y 404 uniforme, los límites (31 y 32 días; 401 hechos reales; total del consolidado), la desactivación por defecto, el simulado solo si se pide, ocho tipos de fallo con el reintento coherente, formato, CSRF, origen y sesión, y la ausencia de efectos persistentes y de contenido en el registro.
+- `tests/test_informes_http_real.py` (y `tests/app_informes_prueba.py`, solo pruebas): **3 superadas**, con **uvicorn en otro proceso, sockets reales** y la configuración por variables de entorno sobre `app.main:app`: desactivada por defecto; simulado habilitado expresamente (individual 200, consolidado 200, sin datos, 403, 404 uniforme, 31 días, 400 hechos, CSRF y origen, ausencia de datos sensibles y cifras idénticas); y una salida malformada del generador (503 no reintentable).
+- Regresión focalizada (informes de T1 a T4, política de visibilidad, errores, métodos HTTP, cliente web y vista de supervisión): **553 superadas, 1 omitida** (`test_errores`, el `ERROR_INTERNO` ya conocido). Sin suite completa ni mutaciones.
+- No se probó contra ningún servicio externo.
+
+### 20.6 Riesgos restantes
+
+| Riesgo | Tratamiento |
+|---|---|
+| El texto de `base` no está aprobado | Una sola constante en `presentacion.py` (`DECLARACION_DE_BASE`); cambiarla es de una línea y no altera el esquema. **M5-T4 no se declara cerrado** |
+| Nombres de campo propuestos | Se aprueban con el esquema; los contratos 0.1 no se sustituyen |
+| `persona.id` es un identificador de persona expuesto | Ya lo exponen otras operaciones y el contrato 0.1; se señala en P-13 |
+| Texto libre, instrucciones maliciosas y afirmaciones subjetivas | Riesgos de M5-T3 vigentes: la narrativa pasa por la validación pero no está garantizada la ausencia de valoraciones ni de afirmaciones inventadas; evaluación por muestras (M5-T7) |
+| Sin tokens, plazo ni concurrencia (abiertos) | No se activa ninguna invocación externa; M5-T5 y M5-T7 |
+| La seudonimización no es anonimización | Documentado (17.5 y contrato interno) |
+| El simulado fuera de desarrollo o pruebas | La configuración lo rechaza; nunca es el valor por defecto ni una alternativa silenciosa |
+
+### 20.7 Estado de D-M5-06
+
+**Confirmados:** `INFORME_MAX_RANGE_DAYS` (31), `INFORME_MAX_HECHOS` (400 por solicitud), `INFORME_REINTENTOS_VALIDACION` (0), `INFORME_HABILITADO` (falso). **Abiertos:** `INFORME_MAX_TOKENS_ENTRADA` (propuesta 64.000), `INFORME_MAX_TOKENS_SALIDA` (2.000), `INFORME_PLAZO_TOTAL_SEGUNDOS` (120) e `INFORME_CONCURRENCIA_MAXIMA` (4 por proceso).
+
+## 21. M5-T4 — cierre contractual y consolidación (2026-11-18)
+
+### 21.1 Decisiones confirmadas (quinta comunicación)
+
+| Id | Estado | Resolución |
+|---|---|---|
+| P-6 | **CONFIRMADA** | Declaración fija de producto: «Este informe se basa únicamente en los registros disponibles y autorizados del período y no representa información que nunca fue registrada.» Se usa en los dos tipos de informe, **también con `sin_datos`**. Es **redacción aprobada de producto, no una cita literal de RF-87** (RF-87 fija la obligación, no el texto; ver 20.2) |
+| P-13 | **CONFIRMADA** | Se conserva el objeto público `persona` (`id`, `nombre`) de M5-01, solo en respuestas autorizadas; en el consolidado, solo las personas de la población aprobada. Ni el nombre ni el identificador van al generador (alias y referencias internas) |
+| Nombres del esquema | **CONFIRMADOS** | `actividad_ref` (referencia opaca local al informe), `ocurrencias` (bloqueos autorizados agrupados por actividad), `titulo` y `origen` (solo si la política permite exponer el origen) y `referencia_neutral` (actividad heredada) |
+| P-8 | **PARCIAL** | Siguen abiertos y **no se declaran confirmados**: tokens máximos de entrada (propuesta 64.000) y de salida (2.000), plazo total (120 s) y concurrencia (4 por proceso) |
+
+### 21.2 Contratos y trazabilidad
+
+Los borradores pasan a **contratos aprobados versión 0.2** y se renombran: `docs/api/m5-01-informe-individual-v0.2.md` y `docs/api/m5-02-informe-consolidado-v0.2.md` (las referencias a los antiguos nombres «borrador» de las secciones históricas de este plan se refieren a estos archivos). El contrato **0.1** (`docs/api/m5-informes.md`) queda marcado como **superado** y se conserva sin cambios de contenido como historial. Cada contrato tiene su sección de diferencias frente a 0.1 y su historial de versiones, y el índice de contratos (`docs/api/indice.md`) está actualizado. No se borra ninguna decisión del historial. No se modifica ningún requisito, historia ni criterio de aceptación.
+
+### 21.3 Validación contractual final
+
+Los dos contratos especifican campos y tipos, obligatoriedad y nulabilidad, la estructura individual y consolidada, las proyecciones completa y neutral, las referencias opacas, la lista de secciones narrativas, la declaración `base`, la respuesta `sin_datos`, los metadatos `persona` autorizados, el formato de errores y reintentos y los límites aprobados. Comprobaciones específicas:
+
+| # | Comprobación | Resultado | Evidencia |
+|---|---|---|---|
+| 1 | `narrativa: null` con `sin_datos=true` está permitido explícitamente | **Sí**: contrato M5-01 4.1 («`null` cuando `sin_datos` es verdadero: está permitido y es obligatorio») y M5-02 5.2 | `test_un_informe_sin_datos_lleva_la_base…` (individual y consolidado) y recorrido real |
+| 2 | La respuesta sin datos conserva `base` | **Sí**, la misma declaración fija | Idem y `test_recorrido_real_con_la_generacion_desactivada_por_defecto` |
+| 3 | El nombre y el identificador públicos de la persona no entran en el contexto del generador | **Sí**: el generador recibe `persona = {alias}` y ninguna clave `id`, `nombre` ni `persona_id`, ni ningún UUID | Nueva `test_el_nombre_y_el_identificador_de_la_persona_no_llegan_al_generador…` (individual y dos consolidados) y `test_lo_que_viajaria_al_generador…` (M5-T3) |
+| 4 | Ningún título ni motivo protegido se expone al consolidar | **Sí**: el consolidado del equipo nuevo no contiene el título, las descripciones, los motivos ni el resumen del equipo anterior | La misma prueba nueva y `test_el_supervisor_obtiene_el_informe_de_su_persona_y_la_actividad_heredada_sale_neutral_sin_datos_protegidos` |
+| 5 | Las rutas registradas siguen desactivadas por defecto para la generación | **Sí**: `INFORME_HABILITADO` es falso; sin habilitar, 503 `INFORME_NO_GENERADO` y el generador no se ejecuta | `test_la_generacion_esta_desactivada_por_defecto…` y recorrido real |
+| 6 | Un generador sin configurar no se sustituye silenciosamente por el simulado | **Sí**: habilitado sin `INFORME_GENERADOR` es 503 no reintentable | `test_el_simulado_solo_se_usa_si_se_pide_expresamente…` |
+| — | Referencias opacas: ninguna es un identificador de la base de datos y son consistentes entre `actividades`, `hechos` y `bloqueos` | **Sí**: todas son `aN`, no coinciden con ningún identificador de actividad, avance, bitácora, persona ni equipo, y todo `actividad_ref` existe en `actividades` | Nueva prueba, y `bloque_coherente` en cada respuesta de éxito |
+
+**No quedaron contradicciones** entre los contratos, el PRD, las historias y el código. Cambios de código: solo comentarios de `presentacion.py` (P-6 y P-13 confirmadas); la constante `DECLARACION_DE_BASE` ya contenía la redacción aprobada.
+
+### 21.4 Pruebas
+
+Una prueba nueva (`test_el_nombre_y_el_identificador_de_la_persona_no_llegan_al_generador…`). Verificación: `test_informes_http.py` (22), `test_informes_http_real.py` (3), `test_generacion_informes.py` (25) y `test_visibilidad_historica.py` (42): **92 superadas**, sobre PostgreSQL desechable. Se reutiliza la evidencia de la regresión focalizada de 553 superadas y 1 omitida y el recorrido HTTP real, porque no hubo cambios funcionales. Sin mutaciones ni suite completa. M5-T4 es funcional con el generador simulado habilitado explícitamente.
+
+### 21.5 Riesgos y decisiones pendientes
+
+- **Pendiente:** la parte parcial de P-8 (tokens, plazo total y concurrencia); condiciona M5-T5 y M5-T7, no la forma de la respuesta.
+- **Riesgos vigentes de M5-T3 y M5-T4:** información personal en el texto libre, instrucciones maliciosas, afirmaciones subjetivas o inventadas que la validación determinista no garantiza detectar, y que la seudonimización por alias no es anonimización. Evaluación por muestras en M5-T7.
+- **Sin integración real:** no hay proveedor, SDK, Lambda ni Bedrock; la generación está desactivada por defecto y el simulado solo existe para desarrollo y pruebas.

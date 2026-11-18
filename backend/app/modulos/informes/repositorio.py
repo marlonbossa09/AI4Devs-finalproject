@@ -32,13 +32,16 @@ def ultimo_avance_hasta_el_corte(db: Session, actividades: list[UUID], hasta: da
     return db.execute(text(sql), {"ids": actividades, "hasta": hasta, **parametros}).all()
 
 
-def avances_autorizados_del_periodo(db: Session, consultante: Consultante, persona: UUID, desde: date, hasta: date):
+def avances_autorizados_del_periodo(db: Session, consultante: Consultante, persona: UUID, desde: date, hasta: date, limite: int | None = None):
     """Los avances de ``persona`` con fecha laboral en [``desde``, ``hasta``] que ``consultante`` puede leer (``condicion_lectura`` sobre la fecha laboral de cada avance: RA-01, RN-36).
     No salen las actividades marcadas por error (RA-08, RN-60, CA-167) ni ningún avance de una fecha cuyo equipo no es el del consultante (salvo que sea la propietaria: RA-03).
 
     ``titulo`` y ``origen`` salen de la base solo si el consultante está autorizado sobre la JORNADA DE ORIGEN de la actividad (RA-04, RN-101, ``condicion_lectura`` sobre la fecha de
     origen); si no, salen nulos y ``origen_autorizado`` es falso. Orden: la secuencia de avances (fecha laboral, momento de registro, identificador), la misma de M2 y M4.
-    Una planificación no es un avance y esta consulta no la lee (la planificación conservada de RA-11 queda fuera por construcción)."""
+    Una planificación no es un avance y esta consulta no la lee (la planificación conservada de RA-11 queda fuera por construcción).
+
+    ``limite`` (M5-T4) es un TOPE DE LECTURA, no un recorte del informe: el servicio pide ``máximo + 1`` filas y, si llegan más que el máximo, RECHAZA la solicitud (``INFORME_EXCEDE_LIMITES``); nunca devuelve un
+    informe truncado. Sirve para no cargar miles de filas de una solicitud que se va a rechazar."""
     c_avance, p_avance = condicion_lectura(consultante, "bx.persona_id", "bx.fecha_laboral", prefijo="av")
     c_origen, p_origen = condicion_lectura(consultante, "a.propietaria_id", "ob.fecha_laboral", prefijo="ori")
     sql = (
@@ -53,18 +56,22 @@ def avances_autorizados_del_periodo(db: Session, consultante: Consultante, perso
         f"  and not a.registrada_por_error and {c_avance})"
         " select avance_id, fecha_laboral, registrado_en, estado, descripcion, motivo_bloqueo, actividad_id,"
         "  case when origen_autorizado then titulo end as titulo, case when origen_autorizado then origen end as origen, origen_autorizado"
-        " from h order by fecha_laboral, registrado_en, avance_id")
-    return db.execute(text(sql), {"persona": persona, "desde": desde, "hasta": hasta, **p_avance, **p_origen}).all()
+        " from h order by fecha_laboral, registrado_en, avance_id" + (" limit :limite" if limite is not None else ""))
+    parametros = {"persona": persona, "desde": desde, "hasta": hasta, **p_avance, **p_origen}
+    if limite is not None:
+        parametros["limite"] = limite
+    return db.execute(text(sql), parametros).all()
 
 
-def avances_autorizados_del_equipo(db: Session, consultante: Consultante, desde: date, hasta: date):
+def avances_autorizados_del_equipo(db: Session, consultante: Consultante, desde: date, hasta: date, limite: int | None = None):
     """Los avances con fecha laboral en [``desde``, ``hasta``] de las personas que ERAN DEL EQUIPO de quien consulta EN ESA FECHA (``pertenencia_del_equipo``: la misma expresión de pertenencia de la
     política de M1; RA-01, RN-36), de todas las personas a la vez. A diferencia de la lectura de una persona (``condicion_lectura``) NO concede nada por ser la propia consultante: lo que la
     supervisora hizo en un período en que estaba en otro equipo no es del equipo (como en M4-03). No salen las actividades marcadas por error (RA-08, CA-167) ni ninguna planificación.
 
     ``titulo`` y ``origen`` salen de la base solo si la jornada de origen de la actividad es del equipo (``condicion_equipo``); si no (actividad heredada de otro equipo), salen nulos y
     ``origen_autorizado`` es falso (RN-101). De cada persona sale solo su nombre. La consulta PARTE de los integrantes del equipo y de sus bitácoras en las fechas en que lo eran, así que su
-    coste crece con el tamaño del equipo y del período, no con el de la organización. Orden: persona, secuencia de avances (fecha laboral, momento, identificador)."""
+    coste crece con el tamaño del equipo y del período, no con el de la organización. Orden: persona, secuencia de avances (fecha laboral, momento, identificador).
+    ``limite``: tope de lectura de TODAS las personas juntas, con el mismo sentido que en ``avances_autorizados_del_periodo`` (nunca trunca el informe)."""
     c_equipo, p_equipo = pertenencia_del_equipo(consultante, "pv", "bx.fecha_laboral", prefijo="eq")
     c_origen, p_origen = condicion_equipo(consultante, "a.propietaria_id", "ob.fecha_laboral", prefijo="eo")
     sql = (
@@ -81,5 +88,8 @@ def avances_autorizados_del_equipo(db: Session, consultante: Consultante, desde:
         f"  and {c_equipo})"
         " select avance_id, persona_id, nombre, fecha_laboral, registrado_en, estado, descripcion, motivo_bloqueo, actividad_id,"
         "  case when origen_autorizado then titulo end as titulo, case when origen_autorizado then origen end as origen, origen_autorizado"
-        " from h order by persona_id, fecha_laboral, registrado_en, avance_id")
-    return db.execute(text(sql), {"desde": desde, "hasta": hasta, **p_equipo, **p_origen}).all()
+        " from h order by persona_id, fecha_laboral, registrado_en, avance_id" + (" limit :limite" if limite is not None else ""))
+    parametros = {"desde": desde, "hasta": hasta, **p_equipo, **p_origen}
+    if limite is not None:
+        parametros["limite"] = limite
+    return db.execute(text(sql), parametros).all()

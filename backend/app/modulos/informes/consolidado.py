@@ -41,7 +41,7 @@ from app.errores import AppError
 from app.modulos.informes import agregaciones as calculo, repositorio
 from app.modulos.informes.agregaciones import Agregaciones
 from app.modulos.informes.estructura import (
-    ActividadDelInforme, Bloqueo, Hecho, Numerador, Persona, construir_bloque, estados_al_corte, exigir_periodo_valido, exigir_que_puede_operar,
+    ActividadDelInforme, Bloqueo, Hecho, Numerador, Persona, construir_bloque, detalle_de_reintento, estados_al_corte, exigir_periodo_valido, exigir_que_puede_operar,
 )
 
 TIPO_CONSOLIDADO = "consolidado"
@@ -84,8 +84,8 @@ class ConsolidadoBase:
     agregaciones_del_equipo: Agregaciones | None
 
 
-def preparar_informe_consolidado(db: Session, consultante: Consultante, equipo_id: UUID | None, desde: date, hasta: date) -> ConsolidadoBase:
-    """Ver el docstring del módulo. ``equipo_id`` ``None`` significa el equipo que supervisa quien consulta. Solo lectura: no modifica ni guarda nada."""
+def autorizar_informe_consolidado(db: Session, consultante: Consultante, equipo_id: UUID | None, desde: date, hasta: date) -> None:
+    """Pasos 1 a 4 del orden de evaluación (C-6), SIN leer ningún dato de registros: puede operar, formato, rol y equipo. Ver ``autorizar_informe_individual`` para su uso desde M5-T4."""
     exigir_que_puede_operar(consultante)
     exigir_periodo_valido(desde, hasta)
     if not consultante.es_supervisor_vigente:
@@ -93,7 +93,19 @@ def preparar_informe_consolidado(db: Session, consultante: Consultante, equipo_i
     if equipo_id is not None and equipo_id != consultante.pertenencia.equipo_id:
         raise AppError("RECURSO_NO_DISPONIBLE")                     # equipo ajeno o inexistente: indistinguibles (CA-170, RNF-13)
 
-    filas = repositorio.avances_autorizados_del_equipo(db, consultante, desde, hasta)
+
+def preparar_informe_consolidado(db: Session, consultante: Consultante, equipo_id: UUID | None, desde: date, hasta: date, max_hechos: int | None = None) -> ConsolidadoBase:
+    """Ver el docstring del módulo. ``equipo_id`` ``None`` significa el equipo que supervisa quien consulta. Solo lectura: no modifica ni guarda nada. ``max_hechos`` (M5-T4): máximo de avances autorizados de
+    TODAS las personas juntas; si se supera, ``INFORME_EXCEDE_LIMITES`` y no se trunca nada."""
+    autorizar_informe_consolidado(db, consultante, equipo_id, desde, hasta)
+    return construir_informe_consolidado(db, consultante, desde, hasta, max_hechos)
+
+
+def construir_informe_consolidado(db: Session, consultante: Consultante, desde: date, hasta: date, max_hechos: int | None = None) -> ConsolidadoBase:
+    """Lee y arma el consolidado del equipo que supervisa quien consulta, YA AUTORIZADO con ``autorizar_informe_consolidado``. No autoriza por sí misma."""
+    filas = repositorio.avances_autorizados_del_equipo(db, consultante, desde, hasta, None if max_hechos is None else max_hechos + 1)
+    if max_hechos is not None and len(filas) > max_hechos:
+        raise AppError("INFORME_EXCEDE_LIMITES", [{"campo": "hechos", "motivo": "hechos_exceden_el_maximo", "maximo_hechos": max_hechos}, detalle_de_reintento(False)])
     if not filas:
         return ConsolidadoBase(TIPO_CONSOLIDADO, desde, hasta, True, (), None)
 

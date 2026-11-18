@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Estado** | **`[PROPUESTO]`.** Contrato **interno** (no es público ni lo ve ninguna persona usuaria). Implementado en M5-T3 con un generador **simulado**; no se ha integrado ningún servicio real. **P-11 (2026-11-18): la lista de secciones queda confirmada para este contrato interno.** La estructura **pública** de la narrativa sigue abierta y debe definirse expresamente en los contratos M5-01 y M5-02 |
+| **Estado** | **`[PROPUESTO]`.** Contrato **interno** (no es público ni lo ve ninguna persona usuaria). Implementado en M5-T3 con un generador **simulado**; no se ha integrado ningún servicio real. **P-11 (2026-11-18): la lista de secciones queda confirmada para este contrato interno.** La estructura **pública** de la narrativa (P-11, confirmada el 2026-11-18) es también una **lista de secciones por persona, cada una solo con `texto`**, sin referencias ni identificadores; está definida en los borradores M5-01 y M5-02 y la ensambla `presentacion.py` desde esta salida validada |
 | **Versión** | 0.1 (borrador) |
 | **Fecha** | 2026-11-18 |
 | **Base** | `docs/backlog/tickets/m5-plan-implementacion.md` (M5-T3); ADR-003 (secciones 6, 8, 9 y 12); contratos M5-01 y M5-02 (borradores 0.2); decisiones D-M5-01, D-M5-03, D-M5-05, D-M5-07, D-M5-08 y D-M5-09 |
@@ -110,7 +110,7 @@ El validador **no modifica** la entrada ni la salida bruta, no copia ningún fra
 |---|---|---|---|
 | `OK` | Narrativa validada | — | — |
 | `SIN_DATOS` | No hay registros autorizados: **el generador no se invoca** (RN-57) | Informe con `sin_datos` | — |
-| `ERROR_TECNICO` | El generador no está disponible, está desactivado o falla de forma inesperada | `INFORME_NO_GENERADO` | Sí |
+| `ERROR_TECNICO` | El generador no está disponible, no está configurado o está desactivado, o falla de forma inesperada | `INFORME_NO_GENERADO` | **Sí**, salvo integración desactivada o sin generador configurado (no es transitorio) |
 | `TIEMPO_AGOTADO` | El adaptador agota su plazo | `INFORME_NO_GENERADO` | Sí |
 | `RESPUESTA_MALFORMADA` | No cumple el esquema cerrado | `INFORME_NO_GENERADO` | No |
 | `RECHAZADA_POR_VALIDACION` | No supera una comprobación de contenido | `INFORME_NO_GENERADO` | No |
@@ -150,7 +150,7 @@ No hay **ninguna incompatibilidad bloqueante**. Diferencias que conviene conocer
 
 | Documento | Lo que dice | Lo que implementa M5-T3 |
 |---|---|---|
-| Contrato 0.1 (`narrativa`) | Un único campo de texto | Una narrativa por persona (D-M5-03). La forma pública es la pregunta **P-11** |
+| Contrato 0.1 (`narrativa`) | Un único campo de texto | Una narrativa por persona (D-M5-03). Forma pública: lista de secciones solo con `texto` (P-11, confirmada) |
 | ADR-003, sección 7 (consolidado) | Cifras «por persona y por equipo» como hechos dados | Solo las de la persona: la sección de equipo es determinista y no se envía (D-M5-03) |
 | ADR-003, sección 6 | Tabla de alias compartida por petición | Un alias por llamada (más aislamiento) |
 | ADR-003, sección 9 | Cada afirmación apunta a registros de origen | Las referencias son **por sección**, no por frase |
@@ -161,7 +161,13 @@ No hay **ninguna incompatibilidad bloqueante**. Diferencias que conviene conocer
 
 | Id | Pregunta |
 |---|---|
-| P-11 | **Contrato interno: lista de secciones, confirmada (2026-11-18).** Estructura **pública** de la narrativa: abierta; debe definirse expresamente en M5-01 y M5-02 (texto único por persona unido con una línea en blanco, lista de secciones u otra) |
+| P-11 | **Resuelta (2026-11-18):** lista de secciones por persona, en el contrato interno y en el público (solo `texto`). El adaptador de M5-T5 debe producir esta salida |
 | D-M5-06 | Valores de los límites |
 | — | Idioma de la narrativa (`[SUPUESTO]`: español) |
 | — | Si el adaptador de M5-T5 debe devolver también un código de fin (por ejemplo, salida truncada); hoy no existe en el esquema |
+
+## 12. Cambios de M5-T4
+
+- **Reintento (P-12, confirmada).** `ErrorDeGeneracion.reintentable` es verdadero solo para fallos técnicos transitorios (generador no disponible, plazo agotado, error inesperado). Se añade `GeneradorNoConfigurado`: un generador desactivado o sin configurar es `ERROR_TECNICO` con el motivo `generador_no_configurado` y **no** es reintentable. Una salida malformada o rechazada por la validación tampoco lo es.
+- **Límites.** El de hechos es **por solicitud** (400 en total) y lo aplica la canalización de M5-T4; `LimitesDeContexto.max_hechos` (por persona) de M5-T3 queda sin uso. `INFORME_REINTENTOS_VALIDACION` es 0: un solo intento.
+- **Presentación.** `presentacion.py` ensambla la respuesta pública con proyecciones cerradas; no expone referencias ni identificadores internos.

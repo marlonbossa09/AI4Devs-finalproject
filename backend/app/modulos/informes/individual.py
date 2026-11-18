@@ -44,7 +44,7 @@ from app.modulos.informes.agregaciones import Agregaciones
 # La estructura y el armado de hechos son comunes al consolidado (M5-T2): se reexportan para que este módulo siga siendo el punto de entrada del informe individual.
 from app.modulos.informes.estructura import (  # noqa: F401
     BLOQUEADA, CAMPOS_DE_TEXTO_LIBRE, CAMPOS_PARA_EL_GENERADOR, COMPLETA, NEUTRAL, REFERENCIA_NEUTRAL, ActividadDelInforme, Bloqueo, Hecho, Numerador, Persona,
-    construir_bloque, estados_al_corte, exigir_periodo_valido, exigir_que_puede_operar,
+    construir_bloque, detalle_de_reintento, estados_al_corte, exigir_periodo_valido, exigir_que_puede_operar,
 )
 
 TIPO_INDIVIDUAL = "individual"
@@ -75,15 +75,27 @@ def _exigir_permiso_sobre(db: Session, consultante: Consultante, persona: UUID, 
         raise AppError("OPERACION_NO_PERMITIDA")                    # visible, pero no es suya ni supervisa (D-M5-02, CA-154)
 
 
-def preparar_informe_individual(db: Session, consultante: Consultante, persona_id: UUID | None, desde: date, hasta: date) -> InformeBase:
-    """Ver el docstring del módulo. ``persona_id`` ``None`` significa quien consulta. Solo lectura: no modifica ni guarda nada."""
+def autorizar_informe_individual(db: Session, consultante: Consultante, persona_id: UUID | None, desde: date, hasta: date) -> UUID:
+    """Pasos 1 a 3 del orden de evaluación, SIN leer ningún dato de registros: puede operar, formato y permiso sobre la persona. Devuelve la persona del informe (``persona_id`` ``None`` es quien consulta).
+    El servicio de M5-T4 aplica entre esto y la lectura los límites que no dependen de los datos (rango), para que un límite no revele nada que la autorización oculte."""
     exigir_que_puede_operar(consultante)
     exigir_periodo_valido(desde, hasta)
     objetivo = consultante.persona_id if persona_id is None else persona_id
     _exigir_permiso_sobre(db, consultante, objetivo, desde, hasta)
+    return objetivo
 
+
+def preparar_informe_individual(db: Session, consultante: Consultante, persona_id: UUID | None, desde: date, hasta: date, max_hechos: int | None = None) -> InformeBase:
+    """Ver el docstring del módulo. ``persona_id`` ``None`` significa quien consulta. Solo lectura: no modifica ni guarda nada. ``max_hechos`` (M5-T4): si los avances autorizados superan ese máximo, ``INFORME_EXCEDE_LIMITES``."""
+    return construir_informe_individual(db, consultante, autorizar_informe_individual(db, consultante, persona_id, desde, hasta), desde, hasta, max_hechos)
+
+
+def construir_informe_individual(db: Session, consultante: Consultante, objetivo: UUID, desde: date, hasta: date, max_hechos: int | None = None) -> InformeBase:
+    """Lee y arma el informe de una persona YA AUTORIZADA con ``autorizar_informe_individual``. No autoriza por sí misma: no se debe llamar sin haberla autorizado."""
     nombre = repositorio.nombre_de_la_persona(db, objetivo)
-    filas = repositorio.avances_autorizados_del_periodo(db, consultante, objetivo, desde, hasta)
+    filas = repositorio.avances_autorizados_del_periodo(db, consultante, objetivo, desde, hasta, None if max_hechos is None else max_hechos + 1)
+    if max_hechos is not None and len(filas) > max_hechos:
+        raise AppError("INFORME_EXCEDE_LIMITES", [{"campo": "hechos", "motivo": "hechos_exceden_el_maximo", "maximo_hechos": max_hechos}, detalle_de_reintento(False)])
     persona = Persona(objetivo, nombre)
     if not filas:
         return InformeBase(TIPO_INDIVIDUAL, desde, hasta, persona, True, (), (), (), None)

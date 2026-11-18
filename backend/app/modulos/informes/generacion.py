@@ -144,8 +144,9 @@ class ErrorDeGeneracion(Exception):
 
     @property
     def reintentable(self) -> bool:
-        """Si tiene sentido decirle al cliente que puede volver a intentarlo."""
-        return self.clase in (Clase.ERROR_TECNICO, Clase.TIEMPO_AGOTADO)
+        """Si tiene sentido decirle al cliente que puede volver a intentarlo (P-12): solo los fallos técnicos TRANSITORIOS (el generador no responde o agota su plazo). Una integración desactivada o sin generador
+        configurado es un estado de configuración, no un fallo transitorio, y una respuesta mal formada o rechazada por la validación no mejora por repetirla."""
+        return self.clase in (Clase.ERROR_TECNICO, Clase.TIEMPO_AGOTADO) and not set(self.motivos) & {"integracion_desactivada", "generador_no_configurado"}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -158,6 +159,10 @@ class ErrorDelGenerador(Exception):
 
 class GeneradorNoDisponible(ErrorDelGenerador):
     pass
+
+
+class GeneradorNoConfigurado(ErrorDelGenerador):
+    """No hay ningún generador configurado (no es un fallo transitorio)."""
 
 
 class TiempoAgotado(ErrorDelGenerador):
@@ -175,7 +180,7 @@ class GeneradorDesactivado:
     """Adaptador ``ninguno``: la integración no está habilitada. Es lo que usará el sistema mientras ``INFORME_HABILITADO`` esté desactivado (propuesta, D-M5-08)."""
 
     def generar(self, entrada: EntradaDeGeneracion) -> object:
-        raise GeneradorNoDisponible("integración desactivada")
+        raise GeneradorNoConfigurado("integración desactivada")
 
 
 # ----------------------------------------------------------------------------------------------------------------------

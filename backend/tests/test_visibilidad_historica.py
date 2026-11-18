@@ -507,7 +507,9 @@ def test_la_politica_de_visibilidad_historica_solo_la_usan_los_modulos_aprobados
     permitidos = {"app/modulos/bitacoras/servicio.py", "app/modulos/auditoria/servicio.py", "app/modulos/auditoria/repositorio.py"}
     # Actualizada a propósito en M5-T1 (D-M5-09, aprobada): los informes usan la MISMA política (RN-86, RA-09), solo desde el servicio y el repositorio del informe individual.
     # M5-T2 añade el consolidado y ``estructura.py`` (solo el tipo ``Consultante`` para exigir que puede operar) a la lista cerrada; ``agregaciones.py`` no usa la política: recibe hechos ya autorizados.
-    de_informes = {"app/modulos/informes/individual.py", "app/modulos/informes/consolidado.py", "app/modulos/informes/estructura.py", "app/modulos/informes/repositorio.py"}
+    # M5-T4 añade ``servicio.py`` (la canalización construye al consultante con ``consultante_de``).
+    de_informes = {"app/modulos/informes/individual.py", "app/modulos/informes/consolidado.py", "app/modulos/informes/estructura.py", "app/modulos/informes/repositorio.py",
+                   "app/modulos/informes/servicio.py"}
     assert usos and all(u.startswith("app/modulos/consulta/") or u in permitidos or u in de_informes for u in usos), usos
     assert de_informes <= set(usos), "la lista de permitidos no debe tener entradas que ya no usan la política"
     assert permitidos <= set(usos), "la lista de permitidos no debe tener entradas que ya no usan la política"

@@ -40,6 +40,8 @@ CATALOGO: dict[str, tuple[int, str]] = {
     "MARCA_INVALIDARIA_CIERRE": (409, "Marcar la actividad dejaría sin cumplir las condiciones de cierre de una jornada cerrada."),
     "MARCA_NO_VIGENTE": (409, "La actividad no tiene una marca de error vigente."),
     "OPERACION_EN_CURSO": (409, "Otra petición con la misma clave sigue en curso."),
+    # M5-T4 (convenciones 4): el informe superaría un límite configurado (se rechaza ANTES de generar, sin truncar nada), o no pudo generarse (sin contenido parcial, RN-58).
+    "INFORME_EXCEDE_LIMITES": (422, "El informe supera un límite configurado."),
     "FECHA_NO_CUBIERTA": (422, "La fecha laboral no está cubierta por una pertenencia."),
     "FECHA_FUTURA_NO_PERMITIDA": (422, "No se puede registrar ejecución ni cerrar una jornada de fecha futura."),
     "FECHA_NO_FUTURA": (422, "La continuación planificada exige una fecha posterior a la actual."),
@@ -56,6 +58,7 @@ CATALOGO: dict[str, tuple[int, str]] = {
     "CONTRASENA_NO_VALIDA": (422, "La contraseña no cumple la política."),
     "DEMASIADAS_SOLICITUDES": (429, "Demasiados intentos. Vuelva a intentarlo más tarde."),
     "ERROR_INTERNO": (500, "Se produjo un error interno."),
+    "INFORME_NO_GENERADO": (503, "El informe no pudo generarse."),
 }
 
 

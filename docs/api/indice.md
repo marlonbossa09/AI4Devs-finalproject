@@ -16,7 +16,10 @@
 | [m2-bitacoras.md](m2-bitacoras.md) | M2-01a a M2-08 |
 | [m3-seguimiento-auditoria.md](m3-seguimiento-auditoria.md) | M3-01 a M3-07 |
 | [m4-consulta-supervision.md](m4-consulta-supervision.md) | M4-01 a M4-05 |
-| [m5-informes.md](m5-informes.md) | Contratos públicos de M5, independientes del proveedor |
+| [m5-01-informe-individual-v0.2.md](m5-01-informe-individual-v0.2.md) | **Contrato vigente M5-01** (versión 0.2, aprobada el 2026-11-18) |
+| [m5-02-informe-consolidado-v0.2.md](m5-02-informe-consolidado-v0.2.md) | **Contrato vigente M5-02** (versión 0.2, aprobada el 2026-11-18) |
+| [m5-integracion-ia.md](m5-integracion-ia.md) | Contrato **interno** entre el backend y el generador de narrativa de M5 (`[PROPUESTO]`) |
+| [m5-informes.md](m5-informes.md) | Versión 0.1 de M5-01 y M5-02, **superada** por la 0.2 (historial) |
 | [m1-m5-dependencias.md](m1-m5-dependencias.md) | Decisiones de seguridad y privacidad que siguen pendientes |
 | [ADR-002](../arquitectura/adr/ADR-002-autenticacion-y-acceso.md) | Autenticación (propuesto en lo operativo) |
 | [ADR-003](../arquitectura/adr/ADR-003-integracion-de-ia.md) | Integración de IA (propuesto) |
@@ -48,8 +51,8 @@
 | M4-03 | Obtener la vista de supervisión del equipo | `GET /api/v1/equipo/supervision` | Supervisor con acceso efectivo | 4.3 | **Cerrado** | — |
 | M4-04 | Consultar el historial de una actividad del equipo | `GET /api/v1/equipo/actividades/{actividad_id}` | Supervisor con acceso efectivo | 4.4 | **Cerrado** | — |
 | M4-05 | Listar los integrantes vigentes de mi equipo | `GET /api/v1/equipo/integrantes` | Persona con acceso efectivo y pertenencia vigente | 4.1, 4.2 (apoyo de interfaz) | Aprobado por D-M4-02; redactado el 2026-11-18, pendiente de revisión | — |
-| M5-01 | Generar un informe individual | `POST /api/v1/informes/individuales` | Propietaria; supervisor autorizado | 5.1 a 5.5 | **Cerrado** (contrato público) | Catálogo de agregaciones |
-| M5-02 | Generar un informe consolidado | `POST /api/v1/informes/consolidados` | Supervisor con acceso efectivo | 5.3 a 5.5 | **Cerrado** (contrato público) | Catálogo de agregaciones |
+| M5-01 | Generar un informe individual | `POST /api/v1/informes/individuales` | Propietaria; supervisor autorizado | 5.1 a 5.5 | **Cerrado** (versión 0.2 aprobada el 2026-11-18; sustituye a la 0.1) | Parte parcial de P-8: tokens, plazo y concurrencia |
+| M5-02 | Generar un informe consolidado | `POST /api/v1/informes/consolidados` | Supervisor con acceso efectivo | 5.3 a 5.5 | **Cerrado** (versión 0.2 aprobada el 2026-11-18; sustituye a la 0.1) | Parte parcial de P-8: tokens, plazo y concurrencia |
 | M1-01a | Iniciar sesión | `POST /api/v1/sesion` | Pública | 1.1, 1.7 | Preliminar | Parámetros de acceso |
 | M1-01b | Cerrar sesión | `POST /api/v1/sesion/cierre` | Persona con sesión | 1.1 | Preliminar | — |
 | M1-01c | Consultar mi sesión | `GET /api/v1/sesion` | Persona con sesión | 1.1 | Preliminar | Aprobar la operación |
@@ -64,7 +67,7 @@
 | M1-03a | Emitir el código de primer acceso | Orden de provisión (invocación pendiente) | Persona operadora | 1.5 | **Condicionado** | Medio de entrega |
 | M1-09a | Emitir el código de recuperación | Orden de provisión (invocación pendiente) | Persona operadora | 1.6 | **Condicionado** | Verificación de identidad y medio de entrega |
 
-Resumen: **20 de 20 contratos de M2 a M4 cerrados**; **2 contratos públicos de M5 cerrados** (la integración interna depende de PA-09); **13 contratos de M1**, de ellos 11 preliminares y 2 condicionados.
+Resumen: **20 de 20 contratos de M2 a M4 cerrados**; **2 contratos públicos de M5 cerrados en su versión 0.2** (aprobada el 2026-11-18; la integración interna depende de PA-09 y de la parte parcial de P-8); **13 contratos de M1**, de ellos 11 preliminares y 2 condicionados.
 
 Divisiones técnicas respecto al catálogo preliminar, sin añadir funcionalidad: M2-01 en consultar y abrir; M3-03 en la corrección de un avance (este contrato) y la del resumen (que reutiliza M2-02); M1-02 y M1-04 fusionados en M1-02b.
 
@@ -106,7 +109,8 @@ La lista y la regla de error de cada uno están en [convenciones.md](convencione
 | Valores de duración, intentos y contraseña | ADR-002, sección 7 | M1-01a, M1-03b, M1-09b |
 | Reactivación del acceso: falta una RN | ADR-002, sección 11 | M1-10 |
 | Proveedor, modelo, región y retención de la IA; marco legal | ADR-003 | Integración interna de M5 |
-| Catálogo definitivo de agregaciones | `m5-informes.md` | M5-01, M5-02 |
+| Catálogo de agregaciones | `m5-01-informe-individual-v0.2.md` | **Resuelto** el 2026-11-18 (D-M5-04: seis métricas confirmadas) |
+| Límites de tokens, plazo total y concurrencia de un informe | `m5-01-informe-individual-v0.2.md` | M5-01, M5-02 (P-8 parcial) |
 
 ## 6. Verificación de la trazabilidad
 
