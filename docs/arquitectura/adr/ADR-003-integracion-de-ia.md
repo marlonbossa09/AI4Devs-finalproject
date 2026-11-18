@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Estado** | **PROPUESTO**. No están aprobados el proveedor, el modelo, la región ni la retención |
+| **Estado** | **PROPUESTO** en lo operativo. **`[CONFIRMADO]` el 2026-11-18, para planificación futura: Amazon Bedrock (modelos de IA), AWS Lambda (integración) y AWS como plataforma de infraestructura relacionada.** No están aprobados el modelo, la región, la retención de información ni servicios adicionales |
 | **Versión** | 0.3 |
 | **Fecha** | 2026-11-06 |
 | **Relacionado con** | PA-09, RNF-06 (PP-33), RN-26, RN-29, RN-30, RN-31, RN-53 a RN-58, RN-86, RN-101, RNF-04, RNF-12, PP-11, ADR-001 |
 | **Documentos complementarios** | `docs/api/m1-m5-dependencias.md`, `docs/api/convenciones.md`, `docs/modelo-datos/modelo-datos.md` |
 
-AWS Bedrock es el candidato prioritario de evaluación y la API directa de Anthropic, la alternativa. Este ADR no elige proveedor. Compara ambas opciones con datos consultados el 2026-11-06 y marca lo que **no se pudo verificar**. No contiene credenciales y no modifica el alcance, el PRD, las historias ni el modelo de datos.
+**Decisión del 2026-11-18 (persona responsable del producto):** la IA de M5 utilizará Amazon Bedrock como servicio de modelos de IA y AWS Lambda para la integración, con AWS como plataforma de infraestructura relacionada. Queda registrada como decisión confirmada para planificación futura, **sin implementar ni configurar AWS**: el modelo, la región, la retención y cualquier servicio adicional se deciden en la revisión SDD de M5, y no se elige ninguno por anticipado. Lo que sigue es la comparación original (2026-11-06), conservada como antecedente: AWS Bedrock era el candidato prioritario de evaluación y la API directa de Anthropic, la alternativa. Compara ambas opciones con datos consultados el 2026-11-06 y marca lo que **no se pudo verificar**. No contiene credenciales y no modifica el alcance, el PRD, las historias ni el modelo de datos.
 
 **Cautela sobre los datos.** Las fichas y los precios proceden de páginas oficiales leídas con una herramienta de lectura automática; algunas páginas se truncaron y las condiciones cambian con frecuencia. Antes de aprobar, cada dato debe contrastarse con la cuenta real y con el contrato del proveedor. Este ADR distingue entre «literal en la fuente» y «no encontrado».
 

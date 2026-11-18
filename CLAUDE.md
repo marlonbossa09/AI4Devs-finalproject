@@ -10,7 +10,7 @@ La plataforma permite registrar qué se planea hacer, qué se hizo realmente, qu
 
 SMARTWORK es un producto profesional e independiente. Su documentación describe únicamente el producto, su dominio y su construcción técnica.
 
-Stack: Flutter Web, FastAPI (Python) y PostgreSQL, con monolito modular y autorización centralizada en el backend. `[CONFIRMADO]` mediante el ADR-001 (`docs/arquitectura/adr/ADR-001-stack-tecnologico.md`). La arquitectura técnica de referencia de la autenticación está aprobada (ADR-002, que sigue `[PROPUESTO]` en lo operativo); el mecanismo operativo de la provisión de accesos, el proveedor del servicio de IA (ADR-003, `[PROPUESTO]`) y el despliegue siguen sin decidir.
+Stack: Flutter Web, FastAPI (Python) y PostgreSQL, con monolito modular y autorización centralizada en el backend. `[CONFIRMADO]` mediante el ADR-001 (`docs/arquitectura/adr/ADR-001-stack-tecnologico.md`). La arquitectura técnica de referencia de la autenticación está aprobada (ADR-002, que sigue `[PROPUESTO]` en lo operativo); el mecanismo operativo de la provisión de accesos, el despliegue y la parte operativa del servicio de IA (ADR-003, `[PROPUESTO]`: modelo, región, retención y servicios adicionales) siguen sin decidir. Para planificación futura, `[CONFIRMADO]` el 2026-11-18: la IA de M5 usará Amazon Bedrock (modelos de IA) y AWS Lambda (integración), con AWS como plataforma de infraestructura relacionada, sin implementar ni configurar AWS hasta la revisión SDD de M5. Modelo, región, retención de información y servicios adicionales siguen abiertos.
 
 ## 2. Módulos funcionales
 

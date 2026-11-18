@@ -328,7 +328,7 @@ PA-01 queda resuelto con la formulación "inicialmente": introducir un límite e
 |---|---|---|---|---|
 | PA-04 | Roles, permisos y pertenencia | RN-11, RN-23, RN-28, RN-33 a RN-38 | Cómo corregir una bitácora cuyo propietario no puede acceder (por baja o ausencia): hoy nadie puede hacerlo (RN-19, RN-23) | M1, M3 |
 | PA-06 | Auditoría | RN-19, RN-45, RN-49 a RN-52, RN-103, RN-111 | Política de retención. Visibilidad y retención de las entradas de la provisión administrativa | M3 |
-| PA-09 | Privacidad y servicio de IA | RN-30, RN-31 | Proveedor y modalidad; condiciones de conservación; tratamiento de datos; marco legal aplicable; qué se considera "necesario"; percepción de vigilancia | M4, M5 |
+| PA-09 | Privacidad y servicio de IA | RN-30, RN-31 | **Resuelto en parte el 2026-11-18: proveedor y plataforma (Amazon Bedrock como servicio de modelos, AWS Lambda para la integración y AWS como infraestructura relacionada), solo para planificación futura y sin implementar.** Siguen abiertos: modelo y región; condiciones de conservación; tratamiento de datos; marco legal aplicable; qué se considera "necesario"; percepción de vigilancia | M4, M5 |
 | PA-11 | Métricas de éxito | PP-30 (clasificación) | Objetivos numéricos y líneas base | Todos |
 | PA-12 | Detalles del acceso inicial, de la recuperación y de la reactivación administrativa | RN-33 a RN-35, RN-96, RN-102 | Caducidad del acceso inicial; si la persona establece una credencial propia en el primer ingreso; medio de entrega; cómo se verifica la identidad de quien recupera el acceso; operación para reactivar un acceso desactivado administrativamente; cómo se identifica a quien opera la provisión | M1 |
 | PA-13 | Objetivos no funcionales cuantitativos e idioma de la interfaz | — | Todo | Todos |
