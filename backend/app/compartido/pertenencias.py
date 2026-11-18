@@ -39,6 +39,19 @@ def cubre(alias: str, fecha: str) -> str:
     return f"daterange({identificador_sql(alias)}.desde, {identificador_sql(alias)}.hasta_exclusivo, '[)') @> {fecha}"
 
 
+_PARAMETRO_O_COLUMNA = re.compile(r"^(:[a-z_][a-z0-9_]*|[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?)$")
+
+
+def solapa(alias: str, desde: str, hasta: str) -> str:
+    """Condición SQL: el intervalo ``alias`` de ``pertenencia`` comparte AL MENOS UNA FECHA con el período [``desde``, ``hasta``] (extremos incluidos). ``desde`` y ``hasta`` son columnas,
+    alias o parámetros ``:nombre`` escritos por el código. Es la misma expresión de rango que ``cubre`` (intervalo semiabierto de la pertenencia), generalizada de «una fecha» a «un período»:
+    sigue siendo la única definición del intervalo (M5-T1, corrección de P-9)."""
+    for valor in (desde, hasta):
+        if not _PARAMETRO_O_COLUMNA.match(valor):
+            raise ValueError(f"Valor SQL no admitido: {valor!r}")
+    return f"daterange({identificador_sql(alias)}.desde, {identificador_sql(alias)}.hasta_exclusivo, '[)') && daterange({desde}, {hasta}, '[]')"
+
+
 @dataclass(frozen=True)
 class Pertenencia:
     persona_id: UUID

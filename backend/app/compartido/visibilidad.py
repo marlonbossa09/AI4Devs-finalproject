@@ -208,6 +208,24 @@ def puede_ver_estado_actual(db: Session, consultante: Consultante, propietaria_i
     return actual is not None and actual.equipo_id == consultante.pertenencia.equipo_id
 
 
+def persona_es_visible(db: Session, consultante: Consultante, persona_id: UUID, desde: date, hasta: date) -> bool:
+    """¿La PERSONA es visible para quien consulta EN ESE PERÍODO? (M5-T1, D-M5-02; convenciones 3.1; corrección de P-9). Lo es si es la propia consultante o si existe alguna fecha laboral
+    DEL PERÍODO [``desde``, ``hasta``] en la que ``decidir_lectura`` le permitiría leer los registros de esa persona: es decir, si la persona perteneció al equipo VIGENTE de quien
+    consulta en algún día del período. Es la misma regla de equipo de ``decidir_lectura`` elevada de «una fecha» a «alguna fecha del período» (la prueba de equivalencia lo comprueba),
+    no una regla nueva, y NO revela ninguna relación histórica ajena al período pedido. Si no puede demostrarse, la persona NO es visible (404 uniforme). Sirve solo para ELEGIR el código
+    de una operación sobre la persona: 403 ``OPERACION_NO_PERMITIDA`` si es visible y la operación no está permitida, 404 ``RECURSO_NO_DISPONIBLE`` si no lo es (también si no
+    existe). No concede lectura de ningún registro: la lectura de cada registro la sigue decidiendo ``decidir_lectura`` o su predicado SQL."""
+    if not consultante.puede_operar:
+        return False
+    if persona_id == consultante.persona_id:
+        return True
+    fila = db.execute(
+        text(f"select 1 from pertenencia p where p.persona_id = :persona and p.equipo_id = :equipo and {pertenencias.solapa('p', ':desde', ':hasta')} limit 1"),
+        {"persona": persona_id, "equipo": consultante.pertenencia.equipo_id, "desde": desde, "hasta": hasta},
+    ).first()
+    return fila is not None
+
+
 def pertenece_al_equipo_en(db: Session, consultante: Consultante, persona_id: UUID, fecha: date) -> bool:
     """¿El equipo de ``persona_id`` en la fecha laboral es el de quien consulta? (RA-01, DM-04). A diferencia de ``decidir_lectura`` NO concede nada por ser la propia
     consultante: es la regla de las vistas DE EQUIPO (supervisión, M4-03), donde lo propio de un período en que la supervisora estaba en otro equipo no es del equipo."""
