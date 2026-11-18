@@ -114,6 +114,8 @@ flowchart LR
 | Panel principal | Saludo, indicadores (registradas, pendientes, en progreso, completadas) y lista de actividades de la fecha elegida, calendario del mes y progreso de completadas |
 | Mi bitácora | Estado de la bitácora con sus tres fechas por separado (laboral, registro y modificación), actividades planificadas y selector de fecha. Si no existe, lo indica y permite abrirla |
 | Nueva planificación | Título, fecha, estado inicial (siempre pendiente) y descripción |
+| Mi equipo | Solo lectura: la bitácora de un compañero (elegido entre los integrantes vigentes del equipo) y el histórico que se puede consultar, con rango obligatorio de hasta 92 días, filtro opcional por persona y paginación. Una actividad iniciada en otro equipo se muestra solo como «Actividad en continuidad» |
+| Supervisión | Solo para supervisores: las actividades del equipo en un período, con totales por estado al corte, el estado actual aparte, referencias mínimas diferenciadas, el historial de cada actividad y su auditoría. Sin rankings ni controles de modificación |
 
 Capturas reales con datos ficticios. Los indicadores y la lista salen de lo que el servidor guarda para la fecha elegida:
 

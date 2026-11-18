@@ -19,6 +19,8 @@ import 'audit_page.dart';
 import 'correction_page.dart';
 import 'reactivation_page.dart';
 import 'unplanned_page.dart';
+import '../../../supervision/presentation/pages/supervision_activity_page.dart';
+import '../../../supervision/presentation/pages/supervision_page.dart';
 import '../../../team/presentation/pages/team_page.dart';
 
 /// Signed-in area: the app frame with the page chosen in the sidebar.
@@ -40,6 +42,8 @@ class HomePage extends ConsumerWidget {
     AppPage.correction: 'Corregir avance',
     AppPage.audit: 'Historial de auditoría',
     AppPage.team: 'Mi equipo',
+    AppPage.supervision: 'Supervisión del equipo',
+    AppPage.supervisionActivity: 'Historial de la actividad',
   };
 
   @override
@@ -47,7 +51,7 @@ class HomePage extends ConsumerWidget {
     final page = ref.watch(currentPageProvider);
     return UnsavedChangesHost(
       child: AppShell(
-        items: const [
+        items: [
           NavItem(
             id: AppPage.dashboard,
             label: 'Panel principal',
@@ -78,9 +82,22 @@ class HomePage extends ConsumerWidget {
             icon: Icons.groups_outlined,
             itemKey: Key('nav-team'),
           ),
+          // Only a supervisor is offered the supervision. The server is the authority: a collaborator who reached the
+          // page anyway would get a 403 (and the page itself says it is not available).
+          if (session.role == Role.supervisor)
+            const NavItem(
+              id: AppPage.supervision,
+              label: 'Supervisión',
+              icon: Icons.fact_check_outlined,
+              itemKey: Key('nav-supervision'),
+            ),
         ],
         // The detail belongs to the activities area: that item stays highlighted while it is open
-        selected: page == AppPage.activityDetail ? AppPage.activities : page,
+        selected: switch (page) {
+          AppPage.activityDetail => AppPage.activities,
+          AppPage.supervisionActivity => AppPage.supervision,
+          _ => page,
+        },
         onSelect: (id) =>
             ref.read(currentPageProvider.notifier).go(id as AppPage),
         userName: session.user.name,
@@ -105,6 +122,8 @@ class HomePage extends ConsumerWidget {
           AppPage.correction => const CorrectionPage(),
           AppPage.audit => const AuditPage(),
           AppPage.team => const TeamPage(),
+          AppPage.supervision => const SupervisionPage(),
+          AppPage.supervisionActivity => const SupervisionActivityPage(),
         },
       ),
     );

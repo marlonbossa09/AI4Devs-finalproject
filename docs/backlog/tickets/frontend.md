@@ -91,6 +91,7 @@ Cliente web en Flutter Web (ADR-001). Cada ticket consume contratos ya definidos
   - La consulta del histórico no se envía sin rango de fechas.
 
 #### FE-08 — Vista de supervisión e historial de actividad
+- **Estado:** **implementado el 2026-11-18 (M4-T8)**, pendiente de revisión: `lib/features/supervision/` con la vista consolidada, el historial de una actividad y la entrada de menú solo para supervisores; la auditoría reutiliza la pantalla existente (FE-09).
 - **Prioridad:** P0 (vista) y P1 (historial) · **Capa:** Frontend
 - **Objetivo:** Que el supervisor vea el estado de su equipo en un período.
 - **Historias y criterios:** HU-4.3 (CA-137 a CA-147, CA-195 a CA-198, CA-218 a CA-223, CA-230 a CA-233, CA-272 a CA-274, CA-301), HU-4.4 (CA-148 a CA-151, CA-275, CA-292).
@@ -103,6 +104,7 @@ Cliente web en Flutter Web (ADR-001). Cada ticket consume contratos ya definidos
   - Ningún botón permite modificar registros desde la vista.
 
 #### FE-09 — Auditoría de un registro
+- **Extensión (M4-T8, 2026-11-18):** el supervisor abre la auditoría de una actividad completa de su equipo desde su historial, con la misma pantalla y los mismos componentes; el servidor decide el acceso (404 neutro si no está autorizado). La propietaria conserva su uso.
 - **Prioridad:** P1 · **Capa:** Frontend
 - **Objetivo:** Consultar los cambios de un registro.
 - **Historias y criterios:** HU-3.6 (CA-108 a CA-114, CA-285, CA-286).
