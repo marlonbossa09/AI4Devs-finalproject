@@ -15,7 +15,7 @@
 | [m1-acceso-usuarios-equipos.md](m1-acceso-usuarios-equipos.md) | Contratos de M1 |
 | [m2-bitacoras.md](m2-bitacoras.md) | M2-01a a M2-08 |
 | [m3-seguimiento-auditoria.md](m3-seguimiento-auditoria.md) | M3-01 a M3-07 |
-| [m4-consulta-supervision.md](m4-consulta-supervision.md) | M4-01 a M4-04 |
+| [m4-consulta-supervision.md](m4-consulta-supervision.md) | M4-01 a M4-05 |
 | [m5-informes.md](m5-informes.md) | Contratos públicos de M5, independientes del proveedor |
 | [m1-m5-dependencias.md](m1-m5-dependencias.md) | Decisiones de seguridad y privacidad que siguen pendientes |
 | [ADR-002](../arquitectura/adr/ADR-002-autenticacion-y-acceso.md) | Autenticación (propuesto en lo operativo) |
@@ -47,6 +47,7 @@
 | M4-02 | Consultar el histórico por colaborador y fechas | `GET /api/v1/historico` | Según autorización | 4.2 | **Cerrado** | — |
 | M4-03 | Obtener la vista de supervisión del equipo | `GET /api/v1/equipo/supervision` | Supervisor con acceso efectivo | 4.3 | **Cerrado** | — |
 | M4-04 | Consultar el historial de una actividad del equipo | `GET /api/v1/equipo/actividades/{actividad_id}` | Supervisor con acceso efectivo | 4.4 | **Cerrado** | — |
+| M4-05 | Listar los integrantes vigentes de mi equipo | `GET /api/v1/equipo/integrantes` | Persona con acceso efectivo y pertenencia vigente | 4.1, 4.2 (apoyo de interfaz) | Aprobado por D-M4-02; redactado el 2026-11-18, pendiente de revisión | — |
 | M5-01 | Generar un informe individual | `POST /api/v1/informes/individuales` | Propietaria; supervisor autorizado | 5.1 a 5.5 | **Cerrado** (contrato público) | Catálogo de agregaciones |
 | M5-02 | Generar un informe consolidado | `POST /api/v1/informes/consolidados` | Supervisor con acceso efectivo | 5.3 a 5.5 | **Cerrado** (contrato público) | Catálogo de agregaciones |
 | M1-01a | Iniciar sesión | `POST /api/v1/sesion` | Pública | 1.1, 1.7 | Preliminar | Parámetros de acceso |

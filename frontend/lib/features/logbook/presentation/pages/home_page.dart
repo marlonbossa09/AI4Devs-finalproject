@@ -19,6 +19,7 @@ import 'audit_page.dart';
 import 'correction_page.dart';
 import 'reactivation_page.dart';
 import 'unplanned_page.dart';
+import '../../../team/presentation/pages/team_page.dart';
 
 /// Signed-in area: the app frame with the page chosen in the sidebar.
 class HomePage extends ConsumerWidget {
@@ -38,6 +39,7 @@ class HomePage extends ConsumerWidget {
     AppPage.reactivation: 'Reactivar actividad',
     AppPage.correction: 'Corregir avance',
     AppPage.audit: 'Historial de auditoría',
+    AppPage.team: 'Mi equipo',
   };
 
   @override
@@ -70,6 +72,12 @@ class HomePage extends ConsumerWidget {
             icon: Icons.event_note_outlined,
             itemKey: Key('nav-planning'),
           ),
+          NavItem(
+            id: AppPage.team,
+            label: 'Mi equipo',
+            icon: Icons.groups_outlined,
+            itemKey: Key('nav-team'),
+          ),
         ],
         // The detail belongs to the activities area: that item stays highlighted while it is open
         selected: page == AppPage.activityDetail ? AppPage.activities : page,
@@ -96,6 +104,7 @@ class HomePage extends ConsumerWidget {
           AppPage.reactivation => const ReactivationPage(),
           AppPage.correction => const CorrectionPage(),
           AppPage.audit => const AuditPage(),
+          AppPage.team => const TeamPage(),
         },
       ),
     );

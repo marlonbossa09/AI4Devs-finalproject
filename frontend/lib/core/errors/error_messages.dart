@@ -78,7 +78,24 @@ String errorMessage(ApiError error) {
       return 'Esta solicitud ya se envió con otros datos. Vuelve a intentarlo.';
     case 'OPERACION_EN_CURSO':
       return 'La operación sigue en curso. Espera un momento antes de reintentar.';
+    case 'OPERACION_NO_PERMITIDA':
+      return 'Esta operación no está permitida para tu rol.';
     case 'SOLICITUD_INVALIDA':
+      // The range of a history query has its own fixed messages; any other invalid request keeps the generic one.
+      final reason = error.details.isNotEmpty ? error.details.first['motivo'] : null;
+      final maxDays = error.details.isNotEmpty ? error.details.first['maximo_dias'] : null;
+      switch (reason) {
+        case 'rango_excede_el_maximo':
+          return maxDays != null
+              ? 'El rango puede abarcar como máximo $maxDays días.'
+              : 'El rango de fechas supera el máximo permitido.';
+        case 'posterior_a_hasta':
+          return 'La fecha inicial no puede ser posterior a la final.';
+        case 'obligatorio':
+          return 'Indica las fechas desde y hasta.';
+        default:
+          return 'La solicitud no es válida.';
+      }
     case 'CLAVE_IDEMPOTENCIA_OBLIGATORIA':
       return 'La solicitud no es válida.';
     case ApiError.network:

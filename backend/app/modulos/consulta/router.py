@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.compartido.dependencias import Operador, operador
 from app.db import get_db
-from app.modulos.consulta import historial, servicio, supervision
+from app.modulos.consulta import historial, integrantes, servicio, supervision
 
 router = APIRouter(tags=["M4 Consulta y supervisión"])
 
@@ -32,3 +32,8 @@ def consultar_supervision(request: Request, op: Operador = Depends(operador), db
 @router.get("/equipo/actividades/{actividad_id}", summary="M4-04 Consultar el historial de una actividad de mi equipo")
 def consultar_historial_de_actividad(actividad_id: str, op: Operador = Depends(operador), db: Session = Depends(get_db)):
     return JSONResponse(historial.consultar_historial_de_actividad(db, op, actividad_id), headers=SIN_CACHE)
+
+
+@router.get("/equipo/integrantes", summary="M4-05 Listar los integrantes vigentes de mi equipo")
+def listar_integrantes(request: Request, op: Operador = Depends(operador), db: Session = Depends(get_db)):
+    return JSONResponse(integrantes.consultar_integrantes(db, op, list(request.query_params.multi_items())), headers=SIN_CACHE)

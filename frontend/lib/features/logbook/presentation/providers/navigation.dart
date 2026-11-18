@@ -21,6 +21,7 @@ enum AppPage {
   reactivation,
   correction,
   audit,
+  team,
 }
 
 /// Page being shown. It goes back to the dashboard with every new session.

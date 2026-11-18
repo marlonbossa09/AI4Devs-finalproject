@@ -149,3 +149,18 @@ def planificaciones_autorizadas_de_la_actividad(db: Session, consultante: Consul
            "from planificacion pl join bitacora bp on bp.id = pl.bitacora_id join actividad a on a.id = pl.actividad_id "
            f"where pl.actividad_id = :actividad and {autorizado}")
     return db.execute(text(sql), {"actividad": actividad, **parametros}).all()
+
+
+# =============================== M4-05: integrantes vigentes del equipo ===============================
+
+def integrantes_vigentes(db: Session, consultante: Consultante, hoy: date, cursor: tuple[str, UUID] | None, cantidad: int):
+    """Los integrantes con pertenencia VIGENTE hoy en el equipo de quien consulta (``pertenencia_del_equipo``: la misma expresión de pertenencia de la política de M1, con ``:hoy``),
+    ordenados por nombre e identificador y tras ``cursor`` (la clave del último entregado). Solo salen ``persona_id``, ``nombre`` y ``rol``: no se lee ningún otro dato de la persona."""
+    vigente, parametros = pertenencia_del_equipo(consultante, "pv", ":hoy", prefijo="ei")
+    sql = "select p.id as persona_id, p.nombre, pv.rol from pertenencia pv join persona p on p.id = pv.persona_id where " + vigente
+    parametros.update({"hoy": hoy, "n": cantidad})
+    if cursor is not None:
+        sql += " and (p.nombre, p.id) > (:c_nombre, :c_id)"
+        parametros.update({"c_nombre": cursor[0], "c_id": cursor[1]})
+    sql += " order by p.nombre, p.id limit :n"
+    return db.execute(text(sql), parametros).all()

@@ -79,10 +79,11 @@ Cliente web en Flutter Web (ADR-001). Cada ticket consume contratos ya definidos
   - Una actividad marcada muestra que hay que revertir la marca antes de corregir.
 
 #### FE-07 — Consulta de equipo e histórico
+- **Estado:** **implementado el 2026-11-18 (M4-T7)**, pendiente de revisión: página «Mi equipo» en `lib/features/team/` con la bitácora de un compañero y el histórico, apoyada en el contrato M4-05 para elegir a un compañero. Limitación aprobada: el selector solo ofrece a los integrantes vigentes.
 - **Prioridad:** P1 · **Capa:** Frontend
 - **Objetivo:** Leer lo que hacen los compañeros y recuperar el histórico.
 - **Historias y criterios:** HU-4.1 (CA-130 a CA-133, CA-193), HU-4.2 (CA-134 a CA-136, CA-299, CA-300).
-- **Contratos y documentos:** M4-01, M4-02.
+- **Contratos y documentos:** M4-01, M4-02 y M4-05 (listado de integrantes vigentes, D-M4-02).
 - **Descripción técnica:** Vista en solo lectura de la bitácora de un compañero; consulta del histórico con rango obligatorio, persona opcional y paginación; sin búsqueda por texto.
 - **Dependencias:** FE-01, BE-12.
 - **Terminado cuando:**
