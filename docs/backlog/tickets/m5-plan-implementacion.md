@@ -3,7 +3,7 @@
 | Campo | Contenido |
 |---|---|
 | **Estado** | `[PROPUESTO]` salvo lo indicado. Análisis SDD (M5-T0). **Nada de lo que propone este documento es requisito ni está aprobado**: las decisiones para aprobar están en la sección 9; los tickets, los nombres, los parámetros y las cifras llevan la marca `[PROPUESTO]`, `[ABIERTO]` o `[SUPUESTO]` hasta que la persona responsable las apruebe |
-| **Versión** | 0.2 |
+| **Versión** | 0.3 |
 | **Fecha** | 2026-11-18 |
 | **Base** | HEAD `2c45ba5` (cierre técnico de M4 consolidado en dos commits locales). M1 a M4 cerrados en su alcance; M4 «cerrado con reservas». **Estado a 2026-11-18:** análisis M5-T0 aprobado por la persona responsable con las resoluciones de la sección 12; **M5-T1 implementado y probado localmente; cierre en un único commit local** (sección 14); D-M5-04 y D-M5-06 pendientes de detalle (sección 13) |
 | **Fuentes leídas** | `docs/producto/alcance-mvp.md` y `prd.md` (RN-03, RN-06, RN-26, RN-29 a RN-31, RN-36, RN-53 a RN-58, RN-60, RN-82 a RN-90, RN-101; RF-29, RF-30, RF-32, RF-33, RF-46 a RF-51, RF-74 a RF-76, RF-78, RF-83, RF-87, RF-93, RF-94, RF-96, RF-98, RF-100, RF-111; RNF-04, RNF-06, RNF-08, RNF-12, RNF-13; PA-09, PA-13, PP-11, PP-33); las cinco historias de `docs/backlog/M5-…/` (HU-5.1 a HU-5.5); `docs/api/m5-informes.md` (0.1), `m1-m5-dependencias.md`, `convenciones.md` (secciones 3, 4 y 9); `docs/arquitectura/adr/ADR-001`, `ADR-002` y `ADR-003` (0.3, con la decisión del 2026-11-18); `docs/arquitectura/arquitectura-general.md` (secuencia 6.4, DT-03, DT-06, R-03, R-05, R-07); `docs/modelo-datos/modelo-datos.md` (P7, RA-09, DM-08); `docs/backlog/tickets/{backend,frontend,base-de-datos,indice}.md` (BE-15, BE-16, FE-10); `docs/backlog/tickets/m4-plan-implementacion.md`; las matrices de trazabilidad de M1 a M4; `CLAUDE.md`; y el código real de M4 y de la política de visibilidad: `app/compartido/{visibilidad,pertenencias,politica_acceso,paginacion}.py`, `app/modulos/consulta/{supervision,servicio,repositorio,proyecciones}.py`, `app/modulos/bitacoras/{esquemas,secuencia}.py`, `app/config.py`, `pyproject.toml` y la estructura de `frontend/lib/features` |
@@ -327,6 +327,7 @@ M5-T8 cierre técnico de M5
 
 ### M5-T2 — Núcleo determinista del informe consolidado (servicio interno)
 
+- **Estado:** **implementado, probado y aprobado técnicamente el 2026-11-18; consolidado en un commit local.** Detalle, población y decisiones en las secciones 15 y 16.
 - **Objetivo:** seleccionar los hechos autorizados de un equipo y un período, agruparlos por persona en orden alfabético y calcular las agregaciones del equipo.
 - **Contratos:** M5-02; D-M5-03 aprobada.
 - **Criterios (parte determinista):** CA-162, CA-163 (orden alfabético, sin ranking), CA-164, CA-167, CA-172, CA-173, CA-199 a CA-202, CA-228, CA-229, CA-235, CA-277, CA-19 y CA-20 (parte de informes).
@@ -482,7 +483,7 @@ Modelo y región (se deciden con M5-T7), marco legal (B7), valores definitivos d
 
 - Este documento nació como el entregable de M5-T0 y se amplía con las secciones 12 a 14 (resoluciones de la persona responsable, extracción de D-M5-04 y D-M5-06 y registro de M5-T1).
 - Del resto de la documentación solo se añadió el borrador del contrato M5-01 0.2 (`docs/api/m5-01-borrador-0.2.md`); no se modificó ningún contrato vigente, ADR, criterio ni matriz.
-- M5-T1 se consolida en un único commit local (sin push). Los cambios de M5-T2 quedan sin confirmar.
+- M5-T1 está consolidado en un único commit local (`1ad5463`, sin push). **M5-T2 está aprobado técnicamente y se consolida en un commit local** (secciones 15 y 16).
 - M5-T3 a M5-T8 no se inician sin aprobación.
 
 ## 12. Resoluciones de la persona responsable tras M5-T0 (2026-11-18)
@@ -524,7 +525,7 @@ Aprobación **parcial** de M5-T1 y definiciones para cerrarlo. Estas definicione
 
 ### 13.1 D-M5-04 — catálogo de agregaciones
 
-Fuente: contrato 0.1 (`m5-informes.md`, «Catálogo propuesto de agregaciones»), ADR-003 (sección 9) y este plan (D-M5-04). El catálogo formal **sigue sin aprobar**, pero **las seis definiciones se decidieron el 2026-11-18 (sección 12.1) para M5-T1** y están implementadas en `app/modulos/informes/agregaciones.py`, sin ninguna ruta.
+Fuente: contrato 0.1 (`m5-informes.md`, «Catálogo propuesto de agregaciones»), ADR-003 (sección 9) y este plan (D-M5-04). El catálogo de seis métricas fue **confirmado el 2026-11-18 (D-M5-04, sección 16)**; sus definiciones se decidieron para M5-T1 (sección 12.1) y están implementadas en `app/modulos/informes/agregaciones.py`, sin ninguna ruta.
 
 Reglas que ya están confirmadas y acotan cualquier agregación: son recuentos y no porcentajes (RN-57), se calculan de forma determinista sobre registros autorizados (RF-51, RN-29), se distinguen de los hechos (RF-46, RN-26), no cuentan actividades marcadas por error (CA-167), no contienen valoraciones ni rankings (RF-47) y con los mismos registros dan siempre el mismo valor (CA-164).
 
@@ -645,3 +646,113 @@ Ningún criterio se declara cumplido ni se modifica. M5-T1 solo aporta evidencia
 | D-M5-04 | Aprobación formal del catálogo | Las definiciones se aplican por decisión del 2026-11-18 |
 
 No quedó ninguna decisión indispensable sin resolver para M5-T1. **Riesgo conocido que no cambia el diseño:** el informe de un período muy largo no tiene aún un límite de amplitud (D-M5-06). El servicio interno no se expone hasta que M5-T3 y M5-T4 lo apliquen.
+
+## 15. M5-T2 — registro de la implementación
+
+### 15.1 Estado
+
+**Implementado, probado y aprobado técnicamente. Consolidado en un commit local.** Servicio **interno**: no hay ruta, no se registra en `main.py`, no llama a ningún generador, no genera narrativa, no usa AWS, no persiste nada y no envía datos fuera del proceso. No se tocó Flutter. M5-T3 a M5-T8 no se iniciaron. No se aplican límites numéricos (D-M5-06 pendiente).
+
+### 15.2 Archivos
+
+| Archivo | Cambio |
+|---|---|
+| `backend/app/modulos/informes/consolidado.py` | Nuevo: `preparar_informe_consolidado`, `ConsolidadoBase` y `PersonaDelConsolidado` |
+| `backend/app/modulos/informes/estructura.py` | Nuevo: la estructura de campos cerrados (`Persona`, `ActividadDelInforme`, `Hecho`, `Bloqueo`), el armado de hechos y las comprobaciones de «puede operar» y de período, **extraídos de `individual.py`** para que los dos informes compartan una sola definición |
+| `backend/app/modulos/informes/individual.py` | Usa la estructura común (reexporta los mismos nombres); sin cambio de comportamiento |
+| `backend/app/modulos/informes/repositorio.py` | Se añade `avances_autorizados_del_equipo` |
+| `backend/app/modulos/informes/agregaciones.py` | Sin cambios: las agregaciones del equipo son las mismas definiciones sobre el conjunto de hechos |
+| `backend/tests/test_informe_consolidado.py` | 13 pruebas nuevas (reutilizan y amplían el escenario de M5-T1); dos son del criterio de orden alfabético (C-3) |
+| `docs/api/m5-02-borrador-0.2.md` | Borrador del contrato M5-02 0.2 (nuevo; C-1) |
+| `docs/api/m5-01-borrador-0.2.md` | Se registran P-10 y D-M5-04 confirmados |
+| `backend/tests/test_visibilidad_historica.py` | Se actualiza a propósito la lista cerrada de módulos que usan la política: `consolidado.py` y `estructura.py` |
+| `docs/backlog/tickets/m5-plan-implementacion.md` | Esta sección |
+
+### 15.3 Población y métricas
+
+**Población.** Los avances **autorizados** con fecha laboral en el período de las personas que **eran del equipo en la fecha laboral de cada avance** (`pertenencia_del_equipo`, la misma expresión de la política de M1; RF-83). Solo aparecen las personas con al menos un avance autorizado. No se incluyen planificaciones sin avances, actividades marcadas por error ni actividades pendientes al corte sin avances en el período. El trabajo de la propia supervisora cuenta si estaba en el equipo esa fecha.
+
+**Estructura.** `ConsolidadoBase`: `tipo`, período, `sin_datos`, `personas` (por orden alfabético de nombre, desempate por identificador) y `agregaciones_del_equipo`. Cada `PersonaDelConsolidado`: persona (identificador y nombre), actividades, hechos, bloqueos y agregaciones. Referencias opacas de hechos y actividades únicas en todo el informe. No lleva nombre ni identificador del equipo, ni narrativa.
+
+**Métricas.** Las seis de 13.1, por persona con las **mismas definiciones que el individual** (el mismo código) y, para el equipo, aplicadas al conjunto de todos los hechos autorizados: `avances`, las actividades y los grupos del estado al corte son la suma de los de las personas; `jornadas_con_registros` son las fechas laborales distintas del conjunto (no la suma de las de cada persona). Sin porcentajes, rankings ni puntuaciones.
+
+### 15.4 Reglas de autorización
+
+Orden (convenciones 3.2): 1) puede operar (`ACCESO_DESACTIVADO` para un supervisor desactivado, `SIN_PERTENENCIA_VIGENTE`); 2) formato (`desde` no posterior a `hasta`); 3) rol: solo el supervisor vigente con acceso efectivo; un colaborador, también quien fue supervisor y ya no lo es, recibe `OPERACION_NO_PERMITIDA`; 4) el equipo: el que supervisa; un `equipo_id` ajeno o inexistente da el mismo `RECURSO_NO_DISPONIBLE`; 5) solo entonces se leen datos. El filtro de pertenencia se aplica **en la propia consulta SQL**, antes de agrupar o calcular nada. La política es la de M1: no se creó ninguna regla nueva y no se tocó M1 a M4.
+
+### 15.5 Diferencias frente a M4-03
+
+| Aspecto | M4-03 (vista de supervisión) | Consolidado M5-T2 |
+|---|---|---|
+| Unidad | Actividades del equipo | Avances autorizados, agrupados por persona |
+| Población | Con planificación o avances en el período **y** pendientes al corte (RN-47) | Solo con avances autorizados en el período; **no** importa las pendientes |
+| Actividad heredada sin registros del equipo | Referencia mínima | No aparece (no tiene avances del equipo) |
+| Actividad heredada con registros del equipo | Forma neutral | Forma neutral (misma regla, RN-101) |
+| Motivos de inclusión, paginación, cursor | Sí | No |
+| Estado al corte | Último avance hasta el corte, si es del equipo | La misma regla (`estado_no_disponible` si no) |
+| Estado actual | Solo si la propietaria es del equipo hoy | No se informa |
+| Política | `condicion_equipo` y compañía | Los mismos predicados |
+
+### 15.6 Pruebas y evidencia
+
+- Base **desechable** `smartwork_test` del clúster del puerto 55432, con el rol de la aplicación (solo `SELECT`). No se tocó `smartwork_app` ni el puerto 5432.
+- `tests/test_informe_consolidado.py`: **13 superadas**. Con `test_informe_individual.py` y `test_visibilidad_historica.py` (componentes compartidos afectados): **71 superadas** (la extracción a `estructura.py` conserva el comportamiento del informe individual: sus 16 pruebas pasan sin cambios). No se ejecutó la suite completa ni mutaciones.
+
+| Prueba | Qué comprueba |
+|---|---|
+| `el_supervisor_obtiene_el_consolidado…orden_alfabetico_y_no_por_cantidad` | Personas con avances, orden por nombre aunque otra persona tenga más avances, referencias únicas, suma de la sección de equipo, determinismo y `equipo_id` propio explícito |
+| `solo_el_supervisor_vigente_con_acceso_efectivo…` | Colaborador, ex supervisora, supervisor desactivado y sin pertenencia rechazados; el formato se evalúa antes que el rol |
+| `un_equipo_ajeno_o_inexistente_es_el_mismo_404` | Mismo código, estado, mensaje y detalles |
+| `una_persona_trasladada_solo_aporta…` | Cada equipo ve solo las fechas suyas; actividad neutral; nada protegido ni nombres de equipo en el texto |
+| `el_estado_al_corte_que_determina_un_avance_de_otro_equipo…` | `estado_no_disponible` sin sustituir por un avance anterior; con otro corte se muestra; los cinco grupos suman |
+| `las_marcadas_por_error_y_las_planificaciones_conservadas…` | Exclusión de ambas |
+| `las_agregaciones_por_persona_coinciden_con_las_del_individual…` | Coherencia con el informe individual para los tres equipos del escenario |
+| `la_supervisora_que_estuvo_en_otro_equipo…` | La diferencia declarada de población: su informe propio incluye lo de ambos equipos y el consolidado solo lo del equipo |
+| `sin_avances_autorizados…` | `sin_datos` sin personas ni cifras |
+| `el_criterio_de_comparacion_ignora_mayusculas_y_acentos…` y `el_orden_alfabetico_del_consolidado_es_estable…` | C-3: mayúsculas, acentos y «ñ»; empate por identificador interno; nombres mostrados sin alterar; orden estable entre ejecuciones |
+| `la_estructura_tiene_campos_cerrados_sin_rankings…` | Claves cerradas, ninguna de ranking, puntuación o porcentaje; de la persona solo identificador y nombre; ni acceso, ni hash, ni equipos |
+| `el_consolidado_es_de_solo_lectura` | Conteo de filas sin cambios |
+
+### 15.7 Evidencia por criterio (parcial)
+
+Ningún criterio se declara cumplido ni se modifica: M5-T2 solo aporta evidencia del **núcleo determinista**; la ruta, la narrativa y el aviso se completan en M5-T3 y M5-T4.
+
+| Criterios | Evidencia del núcleo | Pendiente |
+|---|---|---|
+| CA-168 | El supervisor obtiene el consolidado de su equipo | Obtención completa (narrativa y ruta): M5-T3 y M5-T4 |
+| CA-169, CA-170 | 403 para quien no es supervisor vigente; mismo 404 para un equipo ajeno o inexistente | Ruta: M5-T4 |
+| CA-228, CA-229 | Cada equipo solo ve los registros de las fechas en que la persona le pertenecía | Informe completo: M5-T4 |
+| CA-235, CA-277 | Estado al corte `estado_no_disponible` y título original ausente | Informe completo: M5-T4 |
+| CA-162, CA-164, CA-167, CA-172, CA-173, CA-199, CA-201, CA-202 | Cifras deterministas coherentes con el individual; exclusión de marcadas por error; `sin_datos` | Las del individual en cuanto a P-10 y a que el generador no se invoque (M5-T3) |
+| CA-19, CA-20 (parte de informes) | El consolidado de un equipo no incluye registros anteriores al traslado de la persona al equipo nuevo | Verificación por la vía HTTP: M5-T4 y M5-T8 |
+| CA-163 | Sin rankings ni puntuaciones en la estructura y orden alfabético | La parte de la narrativa: M5-T3 |
+| CA-171 | — | Fecha de generación y período: M5-T4 |
+
+### 15.8 Bloqueos y preguntas abiertas del consolidado
+
+El contrato M5-02 (0.1) describe la respuesta en prosa («agregaciones del equipo y, por persona en orden alfabético, sus hechos y bloqueos») y no define el esquema. **No hay un bloqueo que impida el núcleo**; las lecturas mínimas que se aplicaron quedan señaladas como provisionales:
+
+| Id | Pregunta | Lo implementado (provisional) |
+|---|---|---|
+| C-1 | Esquema campo por campo de M5-02 y forma pública de la narrativa por persona (D-M5-03, aprobada en principio) | Estructura interna por persona con las mismas piezas que el individual; la narrativa es de M5-T3. Falta un borrador del contrato M5-02 0.2, que no se redactó |
+| C-2 | ¿Se listan integrantes sin avances autorizados? | No: solo personas con registros |
+| C-3 | Criterio exacto del «orden alfabético de nombre» | **Confirmada.** `clave_alfabetica`: sin distinguir mayúsculas ni acentos, «ñ» entre la «n» y la «o» (solo biblioteca estándar); empate por identificador interno |
+| C-4 | `jornadas_con_registros` en la sección de equipo | Fechas laborales distintas del conjunto, por aplicar la misma definición al conjunto |
+| C-5 | ¿Cuenta el trabajo de la propia supervisora? | Sí, en las fechas en que estaba en el equipo (como M4-03, CA-142) |
+| C-6 | Orden de evaluación entre el rol y un `equipo_id` ajeno | El rol primero (como M4-03): un colaborador recibe 403 con cualquier equipo |
+| P-3, P-5, P-6, P-8, P-10 | Siguen abiertas: bloqueos por avance, campos públicos, texto de `base`, valores de límites y 404 sin visibilidad (P-10 no aplica al consolidado, que no admite personas ajenas) | Como en el individual |
+| D-M5-06 | Sin límites numéricos: el consolidado crece con el tamaño del equipo y del período | No se expone hasta que M5-T3 y M5-T4 lo acoten |
+
+## 16. Decisiones del 2026-11-18 sobre el cierre de M5-T2 (tercera comunicación)
+
+| Id | Estado | Resolución |
+|---|---|---|
+| P-10 | **Confirmada** | Persona autorizada y visible durante el período, sin avances: `sin_datos`. Sin visibilidad autorizada en ningún día del período: 404 uniforme. Inexistente o de otra organización sin autorización: 404 uniforme. Propietaria autorizada sin avances: `sin_datos`. No se amplían ni alteran las políticas de M1 a M4 (el comportamiento ya implementado coincide; las pruebas de M5-T1 lo cubren) |
+| C-1 | **Aprobada** | Borrador M5-02 0.2 con esquema completo (`docs/api/m5-02-borrador-0.2.md`). El contrato 0.1 se mantiene sin sustituir hasta la revisión contractual |
+| C-2 | **Confirmada** | El consolidado incluye solo personas con al menos un avance autorizado en el período |
+| C-3 | **Confirmada** | Orden alfabético estable por nombre con desempate por identificador interno; criterio de comparación documentado y probado (sección 15.8) |
+| C-4 | **Confirmada** | Las jornadas del equipo son las fechas laborales distintas del conjunto autorizado |
+| C-5 | **Confirmada** | El trabajo de la propia supervisora cuenta cuando su pertenencia al equipo en la fecha del avance lo autoriza |
+| C-6 | **Confirmada** | Primero rol y acceso efectivo, después el equipo solicitado, con 403/404 según el contrato |
+| D-M5-04 | **Confirmado** | El catálogo de seis métricas y sus reglas de cálculo aprobadas en M5-T1 y M5-T2. **No** se declara cerrado todo el contrato de respuesta: P-3, P-5, P-6 y P-8 siguen abiertas |
+| D-M5-06 | **Abierto** | No se aprueban ni se codifican valores numéricos por suposición |

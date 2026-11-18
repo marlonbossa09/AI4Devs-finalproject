@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Estado** | **Borrador `[PROPUESTO]`.** Incorpora las decisiones de la persona responsable del 2026-11-18 sobre M5-T1 (sección 6). No sustituye al contrato 0.1 de `m5-informes.md`, que no se ha modificado. Cada campo y cada regla indica si procede de una **decisión confirmada**, de una **decisión aprobada de M5-T0** o si sigue **`[PROPUESTO]`** o **`[ABIERTO]`**. Nada marcado así es requisito |
+| **Estado** | **Borrador `[PROPUESTO]`.** Incorpora las decisiones de la persona responsable del 2026-11-18 sobre M5-T1 y M5-T2 (sección 6). No sustituye al contrato 0.1 de `m5-informes.md`, que no se ha modificado. Cada campo y cada regla indica si procede de una **decisión confirmada**, de una **decisión aprobada de M5-T0** o si sigue **`[PROPUESTO]`** o **`[ABIERTO]`**. Nada marcado así es requisito |
 | **Versión** | 0.2 (borrador) |
 | **Fecha** | 2026-11-18 |
 | **Base** | `m5-informes.md` 0.1; `docs/backlog/tickets/m5-plan-implementacion.md` (M5-T0 y M5-T1); PRD; historias HU-5.1 a HU-5.5; ADR-003; `convenciones.md`; política de visibilidad de M1 y M4 |
@@ -61,7 +61,7 @@ Los campos se agrupan por cuánto está decidido. **La respuesta pública no inc
 
 Quedan **fuera** de `hechos`, `actividades` y `agregaciones`: las actividades marcadas por error (RN-60, RA-08, CA-167); las planificaciones, conservadas o no (RA-11); el resumen libre de la bitácora (ADR-003, B6); correos, identificadores de acceso, credenciales, nombres de equipos y la auditoría.
 
-### 4.2 Agregaciones (definiciones decididas el 2026-11-18 para M5-T1; el catálogo formal, D-M5-04, sigue pendiente de aprobación)
+### 4.2 Agregaciones (D-M5-04 **confirmado** el 2026-11-18: catálogo de seis métricas y sus reglas)
 
 Todas son recuentos deterministas, sin porcentajes (RN-57), calculados solo sobre los hechos autorizados, sin rankings ni puntuaciones.
 
@@ -110,6 +110,8 @@ Ningún mensaje ni detalle incluye títulos, descripciones, motivos, nombres de 
 | P-4 | `actividades_con_bloqueo` = actividades con algún avance autorizado en estado Bloqueada durante el período |
 | P-7 | `actividades_por_origen` incluye `origen_no_disponible`; no se infiere un origen protegido |
 | P-9 | Corregida: visibilidad efectiva sobre la persona **y el período** (sección 3); 404 uniforme si no puede demostrarse |
+| **P-10** | **Confirmada (2026-11-18, tercera comunicación):** persona autorizada y visible durante el período, sin avances: respuesta vacía autorizada (`sin_datos`); persona sin visibilidad autorizada en ningún día del período: 404 uniforme; persona inexistente o de otra organización sin autorización: 404 uniforme; propietaria autorizada sin avances: `sin_datos`. No se amplían ni alteran las políticas históricas de M1 a M4 |
+| D-M5-04 | **Confirmado** el catálogo de seis métricas y sus reglas de cálculo (T1 y T2). **No** se declara cerrado todo el contrato de respuesta: P-3, P-5, P-6 y P-8 siguen abiertas |
 
 ### 6.2 Siguen abiertas: P-3, P-5, P-6 y P-8, con sus definiciones exactas en las fuentes
 
@@ -122,11 +124,11 @@ No se inventa ninguna respuesta. Lo que M5-T1 implementó para P-3 y P-5 es **pr
 | **P-6** Texto de `base` | Contrato 0.1: `base` = «Declaración fija de que el informe se basa únicamente en los registros disponibles y autorizados del período y no representa información que nunca fue registrada (RF-87)». RF-87 y CA-200 exigen esa indicación en todo informe | El **texto exacto** de la declaración | Nada: es de M5-T4 |
 | **P-8** Valores de los límites | `convenciones.md` sección 9: la amplitud máxima de un rango de fechas (M4-02, M4-03, M5-01, M5-02) incumplida da `SOLICITUD_INVALIDA` y, en M5, `INFORME_EXCEDE_LIMITES` (PA-13); los límites de registros, tokens, tiempo, reintentos y presupuesto de un informe dan `INFORME_EXCEDE_LIMITES` o `INFORME_NO_GENERADO` (ADR-003). «Ningún contrato fija un valor numérico de estos parámetros». El 92 de M4 (D-M4-03) es solo de M4. ADR-003, sección 9: «como máximo un reintento» (propuesto) | Los valores (D-M5-06) | Ningún límite: no se implementó ningún valor numérico |
 
-### 6.3 Preguntas nuevas
+### 6.3 Pregunta que se planteó y quedó resuelta
 
 | Id | Pregunta | Tratamiento |
 |---|---|---|
-| **P-10** | Con la corrección de P-9, quien pide el informe de una persona **sin visibilidad en ningún día del período** recibe el 404 uniforme. El criterio CA-202 («tiene registros, pero ninguno autorizado para quien genera el informe → no hay datos disponibles») se cumple cuando hay visibilidad en el período pero ningún registro autorizado (por ejemplo, la persona estuvo en el equipo al inicio del período, sin registros, y los del resto son de otro equipo). **No se cumple literalmente en el caso sin ninguna visibilidad**, que da 404. Se aplicó la instrucción de no revelar relaciones históricas | Confirmar que esta lectura es la deseada |
+| **P-10** | Con la corrección de P-9, quien pide el informe de una persona **sin visibilidad en ningún día del período** recibe el 404 uniforme. El criterio CA-202 («tiene registros, pero ninguno autorizado para quien genera el informe → no hay datos disponibles») se cumple cuando hay visibilidad en el período pero ningún registro autorizado (por ejemplo, la persona estuvo en el equipo al inicio del período, sin registros, y los del resto son de otro equipo). **No se cumple literalmente en el caso sin ninguna visibilidad**, que da 404. Se aplicó la instrucción de no revelar relaciones históricas | **Confirmada** (sección 6.1): es la lectura deseada |
 
 ## 7. Criterios de aceptación vinculados
 

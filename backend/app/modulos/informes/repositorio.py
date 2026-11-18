@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.compartido.visibilidad import Consultante, condicion_lectura
+from app.compartido.visibilidad import Consultante, condicion_equipo, condicion_lectura, pertenencia_del_equipo
 
 
 def nombre_de_la_persona(db: Session, persona: UUID) -> str | None:
@@ -55,3 +55,31 @@ def avances_autorizados_del_periodo(db: Session, consultante: Consultante, perso
         "  case when origen_autorizado then titulo end as titulo, case when origen_autorizado then origen end as origen, origen_autorizado"
         " from h order by fecha_laboral, registrado_en, avance_id")
     return db.execute(text(sql), {"persona": persona, "desde": desde, "hasta": hasta, **p_avance, **p_origen}).all()
+
+
+def avances_autorizados_del_equipo(db: Session, consultante: Consultante, desde: date, hasta: date):
+    """Los avances con fecha laboral en [``desde``, ``hasta``] de las personas que ERAN DEL EQUIPO de quien consulta EN ESA FECHA (``pertenencia_del_equipo``: la misma expresión de pertenencia de la
+    política de M1; RA-01, RN-36), de todas las personas a la vez. A diferencia de la lectura de una persona (``condicion_lectura``) NO concede nada por ser la propia consultante: lo que la
+    supervisora hizo en un período en que estaba en otro equipo no es del equipo (como en M4-03). No salen las actividades marcadas por error (RA-08, CA-167) ni ninguna planificación.
+
+    ``titulo`` y ``origen`` salen de la base solo si la jornada de origen de la actividad es del equipo (``condicion_equipo``); si no (actividad heredada de otro equipo), salen nulos y
+    ``origen_autorizado`` es falso (RN-101). De cada persona sale solo su nombre. La consulta PARTE de los integrantes del equipo y de sus bitácoras en las fechas en que lo eran, así que su
+    coste crece con el tamaño del equipo y del período, no con el de la organización. Orden: persona, secuencia de avances (fecha laboral, momento, identificador)."""
+    c_equipo, p_equipo = pertenencia_del_equipo(consultante, "pv", "bx.fecha_laboral", prefijo="eq")
+    c_origen, p_origen = condicion_equipo(consultante, "a.propietaria_id", "ob.fecha_laboral", prefijo="eo")
+    sql = (
+        "with h as ("
+        " select av.id as avance_id, bx.persona_id, p.nombre, bx.fecha_laboral, av.registrado_en, av.estado, av.descripcion, av.motivo_bloqueo,"
+        f"  a.id as actividad_id, a.titulo, a.origen, ({c_origen}) as origen_autorizado"
+        " from pertenencia pv"
+        " join bitacora bx on bx.persona_id = pv.persona_id"
+        " join avance av on av.bitacora_id = bx.id"
+        " join actividad a on a.id = av.actividad_id and a.propietaria_id = bx.persona_id"
+        " join bitacora ob on ob.id = a.bitacora_origen_id"
+        " join persona p on p.id = bx.persona_id"
+        " where bx.fecha_laboral between :desde and :hasta and not a.registrada_por_error"
+        f"  and {c_equipo})"
+        " select avance_id, persona_id, nombre, fecha_laboral, registrado_en, estado, descripcion, motivo_bloqueo, actividad_id,"
+        "  case when origen_autorizado then titulo end as titulo, case when origen_autorizado then origen end as origen, origen_autorizado"
+        " from h order by persona_id, fecha_laboral, registrado_en, avance_id")
+    return db.execute(text(sql), {"desde": desde, "hasta": hasta, **p_equipo, **p_origen}).all()

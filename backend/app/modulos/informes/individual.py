@@ -41,60 +41,13 @@ from app.compartido.visibilidad import Consultante, condicion_lectura, persona_e
 from app.errores import AppError
 from app.modulos.informes import agregaciones as calculo, repositorio
 from app.modulos.informes.agregaciones import Agregaciones
+# La estructura y el armado de hechos son comunes al consolidado (M5-T2): se reexportan para que este módulo siga siendo el punto de entrada del informe individual.
+from app.modulos.informes.estructura import (  # noqa: F401
+    BLOQUEADA, CAMPOS_DE_TEXTO_LIBRE, CAMPOS_PARA_EL_GENERADOR, COMPLETA, NEUTRAL, REFERENCIA_NEUTRAL, ActividadDelInforme, Bloqueo, Hecho, Numerador, Persona,
+    construir_bloque, estados_al_corte, exigir_periodo_valido, exigir_que_puede_operar,
+)
 
 TIPO_INDIVIDUAL = "individual"
-# Texto fijo de la referencia neutral (RN-101). Una sola decisión de producto: una prueba comprueba que coincide con la de M4.
-REFERENCIA_NEUTRAL = "Actividad en continuidad"
-COMPLETA, NEUTRAL = "completa", "neutral"
-BLOQUEADA = "Bloqueada"
-
-CAMPOS_DE_TEXTO_LIBRE = {"Hecho": ("descripcion", "motivo_bloqueo"), "ActividadDelInforme": ("texto (solo si forma es completa: es el título)",)}
-CAMPOS_PARA_EL_GENERADOR = {
-    "informe": ("tipo", "periodo", "persona (como alias)", "hechos", "bloqueos", "agregaciones"),
-    "hecho": ("ref", "fecha_laboral", "actividad_ref", "estado", "descripcion", "motivo_bloqueo"),
-    "actividad": ("ref", "forma", "texto", "planificada"),
-}
-
-
-@dataclass(frozen=True)
-class Persona:
-    id: UUID
-    nombre: str
-
-
-@dataclass(frozen=True)
-class ActividadDelInforme:
-    """Una actividad referenciada por algún hecho. ``texto`` es su título si el consultante está autorizado sobre su jornada de origen (``completa``) o la referencia neutral (``neutral``).
-    ``planificada`` es el origen de la actividad (``True`` planificada, ``False`` no planificada) solo si ese origen está autorizado; si no, ``None``: el origen de una actividad iniciada
-    en otro equipo no se revela (RN-101). ``id`` es para la respuesta pública y NO debe salir hacia un generador."""
-
-    ref: str
-    id: UUID
-    forma: str
-    texto: str
-    planificada: bool | None
-
-
-@dataclass(frozen=True)
-class Hecho:
-    """Un avance autorizado del período. ``estado`` es el estado histórico de ese avance. ``motivo_bloqueo`` solo si el estado es Bloqueada."""
-
-    ref: str
-    fecha_laboral: date
-    actividad_ref: str
-    estado: str
-    descripcion: str
-    motivo_bloqueo: str | None
-
-
-@dataclass(frozen=True)
-class Bloqueo:
-    """Un avance en estado Bloqueada con su motivo (RF-74, RN-55, CA-165). Una entrada por avance bloqueado: si una actividad se bloquea en dos jornadas, aparecen dos."""
-
-    hecho_ref: str
-    actividad_ref: str
-    fecha_laboral: date
-    motivo: str
 
 
 @dataclass(frozen=True)
@@ -113,13 +66,6 @@ class InformeBase:
     agregaciones: Agregaciones | None
 
 
-def _exigir_que_puede_operar(consultante: Consultante) -> None:
-    if not consultante.acceso_activo:
-        raise AppError("ACCESO_DESACTIVADO")
-    if consultante.pertenencia is None:
-        raise AppError("SIN_PERTENENCIA_VIGENTE")
-
-
 def _exigir_permiso_sobre(db: Session, consultante: Consultante, persona: UUID, desde: date, hasta: date) -> None:
     if persona == consultante.persona_id:
         return                                                      # la propietaria (RN-53, CA-152)
@@ -131,9 +77,8 @@ def _exigir_permiso_sobre(db: Session, consultante: Consultante, persona: UUID, 
 
 def preparar_informe_individual(db: Session, consultante: Consultante, persona_id: UUID | None, desde: date, hasta: date) -> InformeBase:
     """Ver el docstring del módulo. ``persona_id`` ``None`` significa quien consulta. Solo lectura: no modifica ni guarda nada."""
-    _exigir_que_puede_operar(consultante)
-    if desde > hasta:
-        raise AppError("SOLICITUD_INVALIDA", [{"campo": "desde", "motivo": "posterior_a_hasta"}])
+    exigir_que_puede_operar(consultante)
+    exigir_periodo_valido(desde, hasta)
     objetivo = consultante.persona_id if persona_id is None else persona_id
     _exigir_permiso_sobre(db, consultante, objetivo, desde, hasta)
 
@@ -143,19 +88,9 @@ def preparar_informe_individual(db: Session, consultante: Consultante, persona_i
     if not filas:
         return InformeBase(TIPO_INDIVIDUAL, desde, hasta, persona, True, (), (), (), None)
 
-    actividades: dict[UUID, ActividadDelInforme] = {}
-    hechos: list[Hecho] = []
-    for n, f in enumerate(filas, start=1):
-        if f.actividad_id not in actividades:
-            neutral = not f.origen_autorizado
-            actividades[f.actividad_id] = ActividadDelInforme(
-                ref=f"a{len(actividades) + 1}", id=f.actividad_id, forma=NEUTRAL if neutral else COMPLETA,
-                texto=REFERENCIA_NEUTRAL if neutral else f.titulo, planificada=None if neutral else f.origen == "planificada")
-        hechos.append(Hecho(f"h{n}", f.fecha_laboral, actividades[f.actividad_id].ref, f.estado, f.descripcion, f.motivo_bloqueo))
-    bloqueos = tuple(Bloqueo(h.ref, h.actividad_ref, h.fecha_laboral, h.motivo_bloqueo) for h in hechos if h.estado == BLOQUEADA)
+    actividades, hechos, bloqueos = construir_bloque(filas, Numerador())
     # Estado al corte (el corte es ``hasta``) de las actividades CON AVANCES AUTORIZADOS del período: el del último avance hasta el corte, solo si está autorizado (RA-07, RN-88).
-    ultimos = repositorio.ultimo_avance_hasta_el_corte(db, list(actividades), hasta, condicion_lectura(consultante, "a.propietaria_id", "bx.fecha_laboral", prefijo="ec"))
-    estado_por_actividad = {u.actividad_id: (u.estado if u.autorizado else None) for u in ultimos}
-    estado_al_corte = {a.ref: estado_por_actividad.get(id_) for id_, a in actividades.items()}
+    por_id = estados_al_corte(db, list(actividades), hasta, condicion_lectura(consultante, "a.propietaria_id", "bx.fecha_laboral", prefijo="ec"))
+    estado_al_corte = {a.ref: por_id.get(id_) for id_, a in actividades.items()}
     return InformeBase(TIPO_INDIVIDUAL, desde, hasta, persona, False, tuple(actividades.values()), tuple(hechos), bloqueos,
                        calculo.calcular(tuple(hechos), tuple(actividades.values()), estado_al_corte))
