@@ -13,6 +13,8 @@ class FocusRingInk extends StatefulWidget {
     this.borderRadius = const BorderRadius.all(Radius.circular(AppRadius.control)),
     this.shape,
     this.inkKey,
+    this.ringColor = AppColors.focusRing,
+    this.hoverColor,
   });
 
   final Widget child;
@@ -24,6 +26,12 @@ class FocusRingInk extends StatefulWidget {
 
   /// Key of the inner [InkWell], so tests and automation can find it.
   final Key? inkKey;
+
+  /// Color of the ring. The default blue is for light surfaces; on the dark sidebar a light ring is used.
+  final Color ringColor;
+
+  /// Color of the ink while the pointer is over it (null = the theme's).
+  final Color? hoverColor;
 
   @override
   State<FocusRingInk> createState() => _FocusRingInkState();
@@ -40,12 +48,13 @@ class _FocusRingInkState extends State<FocusRingInk> {
       decoration: BoxDecoration(
         shape: circle ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: circle ? null : widget.borderRadius,
-        border: _focused ? Border.all(color: AppColors.focusRing, width: AppSize.focusRingWidth) : null,
+        border: _focused ? Border.all(color: widget.ringColor, width: AppSize.focusRingWidth) : null,
       ),
       child: InkWell(
         key: widget.inkKey,
         borderRadius: circle ? null : widget.borderRadius,
         customBorder: widget.shape,
+        hoverColor: widget.hoverColor,
         onTap: widget.onTap,
         onFocusChange: (focused) => setState(() => _focused = focused),
         child: widget.child,

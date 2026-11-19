@@ -10,18 +10,20 @@ part 'unsaved_changes.g.dart';
 ///
 /// The editor registers a check and the guard asks it when the user tries to leave, so there is no
 /// copy of "dirty" to keep in sync: the answer always comes from the editor itself.
+///
+/// Several editors can be registered at once (UX-T2: the daily summary of Mi bitácora and a side panel can both hold text). There is
+/// still ONE question for the user, and it is asked when ANY of them holds unsaved text. The API is the same as before.
 class UnsavedGuard {
-  bool Function()? _check;
+  final List<bool Function()> _checks = [];
 
-  void register(bool Function() check) => _check = check;
-
-  /// Only the editor that registered a check can remove it (a newer one is not removed by an older
-  /// one being disposed).
-  void unregister(bool Function() check) {
-    if (_check == check) _check = null; // the same method of the same editor
+  void register(bool Function() check) {
+    if (!_checks.contains(check)) _checks.add(check);
   }
 
-  bool get hasUnsaved => _check?.call() ?? false;
+  /// Only the editor that registered a check can remove it (the same method of the same editor).
+  void unregister(bool Function() check) => _checks.remove(check);
+
+  bool get hasUnsaved => _checks.any((check) => check());
 }
 
 @Riverpod(keepAlive: true)

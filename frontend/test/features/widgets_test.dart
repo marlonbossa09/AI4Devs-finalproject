@@ -465,14 +465,14 @@ void main() {
       expect(find.byKey(const Key('menu-toggle')), findsNothing);
       expect(find.byKey(const Key('top-date')), findsOneWidget);
       expect(top(tester, 'Actividades registradas'), top(tester, 'Completadas'));
-      expect(tester.getSize(find.byKey(const Key('nav-dashboard'))).width, closeTo(246 - 32, 1));
+      expect(tester.getSize(find.byKey(const Key('nav-dashboard'))).width, closeTo(232 - 24, 1)); // sidebar 232 px, 12 px of padding each side
     });
 
     testWidgets('tablet: narrower sidebar and two columns of indicators', (tester) async {
       await pumpApp(tester, auth: signedIn(), size: tablet);
       expect(find.byKey(const Key('nav-dashboard')), findsOneWidget);
       expect(find.byKey(const Key('menu-toggle')), findsNothing);
-      expect(tester.getSize(find.byKey(const Key('nav-dashboard'))).width, closeTo(215 - 32, 1));
+      expect(tester.getSize(find.byKey(const Key('nav-dashboard'))).width, closeTo(208 - 24, 1)); // sidebar 208 px
       expect(top(tester, 'Actividades registradas'), top(tester, 'Pendientes'));
       expect(top(tester, 'En progreso'), greaterThan(top(tester, 'Pendientes')));
       // The calendar goes below the activities (single column)
@@ -521,9 +521,10 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the notifications button is disabled and says so', (tester) async {
+    testWidgets('there is no notifications button: the product has no notifications, so none is offered', (tester) async {
       await pumpApp(tester, auth: signedIn());
-      expect(find.byTooltip('Notificaciones no disponibles'), findsOneWidget);
+      expect(find.byTooltip('Notificaciones no disponibles'), findsNothing);
+      expect(find.byIcon(Icons.notifications_none_outlined), findsNothing);
     });
   });
 }

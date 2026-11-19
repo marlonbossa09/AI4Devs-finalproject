@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../auth/presentation/providers/auth.dart';
 import '../../domain/entities/audit_entities.dart';
 import '../../domain/entities/logbook_entities.dart';
+import 'side_panel.dart';
 import 'unsaved_changes.dart';
 
 part 'navigation.g.dart';
@@ -41,7 +42,11 @@ class CurrentPage extends _$CurrentPage {
   /// waits for their decision), so no way of leaving Mi bitácora loses text silently.
   void go(AppPage page) {
     if (page == state) return;
-    ref.read(leaveRequestProvider.notifier).request(() => state = page);
+    ref.read(leaveRequestProvider.notifier).request(() {
+      // A side panel belongs to the page it was opened from: it closes with it (the user has already decided about unsaved text).
+      ref.read(sidePanelProvider.notifier).closeNow();
+      state = page;
+    });
   }
 }
 
