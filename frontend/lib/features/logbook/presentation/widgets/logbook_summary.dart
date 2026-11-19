@@ -22,7 +22,7 @@ class LogbookSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
@@ -45,9 +45,9 @@ class LogbookSummary extends StatelessWidget {
               StatusPill(label: _dateTypeLabel(logbook.dateType), kind: PillKind.progress),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Wrap(
-            spacing: 28,
+            spacing: 24,
             runSpacing: 10,
             children: [
               _DateItem(label: 'Fecha laboral', value: formatDate(logbook.date)),
@@ -73,12 +73,12 @@ class _DateItem extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textFaint)),
-        const SizedBox(height: 3),
+        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textFaint)),
+        const SizedBox(height: 2),
         Text(
           value,
           semanticsLabel: '$label: $value',
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textBody),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textBody),
         ),
       ],
     );

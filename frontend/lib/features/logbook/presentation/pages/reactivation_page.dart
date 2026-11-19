@@ -5,9 +5,9 @@ import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/utils/keys.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../../../core/widgets/status_pill.dart';
@@ -22,6 +22,7 @@ import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
 import '../widgets/activity_tile.dart';
 import '../widgets/closed_date_notice.dart';
+import '../widgets/form_parts.dart';
 import '../widgets/origin_tag.dart';
 import '../widgets/reactivation_tag.dart';
 import '../widgets/status_picker.dart';
@@ -146,6 +147,7 @@ class _ReactivationPageState extends ConsumerState<ReactivationPage> {
     );
 
     Widget form;
+    Widget? actions;
     if (activity == null) {
       form = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -155,10 +157,7 @@ class _ReactivationPageState extends ConsumerState<ReactivationPage> {
         ],
       );
     } else if (detailView != null && detailView.isLoading && detail == null) {
-      form = const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      form = const LoadingBlock();
     } else if (detailView != null && detailView.hasError && detail == null) {
       final error = detailView.error;
       form = ErrorBox(
@@ -209,7 +208,7 @@ class _ReactivationPageState extends ConsumerState<ReactivationPage> {
         hint: '¿Por qué o cómo retomas la actividad?',
         controller: _description,
         enabled: !_saving,
-        minLines: 4,
+        minLines: 3,
         maxLines: 6,
         errorText: _errors.description,
       );
@@ -221,11 +220,13 @@ class _ReactivationPageState extends ConsumerState<ReactivationPage> {
         expand: mobile,
         onPressed: eligible && !closedDate ? () => _submit(activity, completedOn) : null,
       );
+      actions = FormActions(cancel: cancelButton, submit: saveButton);
+      const gap = SizedBox(height: AppSpace.lg);
       form = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _ActivityBox(activity: activity, status: status, completedOn: completedOn),
-          const SizedBox(height: 14),
+          gap,
           if (!eligible) ...[
             const Notice(
               key: Key('reactivation-not-completed'),
@@ -233,47 +234,21 @@ class _ReactivationPageState extends ConsumerState<ReactivationPage> {
               text: 'Solo se reactiva una actividad Completada. Vuelve atrás para ver su estado actual.',
               icon: Icons.info_outline,
             ),
-            const SizedBox(height: 14),
+            gap,
           ],
           dateField,
-          const SizedBox(height: 14),
+          gap,
           statusPicker,
-          if (_status == ActivityStatus.blocked) ...[const SizedBox(height: 14), reasonField],
-          const SizedBox(height: 14),
+          if (_status == ActivityStatus.blocked) ...[gap, reasonField],
+          gap,
           descriptionField,
-          const SizedBox(height: 10),
-          const Text(
+          const SizedBox(height: AppSpace.md),
+          const FormHint(
             'Es una ejecución nueva de la misma actividad: queda después de su finalización y no borra ni modifica nada de lo ya registrado.',
-            key: Key('reactivation-hint'),
-            style: TextStyle(fontSize: 11, color: AppColors.textSoft),
+            textKey: Key('reactivation-hint'),
           ),
-          if (closedDate) ...[const SizedBox(height: 14), ClosedDateNotice(date: _date)],
-          if (_error != null) ...[
-            const SizedBox(height: 14),
-            Semantics(
-              liveRegion: true,
-              child: Text(
-                _error!,
-                key: const Key('reactivation-error'),
-                style: const TextStyle(fontSize: 12, color: AppColors.error),
-              ),
-            ),
-          ],
-          const SizedBox(height: 17),
-          if (mobile)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                saveButton,
-                const SizedBox(height: 10),
-                SizedBox(width: double.infinity, child: cancelButton),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [cancelButton, const SizedBox(width: 10), saveButton],
-            ),
+          if (closedDate) ...[gap, ClosedDateNotice(date: _date)],
+          if (_error != null) ...[gap, FormErrorText(_error!, textKey: const Key('reactivation-error'))],
         ],
       );
     }
@@ -286,25 +261,13 @@ class _ReactivationPageState extends ConsumerState<ReactivationPage> {
           title: 'Reactivar actividad',
           subtitle: 'Retoma una actividad completada sin crear otra: queda como la misma, con su historial.',
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 790),
-            child: AppCard(
-              padding: EdgeInsets.all(mobile ? 18 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Align(alignment: Alignment.centerLeft, child: ReactivationTag()),
-                  const SizedBox(height: 10),
-                  const PanelHeader(
-                    title: 'Detalles de la reactivación',
-                    subtitle: 'Se añade al historial como un avance de reactivación',
-                  ),
-                  form,
-                ],
-              ),
-            ),
+        FormColumn(
+          child: FormCard(
+            title: 'Detalles de la reactivación',
+            subtitle: 'Se añade al historial como un avance de reactivación',
+            tag: const ReactivationTag(),
+            actions: actions,
+            child: form,
           ),
         ),
       ],
@@ -322,42 +285,24 @@ class _ActivityBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ContextBox(
       key: const Key('reactivation-activity'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text('Actividad', style: TextStyle(fontSize: 10, color: AppColors.textFaint)),
-              Text(activity.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-              OriginTag(origin: activity.origin),
-              KeyedSubtree(
-                key: const Key('reactivation-activity-status'),
-                child: StatusPill(label: statusLabel(status), kind: pillKind(status)),
-              ),
-            ],
+      title: activity.title,
+      badges: [
+        if (activity.origin == ActivityOrigin.unplanned) OriginTag(origin: activity.origin),
+        KeyedSubtree(
+          key: const Key('reactivation-activity-status'),
+          child: StatusPill(label: statusLabel(status), kind: pillKind(status)),
+        ),
+      ],
+      details: [
+        if (completedOn != null)
+          Text(
+            'Completada el ${formatShortDate(completedOn!)}. La reactivación puede tener esa misma fecha o una posterior.',
+            key: const Key('reactivation-completed-on'),
+            style: const TextStyle(fontSize: AppType.caption, height: 1.5, color: AppColors.textSoft),
           ),
-          if (completedOn != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Completada el ${formatShortDate(completedOn!)}. La reactivación puede tener esa misma fecha o una posterior.',
-              key: const Key('reactivation-completed-on'),
-              style: const TextStyle(fontSize: 11, color: AppColors.textSoft),
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }

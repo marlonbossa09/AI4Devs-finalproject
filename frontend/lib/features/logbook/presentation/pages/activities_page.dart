@@ -5,20 +5,26 @@ import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
+import '../../../../core/widgets/focus_ring.dart';
 import '../../../../core/widgets/status_pill.dart';
 import '../../../../core/widgets/text_blocks.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../providers/activity_list.dart';
 import '../providers/navigation.dart';
-import '../widgets/new_activity_panel.dart';
 import '../widgets/activity_tile.dart';
+import '../widgets/form_parts.dart';
+import '../widgets/new_activity_panel.dart';
 import '../widgets/origin_tag.dart';
 import '../widgets/status_choice.dart';
 
 /// All the user's activities (M2-08), newest first, filtered by current status and loaded one page
 /// at a time. Opening one shows its detail (M2-07).
+///
+/// One compact card: the status filter, then one row per activity (what it is, how it started, its CURRENT status) and the
+/// counter of what is loaded. The only main action of the screen is the new activity.
 class ActivitiesPage extends ConsumerWidget {
   const ActivitiesPage({super.key});
 
@@ -33,8 +39,8 @@ class ActivitiesPage extends ConsumerWidget {
     final list = view.value;
 
     final filters = Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: AppSpace.sm,
+      runSpacing: AppSpace.sm,
       children: [
         StatusChoice(
           key: const Key('activity-filter-all'),
@@ -55,11 +61,7 @@ class ActivitiesPage extends ConsumerWidget {
 
     Widget body;
     if (view.isLoading) {
-      body = const Padding(
-        key: Key('activities-loading'),
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      body = const KeyedSubtree(key: Key('activities-loading'), child: LoadingBlock());
     } else if (view.hasError) {
       final error = view.error;
       body = ErrorBox(
@@ -89,16 +91,11 @@ class ActivitiesPage extends ConsumerWidget {
               },
             ),
           if (list.hasMore || list.moreError != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.lg),
             if (list.moreError != null)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  errorMessage(list.moreError!),
-                  key: const Key('activities-more-error'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: AppColors.error),
-                ),
+                padding: const EdgeInsets.only(bottom: AppSpace.md),
+                child: FormErrorText(errorMessage(list.moreError!), textKey: const Key('activities-more-error'), center: true),
               ),
             Center(
               child: SecondaryButton(
@@ -133,16 +130,17 @@ class ActivitiesPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: EdgeInsets.all(mobile ? 18 : 24),
+                padding: EdgeInsets.all(mobile ? AppSpace.lg : AppSpace.xxl),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const PanelHeader(
                       title: 'Lista de actividades',
                       subtitle: 'Filtra por el estado en que están hoy',
+                      bottom: AppSpace.md,
                     ),
                     filters,
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.md),
                     body,
                   ],
                 ),
@@ -161,6 +159,8 @@ class ActivitiesPage extends ConsumerWidget {
   }
 }
 
+/// One activity of the list: how it started, its title and its CURRENT status, all told in words. Selecting it opens its detail.
+/// On a phone the status goes right after the title, so it is read with it.
 class _ActivityRow extends StatelessWidget {
   const _ActivityRow({
     super.key,
@@ -177,60 +177,69 @@ class _ActivityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = ScreenSize.ofContext(context).isMobile;
+    final unplanned = activity.origin == ActivityOrigin.unplanned;
+    final pill = KeyedSubtree(
+      key: Key('row-status-${activity.id}'),
+      child: StatusPill(label: statusLabel(activity.status), kind: pillKind(activity.status)),
+    );
     return Semantics(
       button: true,
       label: '${activity.title}, ${statusLabel(activity.status)}',
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          decoration: BoxDecoration(
-            border: first ? null : const Border(top: BorderSide(color: AppColors.divider)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 37,
-                height: 37,
-                decoration: BoxDecoration(
-                  color: activity.origin == ActivityOrigin.unplanned ? UnplannedColors.background : const Color(0xFFE7F2FA),
-                  borderRadius: BorderRadius.circular(11),
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.divider))),
+        child: FocusRingInk(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.md, horizontal: AppSpace.xs),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: unplanned ? UnplannedColors.background : AppColors.progressBackground,
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                  ),
+                  child: Icon(
+                    activity.status == ActivityStatus.completed
+                        ? Icons.check
+                        : (unplanned ? Icons.bolt : Icons.event_note_outlined),
+                    size: 18,
+                    color: unplanned ? UnplannedColors.foreground : AppColors.progressText,
+                  ),
                 ),
-                child: Icon(
-                  activity.status == ActivityStatus.completed
-                      ? Icons.check
-                      : (activity.origin == ActivityOrigin.unplanned ? Icons.bolt : Icons.event_note_outlined),
-                  size: 18,
-                  color: activity.origin == ActivityOrigin.unplanned ? UnplannedColors.foreground : const Color(0xFF4C829D),
+                const SizedBox(width: AppSpace.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        activity.title,
+                        style: const TextStyle(fontSize: AppType.bodyLarge, fontWeight: FontWeight.w800, color: AppColors.ink),
+                      ),
+                      const SizedBox(height: AppSpace.xs),
+                      Wrap(
+                        spacing: AppSpace.sm,
+                        runSpacing: AppSpace.xs,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          // How it started is told once: planned ones by this line, unplanned ones by their own tag
+                          if (!unplanned) Text(origin, style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
+                          KeyedSubtree(key: Key('row-origin-${activity.id}'), child: OriginTag(origin: activity.origin)),
+                          if (mobile) pill,
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(activity.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(origin, style: const TextStyle(fontSize: 11, color: AppColors.textSoft)),
-                        KeyedSubtree(key: Key('row-origin-${activity.id}'), child: OriginTag(origin: activity.origin)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              KeyedSubtree(
-                key: Key('row-status-${activity.id}'),
-                child: StatusPill(label: statusLabel(activity.status), kind: pillKind(activity.status)),
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_right, size: 18, color: AppColors.textFaint),
-            ],
+                if (!mobile) ...[const SizedBox(width: AppSpace.md), pill],
+                const SizedBox(width: AppSpace.xs),
+                const ExcludeSemantics(child: Icon(Icons.chevron_right, size: 20, color: AppColors.textSoft)),
+              ],
+            ),
           ),
         ),
       ),

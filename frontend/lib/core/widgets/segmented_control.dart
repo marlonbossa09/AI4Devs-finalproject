@@ -12,12 +12,16 @@ class SegmentedControl<T> extends StatelessWidget {
     required this.options,
     required this.selected,
     required this.onChanged,
+    this.wrap = false,
   });
 
   /// Option value -> label.
   final Map<T, String> options;
   final T selected;
   final ValueChanged<T> onChanged;
+
+  /// Lets the options flow onto a second line when they do not fit (a phone with long labels), instead of overflowing.
+  final bool wrap;
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +31,8 @@ class SegmentedControl<T> extends StatelessWidget {
         color: const Color(0xFFEEF2F7),
         borderRadius: BorderRadius.circular(AppRadius.control + 1),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: _Flow(
+        wrap: wrap,
         children: [
           for (final entry in options.entries)
             Padding(
@@ -73,4 +77,15 @@ class SegmentedControl<T> extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Flow extends StatelessWidget {
+  const _Flow({required this.wrap, required this.children});
+
+  final bool wrap;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) =>
+      wrap ? Wrap(runSpacing: 2, children: children) : Row(mainAxisSize: MainAxisSize.min, children: children);
 }

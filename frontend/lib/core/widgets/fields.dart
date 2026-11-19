@@ -220,9 +220,12 @@ class SelectField<T> extends StatelessWidget {
           decoration: InputDecoration(
             errorText: errorText,
             fillColor: enabled ? AppColors.white : AppColors.fieldDisabledBackground,
-            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           ),
-          child: DropdownButtonHideUnderline(
+          // As tall as every other control of a form (40 px), with the text centered
+          child: SizedBox(
+            height: AppSize.controlDesktop - 2,
+            child: DropdownButtonHideUnderline(
             child: DropdownButton<T>(
               value: value,
               isExpanded: true,
@@ -242,6 +245,7 @@ class SelectField<T> extends StatelessWidget {
               ],
               onChanged: enabled ? onChanged : null,
             ),
+          ),
           ),
         ),
       ],

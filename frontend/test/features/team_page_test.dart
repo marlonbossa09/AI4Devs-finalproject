@@ -61,13 +61,12 @@ Future<void> openTeam(WidgetTester tester, FakeTeamRepository team, {Role role =
   await tapKey(tester, 'nav-team');
 }
 
+/// Chooses a person in the list of people (a row of the group found by [selectKey]).
 Future<void> choose(WidgetTester tester, String selectKey, String label) async {
-  final dropdown = find.descendant(of: find.byKey(Key(selectKey)), matching: find.byType(DropdownButton<String>));
-  await tester.ensureVisible(dropdown);
+  final row = find.descendant(of: find.byKey(Key(selectKey)), matching: find.text(label));
+  await tester.ensureVisible(row);
   await tester.pumpAndSettle();
-  await tester.tap(dropdown);
-  await tester.pumpAndSettle();
-  await tester.tap(find.text(label).last);
+  await tester.tap(row);
   await tester.pumpAndSettle();
 }
 
@@ -99,14 +98,14 @@ void main() {
   });
 
   group('colleague picker (M4-05)', () {
-    testWidgets('offers the CURRENT colleagues, not the user, and tells the supervisor apart', (tester) async {
+    testWidgets('lists the CURRENT colleagues, not the user, and tells the supervisor apart by a word', (tester) async {
       await openTeam(tester, FakeTeamRepository());
-      final dropdown = find.descendant(of: find.byKey(const Key('peer-select')), matching: find.byType(DropdownButton<String>));
-      await tester.tap(dropdown);
-      await tester.pumpAndSettle();
-      expect(find.text('Ana Compañera'), findsOneWidget);
-      expect(find.text('Sara Supervisora (supervisión)'), findsOneWidget);
-      expect(find.text('Carlos Colaborador'), findsNothing);
+      final list = find.byKey(const Key('peer-select'));
+      expect(find.descendant(of: list, matching: find.text('Ana Compañera')), findsOneWidget);
+      expect(find.descendant(of: list, matching: find.text('Sara Supervisora')), findsOneWidget);
+      expect(find.descendant(of: list, matching: find.text('Supervisor')), findsOneWidget);
+      expect(find.descendant(of: list, matching: find.text('Colaborador')), findsOneWidget);
+      expect(find.descendant(of: list, matching: find.text('Carlos Colaborador')), findsNothing);
     });
 
     testWidgets('a team of one has no colleagues to choose: it says so', (tester) async {
@@ -145,8 +144,7 @@ void main() {
           plannings: [PeerPlanning(activityId: 'a1', date: today, type: PlanningType.original, description: 'Revisar cifras')],
         );
       await openTeam(tester, team);
-      await choose(tester, 'peer-select', 'Ana Compañera');
-      await tapKey(tester, 'peer-submit');
+      await choose(tester, 'peer-select', 'Ana Compañera'); // choosing asks for the logbook at once
       expect(team.logbookRequests.single['personId'], 'p2');
       expect(team.logbookRequests.single['date'], today);
       expect(find.byKey(const Key('peer-logbook')), findsOneWidget);
@@ -330,7 +328,6 @@ void main() {
         ..pageSize = 10;
       await openTeam(tester, team);
       await choose(tester, 'peer-select', 'Ana Compañera');
-      await tapKey(tester, 'peer-submit');
       expect(find.text('Resumen que no debe quedar a la vista'), findsOneWidget);
       team.logbookError = const ApiError(code: 'ACCESO_DESACTIVADO', message: 'PAYLOAD');
       await tapKey(tester, 'peer-submit');

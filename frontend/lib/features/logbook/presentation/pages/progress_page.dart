@@ -4,10 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/utils/keys.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../../../core/widgets/text_blocks.dart';
@@ -19,6 +18,7 @@ import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
 import '../widgets/closed_date_notice.dart';
+import '../widgets/form_parts.dart';
 import '../widgets/status_picker.dart';
 
 /// Form to record a progress entry on one of the user's activities (M2-05).
@@ -204,7 +204,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
       hint: '¿Qué hiciste en esta jornada?',
       controller: _description,
       enabled: !_saving,
-      minLines: 4,
+      minLines: 3,
       maxLines: 6,
       errorText: _errors.description,
     );
@@ -226,44 +226,47 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     );
 
     Widget form;
+    var showActions = true;
     if (view.hasError && view.value == null) {
+      showActions = false;
       final error = view.error;
       form = ErrorBox(
         message: error is ApiError ? errorMessage(error) : 'No se pudieron cargar las actividades.',
         onRetry: () => ref.invalidate(logbookProvider(listedDate)),
       );
     } else if (view.isLoading && view.value == null) {
-      form = const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      showActions = false;
+      form = const LoadingBlock();
     } else {
+      const gap = SizedBox(height: AppSpace.lg);
       form = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (mobile) ...[
-            activityField,
-            const SizedBox(height: 14),
-            dateField,
-          ] else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 3, child: activityField),
-                const SizedBox(width: 14),
-                Expanded(flex: 2, child: dateField),
-              ],
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // The activity and its date share a line when the card is wide enough for both
+              if (constraints.maxWidth < 520) {
+                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [activityField, gap, dateField]);
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: activityField),
+                  const SizedBox(width: AppSpace.lg),
+                  Expanded(flex: 2, child: dateField),
+                ],
+              );
+            },
+          ),
           if (offered.isEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
+            const SizedBox(height: AppSpace.sm),
+            FormHint(
               'Para registrar un avance, planifica una actividad o cambia la fecha en Mi bitácora (${formatShortDate(listedDate)}).',
-              key: const Key('progress-no-activities'),
-              style: const TextStyle(fontSize: 11, color: AppColors.textSoft),
+              textKey: const Key('progress-no-activities'),
             ),
           ],
           if (chosen?.status == ActivityStatus.completed) ...[
-            const SizedBox(height: 14),
+            gap,
             const Notice(
               key: Key('progress-completed-notice'),
               title: 'Actividad completada',
@@ -273,38 +276,13 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               icon: Icons.info_outline,
             ),
           ],
-          const SizedBox(height: 14),
+          gap,
           statusPicker,
-          if (_status == ActivityStatus.blocked) ...[const SizedBox(height: 14), reasonField],
-          const SizedBox(height: 14),
+          if (_status == ActivityStatus.blocked) ...[gap, reasonField],
+          gap,
           descriptionField,
-          if (closedDate) ...[const SizedBox(height: 14), ClosedDateNotice(date: _date)],
-          if (_error != null) ...[
-            const SizedBox(height: 14),
-            Semantics(
-              liveRegion: true,
-              child: Text(
-                _error!,
-                key: const Key('progress-error'),
-                style: const TextStyle(fontSize: 12, color: AppColors.error),
-              ),
-            ),
-          ],
-          const SizedBox(height: 17),
-          if (mobile)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                saveButton,
-                const SizedBox(height: 10),
-                SizedBox(width: double.infinity, child: cancelButton),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [cancelButton, const SizedBox(width: 10), saveButton],
-            ),
+          if (closedDate) ...[gap, ClosedDateNotice(date: _date)],
+          if (_error != null) ...[gap, FormErrorText(_error!, textKey: const Key('progress-error'))],
         ],
       );
     }
@@ -317,23 +295,12 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
           title: 'Registrar avance',
           subtitle: 'Deja constancia de lo realizado y del estado en que queda la actividad.',
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 790),
-            child: AppCard(
-              padding: EdgeInsets.all(mobile ? 18 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  PanelHeader(
-                    title: 'Detalles del avance',
-                    subtitle: 'Actividades de la jornada ${formatShortDate(listedDate)}',
-                  ),
-                  form,
-                ],
-              ),
-            ),
+        FormColumn(
+          child: FormCard(
+            title: 'Detalles del avance',
+            subtitle: 'Actividades de la jornada ${formatShortDate(listedDate)}',
+            actions: showActions ? FormActions(cancel: cancelButton, submit: saveButton) : null,
+            child: form,
           ),
         ),
       ],

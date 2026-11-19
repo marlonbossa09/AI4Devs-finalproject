@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../domain/entities/audit_entities.dart';
 import '../../domain/rules/audit_changes.dart';
@@ -30,85 +31,92 @@ class AuditEntryTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // The timeline: a dot and the line that joins it to the next entry
-          SizedBox(
-            width: 22,
-            child: Column(
-              children: [
-                const SizedBox(height: 6),
-                Container(
-                  width: 11,
-                  height: 11,
-                  decoration: BoxDecoration(
-                    color: AuditColors.foreground,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AuditColors.background, width: 3),
+          ExcludeSemantics(
+            child: SizedBox(
+              width: AppSpace.xl,
+              child: Column(
+                children: [
+                  const SizedBox(height: AppSpace.md),
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: AuditColors.foreground,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AuditColors.background, width: 3),
+                    ),
                   ),
-                ),
-                if (!last) Expanded(child: Container(width: 2, color: AuditColors.border)),
-              ],
+                  if (!last) Expanded(child: Container(width: 2, color: AuditColors.border)),
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: last ? 0 : 20),
+              padding: EdgeInsets.only(bottom: last ? 0 : AppSpace.md),
               child: Container(
                 key: Key('audit-entry-${entry.id}'),
                 width: double.infinity,
-                padding: EdgeInsets.all(mobile ? 13 : 16),
+                padding: EdgeInsets.all(mobile ? AppSpace.md : AppSpace.lg),
                 decoration: BoxDecoration(
                   color: AppColors.white,
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
+                      spacing: AppSpace.md,
+                      runSpacing: AppSpace.xs,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           auditOperationLabel(entry),
                           key: Key('audit-operation-${entry.id}'),
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AuditColors.foreground),
+                          style: const TextStyle(fontSize: AppType.bodyLarge, fontWeight: FontWeight.w800, color: AuditColors.foreground),
                         ),
                         Text(
                           formatDateTime(entry.moment),
                           key: Key('audit-moment-${entry.id}'),
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSoft),
+                          style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.xs),
                     Wrap(
-                      spacing: 16,
+                      spacing: AppSpace.lg,
                       runSpacing: 2,
                       children: [
                         Text(
                           'Autor: ${auditAuthorLabel(entry, currentUserId)}',
                           key: Key('audit-author-${entry.id}'),
-                          style: const TextStyle(fontSize: 11, color: AppColors.textBody),
+                          style: const TextStyle(fontSize: AppType.caption, color: AppColors.textBody),
                         ),
                         if (entry.workDate != null)
                           Text(
                             'Jornada: ${formatShortDate(entry.workDate!)}',
                             key: Key('audit-workdate-${entry.id}'),
-                            style: const TextStyle(fontSize: 11, color: AppColors.textBody),
+                            style: const TextStyle(fontSize: AppType.caption, color: AppColors.textBody),
                           ),
                       ],
                     ),
                     if (reason != null && reason.isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.sm),
                       Text(
                         'Motivo: $reason',
                         key: Key('audit-reason-${entry.id}'),
-                        style: const TextStyle(fontSize: 12, height: 1.5, fontWeight: FontWeight.w700, color: AppColors.textBody),
+                        style: const TextStyle(
+                          fontSize: AppType.body,
+                          height: 1.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textBody,
+                        ),
                       ),
                     ],
                     if (changes.isNotEmpty) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpace.md),
                       for (var i = 0; i < changes.length; i++)
                         _ChangeLine(key: Key('audit-change-${entry.id}-$i'), change: changes[i], stacked: mobile),
                     ],
@@ -137,20 +145,20 @@ class _ChangeLine extends StatelessWidget {
     Widget value(String title, String? text, Key key, Color color) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 9.5, letterSpacing: 0.6, color: AppColors.textFaint)),
+        Text(title, style: const TextStyle(fontSize: AppType.caption, letterSpacing: 0.6, color: AppColors.textSoft)),
         const SizedBox(height: 2),
-        Text(text ?? '—', key: key, style: TextStyle(fontSize: 12, height: 1.45, color: color)),
+        Text(text ?? '—', key: key, style: TextStyle(fontSize: AppType.body, height: 1.45, color: color)),
       ],
     );
     final before = value('ANTES', change.before, const Key('audit-before'), AppColors.textSoft);
     final after = value('AHORA', change.after, const Key('audit-after'), AppColors.ink);
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(11),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF9FD),
-        borderRadius: BorderRadius.circular(9),
+        color: AppColors.panelFooter,
+        borderRadius: BorderRadius.circular(AppRadius.control),
         border: Border.all(color: AuditColors.border),
       ),
       child: Column(
@@ -159,19 +167,19 @@ class _ChangeLine extends StatelessWidget {
           Text(
             change.label,
             key: const Key('audit-label'),
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AuditColors.foreground),
+            style: const TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w800, color: AuditColors.foreground),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.sm),
           if (stacked)
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [before, const SizedBox(height: 8), after])
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [before, const SizedBox(height: AppSpace.sm), after])
           else
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(child: before),
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(10, 14, 10, 0),
-                  child: Icon(Icons.arrow_forward, size: 14, color: AppColors.textFaint),
+                  padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.lg, AppSpace.md, 0),
+                  child: ExcludeSemantics(child: Icon(Icons.arrow_forward, size: 16, color: AppColors.textSoft)),
                 ),
                 Expanded(child: after),
               ],

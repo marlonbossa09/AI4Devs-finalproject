@@ -136,7 +136,7 @@ class _DailySummaryState extends ConsumerState<DailySummary> {
     return Container(
       key: const Key('summary-section'),
       width: double.infinity,
-      padding: EdgeInsets.all(mobile ? 14 : 18),
+      padding: EdgeInsets.all(mobile ? 14 : 16),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
@@ -155,7 +155,7 @@ class _DailySummaryState extends ConsumerState<DailySummary> {
           const SizedBox(height: 8),
           const Text(
             'Texto libre sobre tu jornada. No es una actividad ni un avance.',
-            style: TextStyle(fontSize: 11, color: AppColors.textSoft),
+            style: TextStyle(fontSize: 12, color: AppColors.textSoft),
           ),
           const SizedBox(height: 12),
           if (editing) ...[
@@ -165,7 +165,7 @@ class _DailySummaryState extends ConsumerState<DailySummary> {
               hint: 'Cuenta cómo fue tu jornada con tus propias palabras',
               controller: _controller,
               enabled: !_saving,
-              minLines: 5,
+              minLines: 4,
               maxLines: 12,
             ),
             if (_error != null) ...[
@@ -197,11 +197,12 @@ class _DailySummaryState extends ConsumerState<DailySummary> {
                 ],
               )
             else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 10,
+                runSpacing: 8,
                 children: [
                   SecondaryButton(key: const Key('summary-cancel'), label: 'Cancelar', onPressed: _saving ? null : _cancel),
-                  const SizedBox(width: 10),
                   PrimaryButton(
                     key: const Key('summary-save'),
                     label: 'Guardar resumen',
@@ -236,7 +237,7 @@ class _DailySummaryState extends ConsumerState<DailySummary> {
                   Expanded(
                     child: Text(
                       'La jornada está cerrada. Para cambiar el resumen hay que reabrirla.',
-                      style: TextStyle(fontSize: 11, height: 1.5, color: AppColors.textSoft),
+                      style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.textSoft),
                     ),
                   ),
                 ],

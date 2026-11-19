@@ -5,6 +5,8 @@ import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
@@ -19,8 +21,14 @@ import '../providers/supervision_data.dart';
 import '../providers/supervision_navigation.dart';
 import '../widgets/supervision_item_tile.dart';
 
+/// Width from which the dates and the action of the period sit on one line.
+const double _widePeriodMinWidth = 620;
+
 /// The supervisor's consolidated view of the team in a period (M4-03). Read-only: it asks, it shows and its only action
 /// opens the history of an activity (M4-04). It decides nothing about permissions: if the server says no, it says no.
+///
+/// Reading order: the period (and what "al corte" means), the summary of the period by status at the cut, and the
+/// activities, each with its status at the cut and, apart, its current status.
 ///
 /// The cut of "status at the cut" is the LAST DAY of the period (there is no separate cut). The status at the cut and
 /// the current status are shown apart and each only when the server reports it; the client never infers one from the
@@ -38,6 +46,7 @@ class _SupervisionPageState extends ConsumerState<SupervisionPage> {
   @override
   Widget build(BuildContext context) {
     final mobile = ScreenSize.ofContext(context).isMobile;
+    final pad = mobile ? AppSpace.lg : AppSpace.xl;
     final session = ref.watch(authProvider).value;
     final today = session?.today ?? dateOnly(DateTime.now());
     final selection = ref.watch(supervisionSelectionProvider);
@@ -47,9 +56,12 @@ class _SupervisionPageState extends ConsumerState<SupervisionPage> {
     Widget body;
     if (session != null && session.role != Role.supervisor) {
       // Unreachable from the menu (it offers nothing to a collaborator); the server would answer 403 in any case.
-      body = const EmptyState('Esta vista es solo para la supervisión del equipo.', key: Key('supervision-not-available'));
+      body = AppCard(
+        padding: EdgeInsets.all(pad),
+        child: const EmptyState('Esta vista es solo para la supervisión del equipo.', key: Key('supervision-not-available')),
+      );
     } else {
-      body = _form(session?.user.id, from, to, selection.query);
+      body = _form(session?.user.id, from, to, selection.query, pad);
     }
 
     return Column(
@@ -60,18 +72,12 @@ class _SupervisionPageState extends ConsumerState<SupervisionPage> {
           title: 'Supervisión del equipo',
           subtitle: 'Las actividades de tu equipo en un período, con su estado al corte y, aparte, su estado actual.',
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 860),
-            child: AppCard(padding: EdgeInsets.all(mobile ? 18 : 24), child: body),
-          ),
-        ),
+        body,
       ],
     );
   }
 
-  Widget _form(String? myId, DateTime from, DateTime to, ({DateTime from, DateTime to})? query) {
+  Widget _form(String? myId, DateTime from, DateTime to, ({DateTime from, DateTime to})? query, double pad) {
     final members = ref.watch(teamMembersProvider).value ?? const [];
     String nameOf(String id) {
       if (id == myId) return 'Tú';
@@ -82,57 +88,99 @@ class _SupervisionPageState extends ConsumerState<SupervisionPage> {
       return 'Persona que ya no está en tu equipo';
     }
 
+    final fromField = DateField(
+      fieldKey: const Key('supervision-from'),
+      label: 'Desde',
+      date: from,
+      onChanged: (date) {
+        setState(() => _rangeError = null);
+        ref.read(supervisionSelectionProvider.notifier).setFrom(date);
+      },
+    );
+    final toField = DateField(
+      fieldKey: const Key('supervision-to'),
+      label: 'Hasta',
+      date: to,
+      errorText: _rangeError,
+      onChanged: (date) {
+        setState(() => _rangeError = null);
+        ref.read(supervisionSelectionProvider.notifier).setTo(date);
+      },
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          children: [
-            SizedBox(
-              width: 220,
-              child: DateField(
-                fieldKey: const Key('supervision-from'),
-                label: 'Desde',
-                date: from,
-                onChanged: (date) {
-                  setState(() => _rangeError = null);
-                  ref.read(supervisionSelectionProvider.notifier).setFrom(date);
+        AppCard(
+          padding: EdgeInsets.all(pad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const PanelHeader(title: 'Período', bottom: AppSpace.md),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= _widePeriodMinWidth;
+                  final submit = PrimaryButton(
+                    key: const Key('supervision-submit'),
+                    label: 'Ver supervisión',
+                    expand: !wide,
+                    onPressed: () => _submit(from, to),
+                  );
+                  if (!wide) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [Expanded(child: fromField), const SizedBox(width: AppSpace.md), Expanded(child: toField)],
+                        ),
+                        const SizedBox(height: AppSpace.md),
+                        submit,
+                      ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 200, child: fromField),
+                      const SizedBox(width: AppSpace.md),
+                      SizedBox(width: 200, child: toField),
+                      const SizedBox(width: AppSpace.md),
+                      _BesideFields(child: submit),
+                    ],
+                  );
                 },
               ),
-            ),
-            SizedBox(
-              width: 220,
-              child: DateField(
-                fieldKey: const Key('supervision-to'),
-                label: 'Hasta',
-                date: to,
-                errorText: _rangeError,
-                onChanged: (date) {
-                  setState(() => _rangeError = null);
-                  ref.read(supervisionSelectionProvider.notifier).setTo(date);
-                },
+              const SizedBox(height: AppSpace.md),
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: ExcludeSemantics(child: Icon(Icons.info_outline, size: 14, color: AppColors.textSoft)),
+                  ),
+                  SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      'El período es obligatorio y abarca como máximo $maxHistoryRangeDays días. El estado «al corte» es el que tenían las actividades '
+                      'el último día del período.',
+                      key: Key('supervision-hint'),
+                      style: TextStyle(fontSize: AppType.caption, height: 1.5, color: AppColors.textSoft),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'El período es obligatorio y abarca como máximo $maxHistoryRangeDays días. El estado «al corte» es el que tenían las actividades '
-          'el último día del período.',
-          key: const Key('supervision-hint'),
-          style: const TextStyle(fontSize: 11, height: 1.5, color: AppColors.textFaint),
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: PrimaryButton(key: const Key('supervision-submit'), label: 'Ver supervisión', onPressed: () => _submit(from, to)),
-        ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpace.lg),
         if (query == null)
-          const EmptyState('Elige un período para ver las actividades de tu equipo.', key: Key('supervision-none'))
+          AppCard(
+            padding: EdgeInsets.all(pad),
+            child: const EmptyState('Elige un período para ver las actividades de tu equipo.', key: Key('supervision-none')),
+          )
         else
-          _SupervisionResult(from: query.from, to: query.to, nameOf: nameOf),
+          _SupervisionResult(from: query.from, to: query.to, nameOf: nameOf, pad: pad),
       ],
     );
   }
@@ -152,74 +200,152 @@ class _SupervisionPageState extends ConsumerState<SupervisionPage> {
   }
 }
 
+/// Puts an action on the same baseline as the fields beside it: it reserves the height of a field label above the action.
+class _BesideFields extends StatelessWidget {
+  const _BesideFields({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Visibility(visible: false, maintainSize: true, maintainAnimation: true, maintainState: true, child: FieldLabel('Desde')),
+        child,
+      ],
+    );
+  }
+}
+
 class _SupervisionResult extends ConsumerWidget {
-  const _SupervisionResult({required this.from, required this.to, required this.nameOf});
+  const _SupervisionResult({required this.from, required this.to, required this.nameOf, required this.pad});
 
   final DateTime from;
   final DateTime to;
   final String Function(String) nameOf;
+  final double pad;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final result = ref.watch(supervisionFeedProvider(from, to));
     if (result.isLoading) {
-      return const Padding(
-        key: Key('supervision-loading'),
-        padding: EdgeInsets.all(28),
-        child: Center(child: CircularProgressIndicator()),
+      return AppCard(
+        child: Padding(
+          key: const Key('supervision-loading'),
+          padding: const EdgeInsets.all(AppSpace.xxl + AppSpace.sm),
+          child: const Center(child: CircularProgressIndicator(semanticsLabel: 'Cargando la supervisión')),
+        ),
       );
     }
     if (result.hasError) {
       final error = result.error;
-      return ErrorBox(
-        message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la supervisión.',
-        onRetry: () => ref.invalidate(supervisionFeedProvider(from, to)),
+      return AppCard(
+        padding: EdgeInsets.symmetric(horizontal: pad),
+        child: ErrorBox(
+          message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la supervisión.',
+          onRetry: () => ref.invalidate(supervisionFeedProvider(from, to)),
+        ),
       );
     }
     final feed = result.value!;
+    final loaded = feed.items.length;
     return Column(
       key: const Key('supervision-result'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Período del ${formatShortDate(feed.first.from)} al ${formatShortDate(feed.first.to)}. Corte: ${formatShortDate(feed.first.cut)}.',
-          key: const Key('supervision-period'),
-          style: const TextStyle(fontSize: 12, color: AppColors.textSoft),
-        ),
-        const SizedBox(height: 12),
-        SupervisionTotals(page: feed.first),
-        const SizedBox(height: 18),
-        if (feed.items.isEmpty)
-          const EmptyState('No hay actividades de tu equipo en ese período.', key: Key('supervision-empty'))
-        else
-          for (final item in feed.items)
-            SupervisionItemTile(
-              item: item,
-              ownerName: nameOf(item.ownerId),
-              onOpen: () {
-                ref.read(supervisionActivityTargetProvider.notifier).select(item.activity.id);
-                ref.read(currentPageProvider.notifier).go(AppPage.supervisionActivity);
-              },
-            ),
-        if (feed.hasMore || feed.moreError != null) ...[
-          if (feed.moreError != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Text(
-                errorMessage(feed.moreError!),
-                key: const Key('supervision-more-error'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: AppColors.error),
+        AppCard(
+          padding: EdgeInsets.all(pad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // A polite live region: when the period is asked again a screen reader says which period and which cut it is.
+              Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpace.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Semantics(header: true, child: Text('Resumen del período', style: context.heading(AppType.cardTitle))),
+                      const SizedBox(height: AppSpace.xs),
+                      Text(
+                        'Período del ${formatShortDate(feed.first.from)} al ${formatShortDate(feed.first.to)}. Corte: ${formatShortDate(feed.first.cut)}.',
+                        key: const Key('supervision-period'),
+                        style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          Center(
-            child: SecondaryButton(
-              key: const Key('supervision-load-more'),
-              label: feed.loadingMore ? 'Cargando…' : (feed.moreError != null ? 'Reintentar' : 'Ver más'),
-              onPressed: feed.loadingMore ? null : () => ref.read(supervisionFeedProvider(from, to).notifier).loadMore(),
-            ),
+              SupervisionTotals(page: feed.first),
+            ],
           ),
-        ],
+        ),
+        const SizedBox(height: AppSpace.lg),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(pad, pad, pad, feed.items.isEmpty ? pad : AppSpace.xs),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const PanelHeader(
+                      title: 'Actividades del período',
+                      subtitle: 'Estado al corte de cada una y, aparte, su estado actual cuando es distinto',
+                      bottom: AppSpace.xs,
+                    ),
+                    if (feed.items.isEmpty)
+                      const EmptyState('No hay actividades de tu equipo en ese período.', key: Key('supervision-empty')),
+                  ],
+                ),
+              ),
+              if (feed.items.isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: pad),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < feed.items.length; i++)
+                        SupervisionItemTile(
+                          first: i == 0,
+                          item: feed.items[i],
+                          ownerName: nameOf(feed.items[i].ownerId),
+                          onOpen: () {
+                            ref.read(supervisionActivityTargetProvider.notifier).select(feed.items[i].activity.id);
+                            ref.read(currentPageProvider.notifier).go(AppPage.supervisionActivity);
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              if (feed.items.isNotEmpty || feed.moreError != null || feed.hasMore) ...[
+                if (feed.moreError != null)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(pad, AppSpace.sm, pad, AppSpace.sm),
+                    child: Text(
+                      errorMessage(feed.moreError!),
+                      key: const Key('supervision-more-error'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: AppType.caption, color: AppColors.error),
+                    ),
+                  ),
+                PanelFooter(
+                  text: feed.hasMore || feed.moreError != null ? '$loaded elementos cargados · hay más' : '$loaded elementos en esta vista',
+                  action: feed.hasMore || feed.moreError != null
+                      ? SecondaryButton(
+                          key: const Key('supervision-load-more'),
+                          label: feed.loadingMore ? 'Cargando…' : (feed.moreError != null ? 'Reintentar' : 'Ver más'),
+                          onPressed: feed.loadingMore ? null : () => ref.read(supervisionFeedProvider(from, to).notifier).loadMore(),
+                        )
+                      : null,
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }

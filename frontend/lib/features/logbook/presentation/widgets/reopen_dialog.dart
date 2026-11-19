@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../domain/rules/closing_rules.dart';
+import 'action_dialog_frame.dart';
 
 /// Asks for the mandatory reason of a reopening (M3-02, RN-50) and sends it. Resolves to true when the
 /// logbook was reopened and to false when the user gave up.
@@ -89,74 +89,28 @@ class _ReopenDialogState extends State<_ReopenDialog> {
       expand: narrow,
       onPressed: _submit,
     );
-    return PopScope(
-      canPop: !_saving,
-      child: Dialog(
-        backgroundColor: AppColors.white,
-        insetPadding: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.lock_open_outlined, size: 20, color: AppColors.primary),
-                    SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        '¿Reabrir la jornada?',
-                        key: Key('reopen-title'),
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Podrás corregir su contenido. Queda constancia de la reapertura y de tu motivo, y la jornada '
-                  'habrá que cerrarla de nuevo.',
-                  style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.textBody),
-                ),
-                const SizedBox(height: 16),
-                LabeledField(
-                  fieldKey: const Key('reopen-reason'),
-                  label: 'Motivo de la reapertura *',
-                  hint: '¿Qué necesitas corregir?',
-                  controller: _reason,
-                  enabled: !_saving,
-                  minLines: 3,
-                  maxLines: 5,
-                  errorText: _fieldError,
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      _error!,
-                      key: const Key('reopen-error'),
-                      style: const TextStyle(fontSize: 12, color: AppColors.error),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 22),
-                if (narrow)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [submit, const SizedBox(height: 10), SizedBox(width: double.infinity, child: cancel)],
-                  )
-                else
-                  Wrap(alignment: WrapAlignment.end, spacing: 10, runSpacing: 10, children: [cancel, submit]),
-              ],
-            ),
-          ),
-        ),
+    return ActionDialogFrame(
+      saving: _saving,
+      icon: Icons.lock_open_outlined,
+      title: '¿Reabrir la jornada?',
+      titleKey: const Key('reopen-title'),
+      intro:
+          'Podrás corregir su contenido. Queda constancia de la reapertura y de tu motivo, y la jornada '
+          'habrá que cerrarla de nuevo.',
+      field: LabeledField(
+        fieldKey: const Key('reopen-reason'),
+        label: 'Motivo de la reapertura *',
+        hint: '¿Qué necesitas corregir?',
+        controller: _reason,
+        enabled: !_saving,
+        minLines: 3,
+        maxLines: 5,
+        errorText: _fieldError,
       ),
+      error: _error,
+      errorKey: const Key('reopen-error'),
+      cancel: cancel,
+      submit: submit,
     );
   }
 }

@@ -79,7 +79,6 @@ class ActivityTile extends StatelessWidget {
     final unplanned = activity.origin == ActivityOrigin.unplanned;
     // An unplanned activity has no planning: its text is never invented (IR-16)
     final description = unplanned ? 'Registrada sin planificación previa.' : (planning?.description ?? '');
-    final planned = planning;
     final done = activity.status == ActivityStatus.completed;
     // The activity is here only because a continuation was planned for this day: the original
     // planning and its time belong to another day
@@ -89,7 +88,7 @@ class ActivityTile extends StatelessWidget {
     final canReactivateIt =
         onReactivate != null && canReactivate(status: activity.status, marked: activity.marked);
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 17),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
         border: first ? null : const Border(top: BorderSide(color: AppColors.divider)),
       ),
@@ -121,7 +120,7 @@ class ActivityTile extends StatelessWidget {
                   children: [
                     Text(
                       activity.title,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink),
                     ),
                     KeyedSubtree(key: Key('origin-${activity.id}'), child: OriginTag(origin: activity.origin)),
                     if (activity.marked) KeyedSubtree(key: Key('marked-tag-${activity.id}'), child: const MarkedTag()),
@@ -133,7 +132,7 @@ class ActivityTile extends StatelessWidget {
                     child: Text(
                       'Motivo: ${activity.markReason}',
                       key: Key('marked-reason-${activity.id}'),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: MarkedColors.foreground),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: MarkedColors.foreground),
                     ),
                   ),
                 if (continuationOnly)
@@ -142,37 +141,38 @@ class ActivityTile extends StatelessWidget {
                     child: Text(
                       'Jornada de origen: ${formatDate(activity.date)}',
                       key: Key('origin-day-${activity.id}'),
-                      style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textFaint),
                     ),
                   )
                 else ...[
                   const SizedBox(height: 5),
                   Text(
                     description.isEmpty ? 'Sin descripción' : description,
-                    style: const TextStyle(fontSize: 11, height: 1.65, color: AppColors.textSoft),
+                    style: const TextStyle(fontSize: 12, height: 1.55, color: AppColors.textSoft),
                   ),
                   const SizedBox(height: 9),
                   Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 9,
+                    runSpacing: 4,
                     children: [
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.schedule, size: 12, color: AppColors.textFaint),
+                          const Icon(Icons.event_note_outlined, size: 14, color: AppColors.textFaint),
                           const SizedBox(width: 4),
-                          Text(
-                            unplanned
-                                ? 'Registrada ${formatTime(activity.createdAt)}'
-                                : (planned == null ? 'Planificada' : 'Planificada ${formatTime(planned.createdAt)}'),
-                            style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
+                          Flexible(
+                            child: Text(
+                              unplanned ? 'No planificada' : 'Planificada',
+                              style: const TextStyle(fontSize: 12, color: AppColors.textFaint),
+                            ),
                           ),
                         ],
                       ),
                       const _Dot(),
                       Text(
                         formatDate(activity.date),
-                        style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
+                        style: const TextStyle(fontSize: 12, color: AppColors.textFaint),
                       ),
                     ],
                   ),
@@ -253,7 +253,7 @@ class ContinuationLine extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             planning.description.isEmpty ? 'Sin descripción' : planning.description,
-            style: const TextStyle(fontSize: 11, height: 1.55, color: AppColors.textBody),
+            style: const TextStyle(fontSize: 12, height: 1.55, color: AppColors.textBody),
           ),
         ],
       ),
@@ -301,12 +301,12 @@ class _ProgressLine extends StatelessWidget {
                       TextSpan(text: entry.description),
                     ],
                   ),
-                  style: const TextStyle(fontSize: 11, height: 1.55, color: AppColors.textSoft),
+                  style: const TextStyle(fontSize: 12, height: 1.55, color: AppColors.textSoft),
                 ),
                 if (reason != null && reason.isNotEmpty)
                   Text(
                     'Motivo del bloqueo: $reason',
-                    style: const TextStyle(fontSize: 11, height: 1.55, color: AppColors.blockedText),
+                    style: const TextStyle(fontSize: 12, height: 1.55, color: AppColors.blockedText),
                   ),
               ],
             ),

@@ -325,7 +325,7 @@ void main() {
       await pumpApp(tester, auth: signedIn(), logbook: logbook);
       await go(tester, 'logbook');
       expect(find.text('La planificación es distinta de un avance de ejecución.'), findsOneWidget);
-      expect(find.textContaining('Planificada'), findsOneWidget);
+      expect(find.text('Planificada'), findsOneWidget);
     });
 
     testWidgets('a loading failure on the logbook page offers to retry', (tester) async {
@@ -382,7 +382,7 @@ void main() {
       expect(find.text('Preparar informe'), findsOneWidget);
       expect(find.text('Revisar cifras'), findsOneWidget);
       expect(find.text('Pendiente'), findsOneWidget);
-      expect(find.textContaining('Planificada'), findsOneWidget);
+      expect(find.text('Planificada'), findsOneWidget);
       expect(find.byKey(const Key('no-logbook')), findsNothing); // the logbook was created implicitly
     });
 

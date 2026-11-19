@@ -4,10 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/utils/keys.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../../../core/widgets/status_pill.dart';
@@ -21,6 +20,7 @@ import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
 import '../widgets/activity_tile.dart';
 import '../widgets/continuation_tag.dart';
+import '../widgets/form_parts.dart';
 import '../widgets/origin_tag.dart';
 
 /// Form to plan the continuation of an existing activity for a later day (M2-04).
@@ -123,6 +123,7 @@ class _ContinuationPageState extends ConsumerState<ContinuationPage> {
     );
 
     Widget form;
+    Widget? actions;
     if (activity == null) {
       form = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -150,7 +151,7 @@ class _ContinuationPageState extends ConsumerState<ContinuationPage> {
         hint: '¿Qué tienes previsto hacer ese día?',
         controller: _description,
         enabled: !_saving,
-        minLines: 4,
+        minLines: 3,
         maxLines: 6,
       );
       final saveButton = PrimaryButton(
@@ -161,11 +162,13 @@ class _ContinuationPageState extends ConsumerState<ContinuationPage> {
         expand: mobile,
         onPressed: eligible ? () => _submit(activity) : null,
       );
+      actions = FormActions(cancel: cancelButton, submit: saveButton);
+      const gap = SizedBox(height: AppSpace.lg);
       form = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _ActivityBox(activity: activity),
-          const SizedBox(height: 14),
+          gap,
           if (!eligible) ...[
             const Notice(
               key: Key('continuation-completed-notice'),
@@ -175,43 +178,17 @@ class _ContinuationPageState extends ConsumerState<ContinuationPage> {
                   'después hay que reactivarla (acción «Reactivar» en la actividad).',
               icon: Icons.info_outline,
             ),
-            const SizedBox(height: 14),
+            gap,
           ],
           dateField,
-          const SizedBox(height: 14),
+          gap,
           descriptionField,
-          const SizedBox(height: 10),
-          const Text(
+          const SizedBox(height: AppSpace.md),
+          const FormHint(
             'Es una planificación: no registra ningún avance ni cambia el estado de la actividad.',
-            key: Key('continuation-hint'),
-            style: TextStyle(fontSize: 11, color: AppColors.textSoft),
+            textKey: Key('continuation-hint'),
           ),
-          if (_error != null) ...[
-            const SizedBox(height: 14),
-            Semantics(
-              liveRegion: true,
-              child: Text(
-                _error!,
-                key: const Key('continuation-error'),
-                style: const TextStyle(fontSize: 12, color: AppColors.error),
-              ),
-            ),
-          ],
-          const SizedBox(height: 17),
-          if (mobile)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                saveButton,
-                const SizedBox(height: 10),
-                SizedBox(width: double.infinity, child: cancelButton),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [cancelButton, const SizedBox(width: 10), saveButton],
-            ),
+          if (_error != null) ...[gap, FormErrorText(_error!, textKey: const Key('continuation-error'))],
         ],
       );
     }
@@ -224,25 +201,13 @@ class _ContinuationPageState extends ConsumerState<ContinuationPage> {
           title: 'Planificar continuación',
           subtitle: 'Deja prevista la continuación de una actividad para una jornada posterior.',
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 790),
-            child: AppCard(
-              padding: EdgeInsets.all(mobile ? 18 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Align(alignment: Alignment.centerLeft, child: ContinuationTag()),
-                  const SizedBox(height: 10),
-                  const PanelHeader(
-                    title: 'Detalles de la continuación',
-                    subtitle: 'La actividad es la misma: solo se añade lo previsto para otro día',
-                  ),
-                  form,
-                ],
-              ),
-            ),
+        FormColumn(
+          child: FormCard(
+            title: 'Detalles de la continuación',
+            subtitle: 'La actividad es la misma: solo se añade lo previsto para otro día',
+            tag: const ContinuationTag(),
+            actions: actions,
+            child: form,
           ),
         ),
       ],
@@ -258,29 +223,16 @@ class _ActivityBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ContextBox(
       key: const Key('continuation-activity'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          const Text('Actividad', style: TextStyle(fontSize: 10, color: AppColors.textFaint)),
-          Text(activity.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-          OriginTag(origin: activity.origin),
-          KeyedSubtree(
-            key: const Key('continuation-activity-status'),
-            child: StatusPill(label: statusLabel(activity.status), kind: pillKind(activity.status)),
-          ),
-        ],
-      ),
+      title: activity.title,
+      badges: [
+        if (activity.origin == ActivityOrigin.unplanned) OriginTag(origin: activity.origin),
+        KeyedSubtree(
+          key: const Key('continuation-activity-status'),
+          child: StatusPill(label: statusLabel(activity.status), kind: pillKind(activity.status)),
+        ),
+      ],
     );
   }
 }

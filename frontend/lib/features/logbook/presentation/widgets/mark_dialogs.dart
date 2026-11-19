@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../domain/rules/mark_rules.dart';
+import 'action_dialog_frame.dart';
 
 /// Asks for the mandatory reason of marking an activity as registered by mistake (M3-05, RN-59) and
 /// sends it. Resolves to true when the activity was marked and to false when the user gave up.
@@ -37,89 +37,6 @@ Future<bool> showRevertMarkDialog(
     builder: (context) => _RevertMarkDialog(activityTitle: activityTitle, onSubmit: onSubmit),
   );
   return result ?? false;
-}
-
-/// Shared frame of both dialogs: title, text, optional field, error and buttons (stacked when narrow).
-class _DialogFrame extends StatelessWidget {
-  const _DialogFrame({
-    required this.saving,
-    required this.icon,
-    required this.title,
-    required this.titleKey,
-    required this.intro,
-    required this.cancel,
-    required this.submit,
-    this.field,
-    this.error,
-    this.errorKey,
-  });
-
-  final bool saving;
-  final IconData icon;
-  final String title;
-  final Key titleKey;
-  final String intro;
-  final Widget cancel;
-  final Widget submit;
-  final Widget? field;
-  final String? error;
-  final Key? errorKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < 480;
-    return PopScope(
-      canPop: !saving,
-      child: Dialog(
-        backgroundColor: AppColors.white,
-        insetPadding: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, size: 20, color: AppColors.primary),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        title,
-                        key: titleKey,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(intro, style: const TextStyle(fontSize: 13, height: 1.6, color: AppColors.textBody)),
-                if (field != null) ...[const SizedBox(height: 16), field!],
-                if (error != null) ...[
-                  const SizedBox(height: 12),
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(error!, key: errorKey, style: const TextStyle(fontSize: 12, color: AppColors.error)),
-                  ),
-                ],
-                const SizedBox(height: 22),
-                if (narrow)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [submit, const SizedBox(height: 10), SizedBox(width: double.infinity, child: cancel)],
-                  )
-                else
-                  Wrap(alignment: WrapAlignment.end, spacing: 10, runSpacing: 10, children: [cancel, submit]),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _MarkErrorDialog extends StatefulWidget {
@@ -178,7 +95,7 @@ class _MarkErrorDialogState extends State<_MarkErrorDialog> {
   @override
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < 480;
-    return _DialogFrame(
+    return ActionDialogFrame(
       saving: _saving,
       icon: Icons.report_gmailerrorred_outlined,
       title: '¿Marcar como registrada por error?',
@@ -254,7 +171,7 @@ class _RevertMarkDialogState extends State<_RevertMarkDialog> {
   @override
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < 480;
-    return _DialogFrame(
+    return ActionDialogFrame(
       saving: _saving,
       icon: Icons.undo,
       title: '¿Revertir la marca de error?',

@@ -5,6 +5,8 @@ import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
@@ -39,7 +41,7 @@ class SupervisionActivityPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
+    final pad = ScreenSize.ofContext(context).isMobile ? AppSpace.lg : AppSpace.xl;
     final target = ref.watch(supervisionActivityTargetProvider);
     final myId = ref.watch(authProvider).value?.user.id;
     final members = ref.watch(teamMembersProvider).value ?? const <TeamMember>[];
@@ -60,27 +62,41 @@ class SupervisionActivityPage extends ConsumerWidget {
 
     Widget body;
     if (target == null) {
-      body = const EmptyState('Elige una actividad en la supervisión para ver su historial.', key: Key('supervision-activity-none'));
+      body = AppCard(
+        padding: EdgeInsets.all(pad),
+        child: const EmptyState('Elige una actividad en la supervisión para ver su historial.', key: Key('supervision-activity-none')),
+      );
     } else {
       final result = ref.watch(activityHistoryProvider(target.id));
       if (result.isLoading) {
-        body = const Padding(
-          key: Key('supervision-activity-loading'),
-          padding: EdgeInsets.all(28),
-          child: Center(child: CircularProgressIndicator()),
+        body = AppCard(
+          child: Padding(
+            key: const Key('supervision-activity-loading'),
+            padding: const EdgeInsets.all(AppSpace.xxl + AppSpace.sm),
+            child: const Center(child: CircularProgressIndicator(semanticsLabel: 'Cargando la actividad')),
+          ),
         );
       } else if (result.hasError) {
         final error = result.error;
-        body = ErrorBox(
-          message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la actividad.',
-          onRetry: () => ref.invalidate(activityHistoryProvider(target.id)),
+        body = AppCard(
+          padding: EdgeInsets.symmetric(horizontal: pad),
+          child: ErrorBox(
+            message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la actividad.',
+            onRetry: () => ref.invalidate(activityHistoryProvider(target.id)),
+          ),
         );
       } else {
         final history = result.value;
         body = switch (history) {
-          null => const EmptyState('Esta actividad no está disponible.', key: Key('supervision-activity-unavailable')),
-          ActivityHistoryReference(:final reference) => MinimalReferenceBlock(reference: reference, ownerName: nameOf(reference.ownerId)),
-          ActivityHistoryDetail() => _Detail(history: history, nameOf: nameOf),
+          null => AppCard(
+            padding: EdgeInsets.all(pad),
+            child: const EmptyState('Esta actividad no está disponible.', key: Key('supervision-activity-unavailable')),
+          ),
+          ActivityHistoryReference(:final reference) => AppCard(
+            padding: EdgeInsets.all(pad),
+            child: MinimalReferenceBlock(reference: reference, ownerName: nameOf(reference.ownerId)),
+          ),
+          ActivityHistoryDetail() => _Detail(history: history, nameOf: nameOf, pad: pad),
         };
       }
     }
@@ -88,7 +104,7 @@ class SupervisionActivityPage extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(padding: const EdgeInsets.only(bottom: 10), child: back),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: back),
         const PageHeader(
           eyebrow: 'Supervisión',
           title: 'Historial de la actividad',
@@ -96,10 +112,7 @@ class SupervisionActivityPage extends ConsumerWidget {
         ),
         Align(
           alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 790),
-            child: AppCard(padding: EdgeInsets.all(mobile ? 18 : 24), child: body),
-          ),
+          child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 920), child: body),
         ),
       ],
     );
@@ -107,10 +120,11 @@ class SupervisionActivityPage extends ConsumerWidget {
 }
 
 class _Detail extends ConsumerWidget {
-  const _Detail({required this.history, required this.nameOf});
+  const _Detail({required this.history, required this.nameOf, required this.pad});
 
   final ActivityHistoryDetail history;
   final String Function(String) nameOf;
+  final double pad;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -119,119 +133,163 @@ class _Detail extends ConsumerWidget {
       key: const Key('supervision-activity'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (activity.isNeutral)
-          const Row(
+        AppCard(
+          padding: EdgeInsets.all(pad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.link, size: 18, color: AppColors.textSoft),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  neutralActivityLabel,
-                  key: Key('neutral-label'),
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textSoft),
+              if (activity.isNeutral)
+                Row(
+                  children: [
+                    const ExcludeSemantics(child: Icon(Icons.link, size: 18, color: AppColors.textSoft)),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          neutralActivityLabel,
+                          key: const Key('neutral-label'),
+                          style: context.heading(AppType.cardTitle, color: AppColors.textSoft),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Wrap(
+                  spacing: AppSpace.sm,
+                  runSpacing: AppSpace.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Semantics(header: true, child: Text(activity.title!, style: context.heading(AppType.cardTitle))),
+                    if (activity.origin != null) OriginTag(origin: activity.origin!),
+                    if (activity.isMarked) const MarkedTag(),
+                  ],
                 ),
+              const SizedBox(height: AppSpace.xs + 2),
+              Row(
+                children: [
+                  const ExcludeSemantics(child: Icon(Icons.person_outline, size: 14, color: AppColors.textSoft)),
+                  const SizedBox(width: AppSpace.xs + 2),
+                  Flexible(child: Text(nameOf(activity.ownerId), style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft))),
+                ],
               ),
-            ],
-          )
-        else
-          Wrap(
-            spacing: 10,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(activity.title!, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-              if (activity.origin != null) OriginTag(origin: activity.origin!),
-              if (activity.isMarked) const MarkedTag(),
+              if (history.currentStatus != null) ...[
+                const SizedBox(height: AppSpace.md),
+                StatusLine(
+                  label: 'Estado actual',
+                  icon: Icons.update,
+                  status: history.currentStatus,
+                  labelKey: const Key('history-current-status-label'),
+                ),
+              ],
+              if (activity.isMarked) ...[
+                const SizedBox(height: AppSpace.sm),
+                Text(
+                  'Motivo de la marca: ${activity.markReason}',
+                  style: const TextStyle(fontSize: AppType.caption, height: 1.5, color: AppColors.textSoft),
+                ),
+              ],
+              const SizedBox(height: AppSpace.sm),
+              const Row(
+                children: [
+                  ExcludeSemantics(child: Icon(Icons.lock_outline, size: 14, color: AppColors.textSoft)),
+                  SizedBox(width: AppSpace.xs + 2),
+                  Expanded(
+                    child: Text(
+                      'Solo lectura: esta actividad no se puede modificar desde aquí.',
+                      key: Key('supervision-readonly-note'),
+                      style: TextStyle(fontSize: AppType.caption, color: AppColors.textSoft),
+                    ),
+                  ),
+                ],
+              ),
+              if (!activity.isNeutral) ...[
+                const SizedBox(height: AppSpace.md),
+                SecondaryButton(
+                  key: const Key('supervision-audit'),
+                  label: 'Ver auditoría de la actividad',
+                  onPressed: () {
+                    ref.read(auditTargetProvider.notifier).select(
+                      type: AuditObjectType.activity,
+                      objectId: activity.id,
+                      title: activity.title!,
+                      back: AppPage.supervisionActivity,
+                    );
+                    ref.read(currentPageProvider.notifier).go(AppPage.audit);
+                  },
+                ),
+              ],
             ],
           ),
-        const SizedBox(height: 6),
-        Text(nameOf(activity.ownerId), style: const TextStyle(fontSize: 12.5, color: AppColors.textSoft)),
-        if (history.currentStatus != null) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text('Estado actual', key: Key('history-current-status-label'), style: TextStyle(fontSize: 11.5, color: AppColors.textSoft)),
-              StatusPill(label: statusLabel(history.currentStatus!), kind: pillKind(history.currentStatus!)),
-            ],
-          ),
-        ],
-        if (activity.isMarked) ...[
-          const SizedBox(height: 6),
-          Text('Motivo de la marca: ${activity.markReason}', style: const TextStyle(fontSize: 11.5, color: AppColors.textSoft)),
-        ],
-        const SizedBox(height: 6),
-        const Text(
-          'Solo lectura: esta actividad no se puede modificar desde aquí.',
-          key: Key('supervision-readonly-note'),
-          style: TextStyle(fontSize: 11, color: AppColors.textFaint),
         ),
-        const SizedBox(height: 18),
-        const _Caption('Planificaciones'),
-        const SizedBox(height: 6),
-        if (history.plannings.isEmpty)
-          const Text('No hay planificaciones que puedas consultar.', key: Key('supervision-no-plannings'), style: TextStyle(fontSize: 12.5, color: AppColors.textFaint))
-        else
-          for (final p in history.plannings)
-            _Entry(
-              icon: Icons.event_note_outlined,
-              label: p.type == PlanningType.original ? 'Planificada' : 'Continuación planificada',
-              date: p.date,
-              text: p.description,
-            ),
-        const SizedBox(height: 18),
-        const _Caption('Avances, en orden histórico'),
-        const SizedBox(height: 6),
-        if (history.progress.isEmpty)
-          const Text('No hay avances que puedas consultar.', key: Key('supervision-no-progress'), style: TextStyle(fontSize: 12.5, color: AppColors.textFaint))
-        else
-          for (final a in history.progress)
-            _Entry(
-              icon: Icons.check_circle_outline,
-              label: 'Avance',
-              date: a.date,
-              text: a.description,
-              status: a.status,
-              blockReason: a.blockReason,
-            ),
-        if (!activity.isNeutral) ...[
-          const SizedBox(height: 18),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SecondaryButton(
-              key: const Key('supervision-audit'),
-              label: 'Ver auditoría de la actividad',
-              onPressed: () {
-                ref.read(auditTargetProvider.notifier).select(
-                  type: AuditObjectType.activity,
-                  objectId: activity.id,
-                  title: activity.title!,
-                  back: AppPage.supervisionActivity,
-                );
-                ref.read(currentPageProvider.notifier).go(AppPage.audit);
-              },
-            ),
+        const SizedBox(height: AppSpace.lg),
+        AppCard(
+          padding: EdgeInsets.all(pad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const PanelHeader(title: 'Planificaciones', bottom: AppSpace.xs),
+              if (history.plannings.isEmpty)
+                const _None('No hay planificaciones que puedas consultar.', key: Key('supervision-no-plannings'))
+              else
+                for (var i = 0; i < history.plannings.length; i++)
+                  _Entry(
+                    first: i == 0,
+                    icon: Icons.event_note_outlined,
+                    label: history.plannings[i].type == PlanningType.original ? 'Planificada' : 'Continuación planificada',
+                    date: history.plannings[i].date,
+                    text: history.plannings[i].description,
+                  ),
+              const SizedBox(height: AppSpace.xl),
+              const PanelHeader(title: 'Avances, en orden histórico', bottom: AppSpace.xs),
+              if (history.progress.isEmpty)
+                const _None('No hay avances que puedas consultar.', key: Key('supervision-no-progress'))
+              else
+                for (var i = 0; i < history.progress.length; i++)
+                  _Entry(
+                    first: i == 0,
+                    icon: Icons.check_circle_outline,
+                    label: 'Avance',
+                    date: history.progress[i].date,
+                    text: history.progress[i].description,
+                    status: history.progress[i].status,
+                    blockReason: history.progress[i].blockReason,
+                  ),
+            ],
           ),
-        ],
+        ),
       ],
     );
   }
 }
 
-class _Caption extends StatelessWidget {
-  const _Caption(this.text);
+/// Said when a section has nothing the supervisor may read.
+class _None extends StatelessWidget {
+  const _None(this.text, {super.key});
 
   final String text;
 
   @override
-  Widget build(BuildContext context) =>
-      Text(text, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: AppColors.textLabel));
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+    child: Text(text, style: const TextStyle(fontSize: AppType.body, color: AppColors.textSoft)),
+  );
 }
 
+/// One planning or progress entry, as a dense row of a list (it draws its own top divider unless it is the [first]).
 class _Entry extends StatelessWidget {
-  const _Entry({required this.icon, required this.label, required this.date, required this.text, this.status, this.blockReason});
+  const _Entry({
+    required this.first,
+    required this.icon,
+    required this.label,
+    required this.date,
+    required this.text,
+    this.status,
+    this.blockReason,
+  });
 
+  final bool first;
   final IconData icon;
   final String label;
   final DateTime date;
@@ -242,37 +300,42 @@ class _Entry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFAFBFD),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+      decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.divider))),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 15, color: AppColors.textSoft),
-          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: ExcludeSemantics(child: Icon(icon, size: 14, color: AppColors.textSoft)),
+          ),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
+                  spacing: AppSpace.sm,
+                  runSpacing: AppSpace.xs,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textSoft)),
-                    Text(formatShortDate(date), style: const TextStyle(fontSize: 11, color: AppColors.textFaint)),
+                    Text(label, style: const TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w800, color: AppColors.textSoft)),
+                    Text(formatShortDate(date), style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
                     if (status != null) StatusPill(label: statusLabel(status!), kind: pillKind(status!)),
                   ],
                 ),
-                if (text.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text(text, style: const TextStyle(fontSize: 12.5, height: 1.45))),
+                if (text.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(text, style: const TextStyle(fontSize: AppType.body, height: 1.45, color: AppColors.textBody)),
+                  ),
                 if (blockReason != null && blockReason!.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 3),
-                    child: Text('Motivo del bloqueo: $blockReason', style: const TextStyle(fontSize: 11.5, color: AppColors.textSoft)),
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Motivo del bloqueo: $blockReason',
+                      style: const TextStyle(fontSize: AppType.caption, height: 1.5, color: AppColors.blockedText),
+                    ),
                   ),
               ],
             ),

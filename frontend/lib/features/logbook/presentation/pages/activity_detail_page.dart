@@ -5,6 +5,7 @@ import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
@@ -21,6 +22,7 @@ import '../providers/activity_detail.dart';
 import '../providers/navigation.dart';
 import '../widgets/activity_tile.dart';
 import '../widgets/continuation_tag.dart';
+import '../widgets/form_parts.dart';
 import '../widgets/mark_actions.dart';
 import '../widgets/marked_tag.dart';
 import '../widgets/origin_tag.dart';
@@ -28,6 +30,10 @@ import '../widgets/reactivation_tag.dart';
 
 /// One activity with everything recorded about it (M2-07). What was PLANNED and what was DONE are
 /// shown in separate blocks, so a planning is never mistaken for a progress entry (CA-40).
+///
+/// Reading order: the title with its main action, the current status and facts of the activity, what was planned, and what
+/// was done. On a wide screen the status and its facts are a column beside the planning and the history; on a tablet or a
+/// phone they come first and the rest follows.
 class ActivityDetailPage extends ConsumerWidget {
   const ActivityDetailPage({super.key});
 
@@ -44,7 +50,11 @@ class ActivityDetailPage extends ConsumerWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const EmptyState('No hay una actividad abierta.', key: Key('detail-none')),
+          const AppCard(
+            padding: EdgeInsets.all(AppSpace.lg),
+            child: EmptyState('No hay una actividad abierta.', key: Key('detail-none')),
+          ),
+          const SizedBox(height: AppSpace.sm),
           LinkButton(
             key: const Key('detail-back'),
             label: '← Mis actividades',
@@ -58,16 +68,15 @@ class ActivityDetailPage extends ConsumerWidget {
     Widget body;
     // Only the FIRST load replaces the page: a reload keeps showing what it had (and keeps its dialogs alive)
     if (view.isLoading && !view.hasValue) {
-      body = const Padding(
-        key: Key('detail-loading'),
-        padding: EdgeInsets.all(40),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      body = const AppCard(child: KeyedSubtree(key: Key('detail-loading'), child: LoadingBlock()));
     } else if (view.hasError && !view.hasValue) {
       final error = view.error;
-      body = ErrorBox(
-        message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la actividad.',
-        onRetry: () => ref.invalidate(activityDetailProvider(opened.id)),
+      body = AppCard(
+        padding: const EdgeInsets.all(AppSpace.lg),
+        child: ErrorBox(
+          message: error is ApiError ? errorMessage(error) : 'No se pudo cargar la actividad.',
+          onRetry: () => ref.invalidate(activityDetailProvider(opened.id)),
+        ),
       );
     } else {
       body = _DetailBody(
@@ -121,7 +130,7 @@ class ActivityDetailPage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: LinkButton(
             key: const Key('detail-back'),
             label: '← ${_backLabel(opened.back)}',
@@ -158,6 +167,30 @@ class _DetailBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activity = detail.activity;
+    final size = ScreenSize.ofContext(context);
+    final reactivable = canReactivate(status: detail.status, marked: activity.marked);
+    // ONE main action: reactivating a Completada activity is what the person came for; otherwise it is registering progress.
+    final register = reactivable
+        ? SecondaryButton(
+            key: const Key('detail-register-progress'),
+            label: 'Registrar avance',
+            onPressed: activity.marked ? null : onRegisterProgress,
+          )
+        : PrimaryButton(
+            key: const Key('detail-register-progress'),
+            label: 'Registrar avance',
+            icon: Icons.add,
+            onPressed: activity.marked ? null : onRegisterProgress,
+          );
+    final status = _StatusCard(detail: detail, onAudit: onAudit);
+    final planning = _PlanningCard(detail: detail);
+    final history = _HistoryCard(
+      progress: detail.progress,
+      // The entries of a marked activity are not corrected until the mark is reverted (D-05)
+      onCorrect: canCorrect(detail.activity) ? onCorrect : null,
+      onAudit: onAuditProgress,
+      marked: detail.activity.marked,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -166,8 +199,9 @@ class _DetailBody extends StatelessWidget {
           title: activity.title,
           subtitle: 'Lo que se planificó, lo que se hizo y el estado en que está hoy.',
           action: Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: AppSpace.sm,
+            runSpacing: AppSpace.sm,
+            alignment: size.isMobile ? WrapAlignment.start : WrapAlignment.end,
             children: [
               if (canPlanContinuation(status: detail.status, marked: activity.marked))
                 SecondaryButton(
@@ -175,40 +209,51 @@ class _DetailBody extends StatelessWidget {
                   label: 'Planificar continuación',
                   onPressed: onPlanContinuation,
                 ),
-              if (canReactivate(status: detail.status, marked: activity.marked))
+              if (reactivable)
                 PrimaryButton(
                   key: const Key('detail-reactivate'),
                   label: 'Reactivar actividad',
                   icon: Icons.replay,
                   onPressed: onReactivate,
                 ),
-              PrimaryButton(
-                key: const Key('detail-register-progress'),
-                label: 'Registrar avance',
-                icon: Icons.add,
-                onPressed: activity.marked ? null : onRegisterProgress,
-              ),
-              if (canRevertMark(activity) || canMarkAsError(activity: activity, progress: detail.progress))
-                ActivityMarkActions(activity: activity, progress: detail.progress),
+              register,
             ],
           ),
         ),
-        _StatusCard(detail: detail, onAudit: onAudit),
-        const SizedBox(height: 18),
-        _PlanningCard(detail: detail),
-        const SizedBox(height: 18),
-        _HistoryCard(
-          progress: detail.progress,
-          // The entries of a marked activity are not corrected until the mark is reverted (D-05)
-          onCorrect: canCorrect(detail.activity) ? onCorrect : null,
-          onAudit: onAuditProgress,
-          marked: detail.activity.marked,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (size.isDesktop) {
+              final side = (constraints.maxWidth * 0.34).clamp(320.0, 400.0);
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [planning, const SizedBox(height: AppSpace.lg), history],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.xl),
+                  SizedBox(width: side, child: status),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [status, const SizedBox(height: AppSpace.lg), planning, const SizedBox(height: AppSpace.lg), history],
+            );
+          },
         ),
       ],
     );
   }
 }
 
+/// A card of the detail: its padding follows the screen.
+EdgeInsets _cardPadding(BuildContext context) => EdgeInsets.all(FormCard.padding(context));
+
+/// The current status, the facts of the activity (how it started, its origin day, when it was created), the mark of error when
+/// it has one, and what can be done about the activity itself: its audit and, if it applies, marking or reverting the mark.
 class _StatusCard extends StatelessWidget {
   const _StatusCard({required this.detail, required this.onAudit});
 
@@ -219,97 +264,127 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
     final activity = detail.activity;
     final origin = activity.origin == ActivityOrigin.planned ? 'Actividad planificada' : 'Actividad no planificada';
-    Widget fact(String label, String value, {Key? key}) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textFaint)),
-        const SizedBox(height: 3),
-        Text(value, key: key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-      ],
-    );
+    final markable = canRevertMark(activity) || canMarkAsError(activity: activity, progress: detail.progress);
     return AppCard(
-      padding: EdgeInsets.all(mobile ? 18 : 24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Text('Estado actual', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
-              const SizedBox(width: 12),
-              KeyedSubtree(
-                key: const Key('detail-status'),
-                child: StatusPill(label: statusLabel(detail.status), kind: pillKind(detail.status)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'El del último avance de ejecución; Pendiente si todavía no tiene ninguno.',
-            style: TextStyle(fontSize: 11, color: AppColors.textSoft),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 34,
-            runSpacing: 12,
-            children: [
-              if (activity.origin == ActivityOrigin.unplanned)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Tipo', style: TextStyle(fontSize: 10, color: AppColors.textFaint)),
-                    const SizedBox(height: 3),
-                    KeyedSubtree(key: const Key('detail-origin-tag'), child: OriginTag(origin: activity.origin)),
-                  ],
-                )
-              else
-                fact('Tipo', origin),
-              fact('Jornada de origen', formatShortDate(activity.date), key: const Key('detail-origin-date')),
-              fact('Creada el', formatDateTime(activity.createdAt)),
-            ],
-          ),
-          if (activity.marked) ...[
-            const SizedBox(height: 16),
-            Container(
-              key: const Key('detail-marked'),
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: MarkedColors.background,
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: MarkedColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const KeyedSubtree(key: Key('detail-marked-tag'), child: MarkedTag()),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Esta actividad se marcó como registrada por error: no aparece en tus vistas ni recuentos y ya '
-                    'no admite avances. Su historial se conserva y puedes revertir la marca.',
-                    style: const TextStyle(fontSize: 11, height: 1.6, color: MarkedColors.foreground),
+          Padding(
+            padding: _cardPadding(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PanelHeader(
+                  title: 'Estado actual',
+                  subtitle: 'El del último avance de ejecución; Pendiente si todavía no tiene ninguno.',
+                  trailing: KeyedSubtree(
+                    key: const Key('detail-status'),
+                    child: StatusPill(label: statusLabel(detail.status), kind: pillKind(detail.status)),
                   ),
-                  if (activity.markReason != null && activity.markReason!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Motivo: ${activity.markReason}',
-                      key: const Key('detail-marked-reason'),
-                      style: const TextStyle(fontSize: 11, height: 1.6, fontWeight: FontWeight.w700, color: MarkedColors.foreground),
+                  bottom: AppSpace.md,
+                ),
+                _Fact(
+                  'Tipo',
+                  activity.origin == ActivityOrigin.unplanned
+                      ? KeyedSubtree(key: const Key('detail-origin-tag'), child: OriginTag(origin: activity.origin))
+                      : Text(origin, style: _factStyle),
+                  first: true,
+                ),
+                _Fact(
+                  'Jornada de origen',
+                  Text(formatShortDate(activity.date), key: const Key('detail-origin-date'), style: _factStyle),
+                ),
+                _Fact('Creada el', Text(formatDateTime(activity.createdAt), style: _factStyle)),
+                if (activity.marked) ...[
+                  const SizedBox(height: AppSpace.md),
+                  Container(
+                    key: const Key('detail-marked'),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpace.md),
+                    decoration: BoxDecoration(
+                      color: MarkedColors.background,
+                      borderRadius: BorderRadius.circular(AppRadius.control + 2),
+                      border: Border.all(color: MarkedColors.border),
                     ),
-                  ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const KeyedSubtree(key: Key('detail-marked-tag'), child: MarkedTag()),
+                        const SizedBox(height: AppSpace.sm),
+                        const Text(
+                          'Esta actividad se marcó como registrada por error: no aparece en tus vistas ni recuentos y ya '
+                          'no admite avances. Su historial se conserva y puedes revertir la marca.',
+                          style: TextStyle(fontSize: AppType.caption, height: 1.5, color: MarkedColors.foreground),
+                        ),
+                        if (activity.markReason != null && activity.markReason!.isNotEmpty) ...[
+                          const SizedBox(height: AppSpace.xs),
+                          Text(
+                            'Motivo: ${activity.markReason}',
+                            key: const Key('detail-marked-reason'),
+                            style: const TextStyle(
+                              fontSize: AppType.caption,
+                              height: 1.5,
+                              fontWeight: FontWeight.w700,
+                              color: MarkedColors.foreground,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
-          ],
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: LinkButton(
-              key: const Key('detail-audit'),
-              label: 'Ver historial de auditoría',
-              onPressed: onAudit,
+          ),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: FormCard.padding(context) - AppSpace.sm, vertical: AppSpace.sm),
+            decoration: const BoxDecoration(
+              color: AppColors.panelFooter,
+              border: Border(top: BorderSide(color: AppColors.border)),
+            ),
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpace.sm,
+              runSpacing: AppSpace.xs,
+              children: [
+                LinkButton(key: const Key('detail-audit'), label: 'Ver historial de auditoría', onPressed: onAudit),
+                if (markable) ActivityMarkActions(activity: activity, progress: detail.progress),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const _factStyle = TextStyle(fontSize: AppType.body, fontWeight: FontWeight.w700, color: AppColors.ink);
+
+/// One fact of the activity: its label at the start and its value at the end of the line.
+class _Fact extends StatelessWidget {
+  const _Fact(this.label, this.value, {this.first = false});
+
+  final String label;
+  final Widget value;
+  final bool first;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+      decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.divider))),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(label, style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: DefaultTextStyle.merge(textAlign: TextAlign.end, child: value),
             ),
           ),
         ],
@@ -326,7 +401,6 @@ class _PlanningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
     final original = detail.originalPlanning;
 
     Widget block(
@@ -337,34 +411,35 @@ class _PlanningCard extends StatelessWidget {
       String? registered,
       bool continuation = false,
     }) {
-      final accent = continuation ? ContinuationColors.foreground : const Color(0xFF276A67);
+      final accent = continuation ? ContinuationColors.foreground : AppColors.recordedText;
       return Container(
         key: key,
         width: double.infinity,
-        margin: const EdgeInsets.only(top: 10),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(top: AppSpace.md),
+        padding: const EdgeInsets.all(AppSpace.md),
         decoration: BoxDecoration(
-          color: continuation ? ContinuationColors.background.withValues(alpha: 0.55) : const Color(0xFFF3FAF8),
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: continuation ? ContinuationColors.border : const Color(0xFFDAEEE9)),
+          color: continuation ? ContinuationColors.background.withValues(alpha: 0.55) : AppColors.background,
+          borderRadius: BorderRadius.circular(AppRadius.control + 2),
+          border: Border.all(color: continuation ? ContinuationColors.border : AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (continuation) ...[const ContinuationTag(), const SizedBox(height: 8)],
+            if (continuation) ...[const ContinuationTag(), const SizedBox(height: AppSpace.sm)],
             Wrap(
-              spacing: 10,
+              spacing: AppSpace.md,
+              runSpacing: AppSpace.xs,
               children: [
-                Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
-                Text(date, style: TextStyle(fontSize: 11, color: accent)),
+                Text(title, style: TextStyle(fontSize: AppType.body, fontWeight: FontWeight.w800, color: accent)),
+                Text(date, style: TextStyle(fontSize: AppType.caption, color: accent)),
                 if (registered != null)
-                  Text('Registrada $registered', style: const TextStyle(fontSize: 10, color: AppColors.textFaint)),
+                  Text('Registrada $registered', style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Text(
               description.isEmpty ? 'Sin descripción' : description,
-              style: const TextStyle(fontSize: 12, height: 1.6, color: AppColors.textBody),
+              style: const TextStyle(fontSize: AppType.body, height: 1.5, color: AppColors.textBody),
             ),
           ],
         ),
@@ -372,17 +447,20 @@ class _PlanningCard extends StatelessWidget {
     }
 
     return AppCard(
-      padding: EdgeInsets.all(mobile ? 18 : 24),
+      padding: _cardPadding(context),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const KindTag('Planificación', icon: Icons.event_note_outlined, color: Color(0xFF276A67), background: Color(0xFFE5F7F3)),
-          const SizedBox(height: 10),
-          const Text('Lo planificado', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          const Text(
-            'Lo que se tenía previsto. No es un avance y no cambia el estado de la actividad.',
-            style: TextStyle(fontSize: 11, color: AppColors.textSoft),
+          const TaggedHeader(
+            title: 'Lo planificado',
+            subtitle: 'Lo que se tenía previsto. No es un avance y no cambia el estado de la actividad.',
+            tag: KindTag(
+              'Planificación',
+              icon: Icons.event_note_outlined,
+              color: AppColors.recordedText,
+              background: AppColors.recordedBackground,
+            ),
+            bottom: 0,
           ),
           if (original != null)
             block(
@@ -393,12 +471,12 @@ class _PlanningCard extends StatelessWidget {
               registered: formatDateTime(original.createdAt),
             )
           else
-            Container(
+            Padding(
               key: const Key('detail-no-planning'),
-              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.only(top: AppSpace.md),
               child: const Text(
                 'Esta actividad no se planificó: se registró directamente como ejecución.',
-                style: TextStyle(fontSize: 12, color: AppColors.textSoft),
+                style: TextStyle(fontSize: AppType.body, color: AppColors.textSoft),
               ),
             ),
           for (final next in detail.plannedContinuations)
@@ -432,29 +510,30 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
     return AppCard(
-      padding: EdgeInsets.all(mobile ? 18 : 24),
+      padding: _cardPadding(context),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const KindTag('Ejecución', icon: Icons.trending_up, color: AppColors.progressText, background: AppColors.progressBackground),
-          const SizedBox(height: 10),
-          const Text('Historial de avances', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          const Text(
-            'Lo que realmente se hizo, ordenado por fecha laboral. Cada avance conserva el estado que tenía entonces.',
-            style: TextStyle(fontSize: 11, color: AppColors.textSoft),
-          ),
-          if (marked) ...[
-            const SizedBox(height: 6),
-            const Text(
-              'Los avances de una actividad marcada como registrada por error no se corrigen: revierte antes la marca.',
-              key: Key('detail-correct-blocked'),
-              style: TextStyle(fontSize: 11, color: AppColors.textSoft),
+          const TaggedHeader(
+            title: 'Historial de avances',
+            subtitle: 'Lo que realmente se hizo, ordenado por fecha laboral. Cada avance conserva el estado que tenía entonces.',
+            tag: KindTag(
+              'Ejecución',
+              icon: Icons.trending_up,
+              color: AppColors.progressText,
+              background: AppColors.progressBackground,
             ),
-          ],
-          const SizedBox(height: 8),
+            bottom: AppSpace.sm,
+          ),
+          if (marked)
+            const Padding(
+              padding: EdgeInsets.only(bottom: AppSpace.sm),
+              child: FormHint(
+                'Los avances de una actividad marcada como registrada por error no se corrigen: revierte antes la marca.',
+                textKey: Key('detail-correct-blocked'),
+              ),
+            ),
           if (progress.isEmpty)
             const EmptyState('Todavía no hay avances registrados.', key: Key('detail-no-progress'))
           else
@@ -491,35 +570,32 @@ class _ProgressEntry extends StatelessWidget {
     final date = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Fecha laboral', style: TextStyle(fontSize: 10, color: AppColors.textFaint)),
-        const SizedBox(height: 2),
+        const Text('Fecha laboral', style: TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
         Text(
           formatShortDate(entry.date),
           key: Key('detail-progress-date-${entry.id}'),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: AppType.bodyLarge, fontWeight: FontWeight.w800, color: AppColors.ink),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xs),
         Text(
           'Registrado ${formatDateTime(entry.createdAt)}',
-          style: const TextStyle(fontSize: 10, color: AppColors.textFaint),
+          style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft),
         ),
         // A corrected entry says so and when; an entry never corrected shows nothing (CA-62)
-        if (entry.corrected) ...[
-          const SizedBox(height: 2),
+        if (entry.corrected)
           Text(
             'Corregido ${formatDateTime(entry.modifiedAt!)}',
             key: Key('detail-corrected-${entry.id}'),
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSoft),
+            style: const TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
           ),
-        ],
       ],
     );
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
-          spacing: 8,
-          runSpacing: 6,
+          spacing: AppSpace.sm,
+          runSpacing: AppSpace.xs,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             KeyedSubtree(
@@ -530,50 +606,37 @@ class _ProgressEntry extends StatelessWidget {
               KeyedSubtree(key: Key('detail-reactivation-${entry.id}'), child: const ReactivationTag()),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(entry.description, style: const TextStyle(fontSize: 12, height: 1.6, color: AppColors.textBody)),
+        const SizedBox(height: AppSpace.sm),
+        Text(entry.description, style: const TextStyle(fontSize: AppType.body, height: 1.5, color: AppColors.textBody)),
         if (reason != null && reason.isNotEmpty) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xs),
           Text(
             'Motivo del bloqueo: $reason',
-            style: const TextStyle(fontSize: 11, height: 1.55, color: AppColors.blockedText),
+            style: const TextStyle(fontSize: AppType.caption, height: 1.5, color: AppColors.blockedText),
           ),
         ],
-        const SizedBox(height: 4),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Wrap(
-            spacing: 14,
-            children: [
-              if (onCorrect != null)
-                LinkButton(
-                  key: Key('detail-correct-${entry.id}'),
-                  label: 'Corregir',
-                  onPressed: onCorrect,
-                ),
-              LinkButton(
-                key: Key('detail-audit-${entry.id}'),
-                label: 'Ver auditoría',
-                onPressed: onAudit,
-              ),
-            ],
-          ),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(
+          spacing: AppSpace.sm,
+          children: [
+            if (onCorrect != null)
+              LinkButton(key: Key('detail-correct-${entry.id}'), label: 'Corregir', onPressed: onCorrect),
+            LinkButton(key: Key('detail-audit-${entry.id}'), label: 'Ver auditoría', onPressed: onAudit),
+          ],
         ),
       ],
     );
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      decoration: BoxDecoration(
-        border: first ? null : const Border(top: BorderSide(color: AppColors.divider)),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+      decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.divider))),
       child: mobile
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [date, const SizedBox(height: 10), content],
+              children: [date, const SizedBox(height: AppSpace.md), content],
             )
           : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [SizedBox(width: 150, child: date), const SizedBox(width: 18), Expanded(child: content)],
+              children: [SizedBox(width: 156, child: date), const SizedBox(width: AppSpace.lg), Expanded(child: content)],
             ),
     );
   }

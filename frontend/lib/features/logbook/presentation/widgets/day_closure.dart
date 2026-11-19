@@ -212,7 +212,7 @@ class _DayClosureState extends ConsumerState<DayClosure> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Cerrarla es una decisión tuya: nunca se cierra sola. Para cerrarla hace falta:',
+            'Cerrarla es decisión tuya: nunca se cierra sola. Hace falta:',
             style: TextStyle(fontSize: 12, height: 1.6, color: AppColors.textSoft),
           ),
           condition(const Key('closure-condition-summary'), conditions.hasSummary, 'Un resumen con texto'),
@@ -306,13 +306,13 @@ class _Panel extends StatelessWidget {
     );
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(mobile ? 14 : 18),
+      padding: EdgeInsets.all(mobile ? 14 : 16),
       decoration: BoxDecoration(
         color: closed ? const Color(0xFFFFF7F6) : AppColors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: closed ? const Color(0xFFF3D3D0) : AppColors.border),
       ),
-      child: mobile || action == null
+      child: LayoutBuilder(builder: (context, constraints) => mobile || action == null || constraints.maxWidth < 520
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -335,6 +335,7 @@ class _Panel extends StatelessWidget {
                 action!,
               ],
             ),
+      ),
     );
   }
 }

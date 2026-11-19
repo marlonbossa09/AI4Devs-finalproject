@@ -101,16 +101,17 @@ void main() {
       await pumpApp(tester, logbook: repo);
       await openLogbook(tester);
       expect(find.text('RESUMEN DIARIO'), findsOneWidget);
-      expect(find.text('ACTIVIDADES Y AVANCES'), findsOneWidget);
+      expect(find.text('Actividades y avances'), findsOneWidget);
       expect(find.textContaining('No es una actividad ni un avance'), findsOneWidget);
       // Each thing lives in its own place: the summary is not among the activities, nor the reverse
       final section = find.byKey(const Key('summary-section'));
       expect(find.descendant(of: section, matching: find.text('Preparar informe')), findsNothing);
       expect(find.descendant(of: section, matching: find.text('Resumen de la jornada')), findsOneWidget);
-      // The summary comes before the activities heading
-      expect(tester.getTopLeft(section).dy, lessThan(tester.getTopLeft(find.byKey(const Key('activities-heading'))).dy));
+      // The activities come first: on a wide screen the summary sits in the column beside them, never above them
       expect(tester.getTopLeft(find.byKey(const Key('activities-heading'))).dy,
           lessThan(tester.getTopLeft(find.text('Preparar informe')).dy));
+      expect(tester.getTopLeft(section).dx, greaterThan(tester.getTopLeft(find.byKey(const Key('activities-heading'))).dx));
+      expect(tester.getTopLeft(section).dy, greaterThanOrEqualTo(tester.getTopLeft(find.byKey(const Key('activities-heading'))).dy));
     });
 
     testWidgets('a summary does not disturb the activities, their progress or the indicators', (tester) async {

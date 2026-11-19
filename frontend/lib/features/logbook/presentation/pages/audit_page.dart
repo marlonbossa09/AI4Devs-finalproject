@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
-import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/text_blocks.dart';
@@ -14,6 +14,7 @@ import '../providers/audit_history.dart';
 import '../providers/navigation.dart';
 import '../widgets/audit_entry_tile.dart';
 import '../widgets/audit_tag.dart';
+import '../widgets/form_parts.dart';
 
 /// The audit of ONE record (M3-07): a timeline of the changes made to it, oldest first, one page at a time.
 ///
@@ -32,7 +33,6 @@ class AuditPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
     final target = ref.watch(auditTargetProvider);
     final currentUserId = ref.watch(authProvider).value?.user.id;
 
@@ -53,11 +53,7 @@ class AuditPage extends ConsumerWidget {
       final history = view.value;
       Widget timeline;
       if (view.isLoading && history == null) {
-        timeline = const Padding(
-          key: Key('audit-loading'),
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator()),
-        );
+        timeline = const KeyedSubtree(key: Key('audit-loading'), child: LoadingBlock());
       } else if (view.hasError && history == null) {
         final error = view.error;
         timeline = ErrorBox(
@@ -81,16 +77,11 @@ class AuditPage extends ConsumerWidget {
                 last: i == history.items.length - 1 && !history.hasMore && history.moreError == null,
               ),
             if (history.hasMore || history.moreError != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpace.lg),
               if (history.moreError != null)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    errorMessage(history.moreError!),
-                    key: const Key('audit-more-error'),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: AppColors.error),
-                  ),
+                  padding: const EdgeInsets.only(bottom: AppSpace.md),
+                  child: FormErrorText(errorMessage(history.moreError!), textKey: const Key('audit-more-error'), center: true),
                 ),
               Center(
                 child: SecondaryButton(
@@ -113,36 +104,41 @@ class AuditPage extends ConsumerWidget {
           Container(
             key: const Key('audit-subject'),
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpace.md),
             decoration: BoxDecoration(
-              color: const Color(0xFFFAF9FD),
-              borderRadius: BorderRadius.circular(11),
+              color: AppColors.panelFooter,
+              borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(color: AuditColors.border),
             ),
             child: Wrap(
-              spacing: 10,
-              runSpacing: 6,
+              spacing: AppSpace.md,
+              runSpacing: AppSpace.sm,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const AuditTag(),
-                Text(target.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                Text(
+                  target.title,
+                  style: const TextStyle(fontSize: AppType.bodyLarge, fontWeight: FontWeight.w800, color: AppColors.ink),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'La auditoría registra quién cambió este registro, cuándo, por qué y qué valores tenía antes y después. '
+          const SizedBox(height: AppSpace.md),
+          // The page subtitle already says what the audit holds; this says what it is NOT, and the order it is read in
+          const FormHint(
             'No es el historial de avances del trabajo: ese está en el detalle de la actividad.',
-            key: Key('audit-explanation'),
-            style: TextStyle(fontSize: 11, height: 1.55, color: AppColors.textSoft),
+            textKey: Key('audit-explanation'),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'En orden cronológico: lo más antiguo primero.',
-            key: Key('audit-order'),
-            style: TextStyle(fontSize: 11, color: AppColors.textFaint),
+          const SizedBox(height: AppSpace.xs),
+          const Padding(
+            padding: EdgeInsets.only(left: AppSpace.xxl),
+            child: Text(
+              'En orden cronológico: lo más antiguo primero.',
+              key: Key('audit-order'),
+              style: TextStyle(fontSize: AppType.caption, color: AppColors.textSoft),
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpace.lg),
           timeline,
         ],
       );
@@ -151,19 +147,13 @@ class AuditPage extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(padding: const EdgeInsets.only(bottom: 10), child: target == null ? const SizedBox.shrink() : back),
+        if (target != null) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: back),
         const PageHeader(
           eyebrow: 'Auditoría',
           title: 'Historial de auditoría',
           subtitle: 'Los cambios hechos a un registro, con su autor, su momento y sus valores anteriores y nuevos.',
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 790),
-            child: AppCard(padding: EdgeInsets.all(mobile ? 18 : 24), child: body),
-          ),
-        ),
+        FormColumn(child: AppCard(padding: EdgeInsets.all(FormCard.padding(context)), child: body)),
       ],
     );
   }

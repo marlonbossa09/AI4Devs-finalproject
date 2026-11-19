@@ -31,9 +31,11 @@ class OriginTag extends StatelessWidget {
         children: [
           Icon(Icons.bolt, size: 14, color: UnplannedColors.foreground),
           SizedBox(width: AppSpace.xs - 1),
-          Text(
-            'No planificada',
-            style: TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w800, color: UnplannedColors.foreground),
+          Flexible(
+            child: Text(
+              'No planificada',
+              style: TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w800, color: UnplannedColors.foreground),
+            ),
           ),
         ],
       ),

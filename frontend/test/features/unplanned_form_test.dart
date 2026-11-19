@@ -353,7 +353,8 @@ void main() {
       await tapKey(tester, 'nav-activities');
       final unplanned = activityOf(repo, 'Atender incidente');
       final planned = activityOf(repo, 'Prevista');
-      expect(find.text('Actividad no planificada'), findsWidgets);
+      // How it started is told once per row: unplanned ones by their tag (planned ones by "Actividad planificada")
+      expect(find.text('Actividad no planificada'), findsNothing);
       expect(tagOf('row-origin-${unplanned.id}'), findsOneWidget);
       expect(tagOf('row-origin-${planned.id}'), findsNothing);
       expect(pill('row-status-${unplanned.id}', 'En progreso'), findsOneWidget);

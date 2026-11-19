@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/status_pill.dart';
@@ -10,7 +11,7 @@ import '../providers/team_data.dart';
 import 'peer_logbook_view.dart' show FieldCaption;
 import 'shared_activity_tile.dart';
 
-/// The history (M4-02): one card per logbook the user may read, in the order the server sends (date, person), and a
+/// The history (M4-02): one block per logbook the user may read, in the order the server sends (date, person), and a
 /// "load more" that follows the server cursor. It is read-only. [nameOf] turns a person id into what to show; an
 /// id that is not in the current team list (someone who already left) is shown without a name: the client has none.
 class HistoryList extends StatelessWidget {
@@ -23,10 +24,7 @@ class HistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (history.items.isEmpty) {
-      return const EmptyState(
-        'No hay bitácoras que puedas leer en ese rango.',
-        key: Key('history-empty'),
-      );
+      return const EmptyState('No hay bitácoras que puedas leer en ese rango.', key: Key('history-empty'));
     }
     return Column(
       key: const Key('history-list'),
@@ -35,36 +33,51 @@ class HistoryList extends StatelessWidget {
         for (final entry in history.items)
           Container(
             key: Key('history-entry-${entry.ownerId}-${formatDate(entry.date)}'),
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: AppSpace.md),
+            padding: const EdgeInsets.all(AppSpace.md),
             decoration: BoxDecoration(
-              color: const Color(0xFFFAFBFD),
-              borderRadius: BorderRadius.circular(11),
+              color: AppColors.panelFooter,
+              borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(nameOf(entry.ownerId), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
-                    Text(formatLongDate(entry.date), style: const TextStyle(fontSize: 12, color: AppColors.textSoft)),
-                    StatusPill(label: entry.closed ? 'Cerrada' : 'Abierta', kind: entry.closed ? PillKind.done : PillKind.progress),
-                  ],
+                Semantics(
+                  header: true,
+                  label: '${nameOf(entry.ownerId)}, ${formatLongDate(entry.date)}, ${entry.closed ? 'cerrada' : 'abierta'}',
+                  excludeSemantics: true,
+                  child: Wrap(
+                    spacing: AppSpace.md,
+                    runSpacing: AppSpace.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        nameOf(entry.ownerId),
+                        style: const TextStyle(fontSize: AppType.bodyLarge, fontWeight: FontWeight.w800, color: AppColors.ink),
+                      ),
+                      Text(formatLongDate(entry.date), style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
+                      StatusPill(
+                        label: entry.closed ? 'Cerrada' : 'Abierta',
+                        kind: entry.closed ? PillKind.done : PillKind.progress,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.sm),
                 Text(
                   entry.summary.trim().isEmpty ? 'Sin resumen.' : entry.summary,
-                  style: TextStyle(fontSize: 12.5, height: 1.5, color: entry.summary.trim().isEmpty ? AppColors.textFaint : AppColors.textBody),
+                  style: TextStyle(
+                    fontSize: AppType.body,
+                    height: 1.5,
+                    color: entry.summary.trim().isEmpty ? AppColors.textSoft : AppColors.textBody,
+                  ),
                 ),
                 if (entry.activities.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.md),
                   const FieldCaption('Actividades'),
-                  const SizedBox(height: 6),
-                  for (final activity in entry.activities) SharedActivityTile(activity: activity),
+                  for (var i = 0; i < entry.activities.length; i++)
+                    SharedActivityTile(first: i == 0, activity: entry.activities[i]),
                 ],
               ],
             ),
@@ -72,12 +85,12 @@ class HistoryList extends StatelessWidget {
         if (history.hasMore || history.moreError != null) ...[
           if (history.moreError != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: Text(
                 errorMessage(history.moreError!),
                 key: const Key('history-more-error'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: AppColors.error),
+                style: const TextStyle(fontSize: AppType.caption, color: AppColors.error),
               ),
             ),
           Center(

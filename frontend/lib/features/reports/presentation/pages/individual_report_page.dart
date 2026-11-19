@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
@@ -15,6 +15,7 @@ import '../../../team/presentation/providers/team_data.dart';
 import '../../domain/entities/report_entities.dart';
 import '../../domain/rules/report_range_rules.dart';
 import '../providers/report_generation.dart';
+import '../widgets/report_form.dart';
 import '../widgets/report_status_widgets.dart';
 import '../widgets/report_widgets.dart';
 
@@ -38,7 +39,6 @@ class _IndividualReportPageState extends ConsumerState<IndividualReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
     final session = ref.watch(authProvider).value;
     final today = session?.today ?? dateOnly(DateTime.now());
     _to ??= today;
@@ -48,7 +48,7 @@ class _IndividualReportPageState extends ConsumerState<IndividualReportPage> {
     final isSupervisor = session != null && session.role == Role.supervisor;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PageHeader(
           eyebrow: 'Informes',
@@ -57,82 +57,32 @@ class _IndividualReportPageState extends ConsumerState<IndividualReportPage> {
               ? 'Un resumen del trabajo registrado, tuyo o de una persona de tu equipo, en un período.'
               : 'Un resumen del trabajo que has registrado en un período.',
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 860),
-            child: AppCard(
-              padding: EdgeInsets.all(mobile ? 18 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // While a generation runs the form cannot be changed: nothing to cancel, nothing to mix up
-                  IgnorePointer(ignoring: busy, child: _form(session?.user.id, isSupervisor, busy)),
-                  const SizedBox(height: 18),
-                  _result(state),
-                ],
-              ),
-            ),
-          ),
+        ReportForm(
+          fromKey: const Key('report-from'),
+          toKey: const Key('report-to'),
+          from: _from!,
+          to: _to!,
+          onFromChanged: (date) => setState(() {
+            _from = date;
+            _rangeError = null;
+            ref.read(individualReportControllerProvider.notifier).clear();
+          }),
+          onToChanged: (date) => setState(() {
+            _to = date;
+            _rangeError = null;
+            ref.read(individualReportControllerProvider.notifier).clear();
+          }),
+          hint: 'El período abarca como máximo $maxReportRangeDays días. Generar el informe puede tardar desde decenas de segundos hasta varios minutos.',
+          hintKey: const Key('report-hint'),
+          submitKey: const Key('report-submit'),
+          submitLabel: 'Generar informe',
+          busy: busy,
+          onSubmit: _submit,
+          rangeError: _rangeError,
+          leading: isSupervisor ? _personSelector(session.user.id) : null,
         ),
-      ],
-    );
-  }
-
-  Widget _form(String? myId, bool isSupervisor, bool busy) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (isSupervisor) ...[_personSelector(myId), const SizedBox(height: 14)],
-        Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          children: [
-            SizedBox(
-              width: 220,
-              child: DateField(
-                fieldKey: const Key('report-from'),
-                label: 'Desde',
-                date: _from!,
-                onChanged: (date) => setState(() {
-                  _from = date;
-                  _rangeError = null;
-                  ref.read(individualReportControllerProvider.notifier).clear();
-                }),
-              ),
-            ),
-            SizedBox(
-              width: 220,
-              child: DateField(
-                fieldKey: const Key('report-to'),
-                label: 'Hasta',
-                date: _to!,
-                errorText: _rangeError,
-                onChanged: (date) => setState(() {
-                  _to = date;
-                  _rangeError = null;
-                  ref.read(individualReportControllerProvider.notifier).clear();
-                }),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'El período abarca como máximo $maxReportRangeDays días. Generar el informe puede tardar desde decenas de segundos hasta varios minutos.',
-          key: Key('report-hint'),
-          style: TextStyle(fontSize: 11, height: 1.5, color: AppColors.textFaint),
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: PrimaryButton(
-            key: const Key('report-submit'),
-            label: busy ? 'Generando…' : 'Generar informe',
-            loading: busy,
-            onPressed: busy ? null : _submit,
-          ),
-        ),
+        SizedBox(height: reportGap(context)),
+        _result(state),
       ],
     );
   }
@@ -143,7 +93,11 @@ class _IndividualReportPageState extends ConsumerState<IndividualReportPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('No se pudo cargar tu equipo. Puedes generar tu propio informe.', key: Key('report-members-error'), style: TextStyle(fontSize: 12, color: AppColors.error)),
+          const Text(
+            'No se pudo cargar tu equipo. Puedes generar tu propio informe.',
+            key: Key('report-members-error'),
+            style: TextStyle(fontSize: AppType.caption, color: AppColors.error),
+          ),
           LinkButton(label: 'Reintentar', onPressed: () => ref.invalidate(teamMembersProvider)),
         ],
       );
@@ -177,7 +131,7 @@ class _IndividualReportPageState extends ConsumerState<IndividualReportPage> {
   Widget _result(ReportState<IndividualReport> state) {
     switch (state.phase) {
       case ReportPhase.idle:
-        return const EmptyState('Elige un período y genera el informe.', key: Key('report-none'));
+        return const AppCard(child: EmptyState('Elige un período y genera el informe.', key: Key('report-none')));
       case ReportPhase.generating:
         return const ReportGenerating();
       case ReportPhase.failed:
@@ -199,12 +153,15 @@ class _IndividualReportView extends StatelessWidget {
       key: const Key('report-result'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ReportHeader(title: 'Informe de ${report.person.name}', period: report.period, generatedAt: report.generatedAt),
-        const SizedBox(height: 12),
-        ReportBaseNotice(report.baseStatement, key: const Key('report-base')),
-        const SizedBox(height: 16),
+        ReportHeader(
+          title: 'Informe de ${report.person.name}',
+          period: report.period,
+          generatedAt: report.generatedAt,
+          aside: ReportBaseNotice(report.baseStatement, key: const Key('report-base')),
+        ),
+        SizedBox(height: reportGap(context)),
         if (report.noData)
-          const EmptyState('No hay datos disponibles para esta persona en ese período.', key: Key('report-no-data'))
+          const AppCard(child: EmptyState('No hay datos disponibles para esta persona en ese período.', key: Key('report-no-data')))
         else
           ReportBodyView(body: report.body, prefix: 'report'),
       ],

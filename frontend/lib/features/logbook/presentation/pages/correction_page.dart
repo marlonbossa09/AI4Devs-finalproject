@@ -5,9 +5,9 @@ import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/utils/keys.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/confirm_dialog.dart';
 import '../../../../core/widgets/fields.dart';
@@ -20,6 +20,8 @@ import '../providers/activity_detail.dart';
 import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../widgets/activity_tile.dart';
+import '../widgets/closed_date_notice.dart';
+import '../widgets/form_parts.dart';
 import '../widgets/marked_tag.dart';
 import '../widgets/reactivation_tag.dart';
 import '../widgets/status_picker.dart';
@@ -189,6 +191,7 @@ class _CorrectionPageState extends ConsumerState<CorrectionPage> {
     );
 
     Widget form;
+    Widget? actions;
     if (target == null) {
       form = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -198,10 +201,7 @@ class _CorrectionPageState extends ConsumerState<CorrectionPage> {
         ],
       );
     } else if (detailView != null && detailView.isLoading && detail == null) {
-      form = const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      form = const LoadingBlock();
     } else if (detailView != null && detailView.hasError && detail == null) {
       final error = detailView.error;
       form = ErrorBox(
@@ -252,7 +252,7 @@ class _CorrectionPageState extends ConsumerState<CorrectionPage> {
         hint: 'Lo que se hizo',
         controller: _description,
         enabled: !_saving && submitEnabled,
-        minLines: 4,
+        minLines: 3,
         maxLines: 6,
         errorText: _errors.description,
         onChanged: (_) => _clearErrors(),
@@ -265,11 +265,13 @@ class _CorrectionPageState extends ConsumerState<CorrectionPage> {
         expand: mobile,
         onPressed: submitEnabled ? () => _submit(detail, original) : null,
       );
+      actions = FormActions(cancel: cancelButton, submit: saveButton);
+      const gap = SizedBox(height: AppSpace.lg);
       form = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _EntryBox(activity: detail.activity, entry: original),
-          const SizedBox(height: 14),
+          gap,
           if (marked) ...[
             const Notice(
               key: Key('correction-marked'),
@@ -277,57 +279,27 @@ class _CorrectionPageState extends ConsumerState<CorrectionPage> {
               text: 'Sus avances no se corrigen mientras la marca esté vigente. Revierte la marca desde el detalle de la actividad.',
               icon: Icons.report_gmailerrorred_outlined,
             ),
-            const SizedBox(height: 14),
+            gap,
           ],
-          if (closedDay && !marked) ...[
-            _ClosedDayNotice(date: original.date),
-            const SizedBox(height: 14),
-          ],
+          if (closedDay && !marked) ...[_ClosedDayNotice(date: original.date), gap],
           statusPicker,
-          if (status == ActivityStatus.blocked) ...[const SizedBox(height: 14), reasonField],
-          const SizedBox(height: 14),
+          if (status == ActivityStatus.blocked) ...[gap, reasonField],
+          gap,
           descriptionField,
-          const SizedBox(height: 10),
-          const Text(
+          const SizedBox(height: AppSpace.md),
+          const FormHint(
             'Es una corrección: no crea un avance nuevo, no cambia su fecha laboral ni borra nada. '
             'Queda constancia del valor anterior.',
-            key: Key('correction-hint'),
-            style: TextStyle(fontSize: 11, color: AppColors.textSoft),
+            textKey: Key('correction-hint'),
           ),
           if (_errors.nothingChanged) ...[
-            const SizedBox(height: 14),
-            const Text(
+            gap,
+            const FormErrorText(
               'No has cambiado nada: modifica el estado, la descripción o el motivo para corregir el avance.',
-              key: Key('correction-nothing'),
-              style: TextStyle(fontSize: 12, color: AppColors.error),
+              textKey: Key('correction-nothing'),
             ),
           ],
-          if (_error != null) ...[
-            const SizedBox(height: 14),
-            Semantics(
-              liveRegion: true,
-              child: Text(
-                _error!,
-                key: const Key('correction-error'),
-                style: const TextStyle(fontSize: 12, color: AppColors.error),
-              ),
-            ),
-          ],
-          const SizedBox(height: 17),
-          if (mobile)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                saveButton,
-                const SizedBox(height: 10),
-                SizedBox(width: double.infinity, child: cancelButton),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [cancelButton, const SizedBox(width: 10), saveButton],
-            ),
+          if (_error != null) ...[gap, FormErrorText(_error!, textKey: const Key('correction-error'))],
         ],
       );
     }
@@ -340,23 +312,12 @@ class _CorrectionPageState extends ConsumerState<CorrectionPage> {
           title: 'Corregir avance',
           subtitle: 'Corrige lo que se registró en un avance, sin crear otro y dejando constancia.',
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 790),
-            child: AppCard(
-              padding: EdgeInsets.all(mobile ? 18 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const PanelHeader(
-                    title: 'Datos del avance',
-                    subtitle: 'La fecha laboral y el momento de registro no se pueden cambiar',
-                  ),
-                  form,
-                ],
-              ),
-            ),
+        FormColumn(
+          child: FormCard(
+            title: 'Datos del avance',
+            subtitle: 'La fecha laboral y el momento de registro no se pueden cambiar',
+            actions: actions,
+            child: form,
           ),
         ),
       ],
@@ -373,57 +334,31 @@ class _EntryBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ContextBox(
       key: const Key('correction-entry'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text('Actividad', style: TextStyle(fontSize: 10, color: AppColors.textFaint)),
-              Text(activity.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-              if (activity.marked) const MarkedTag(),
-              KeyedSubtree(
-                key: const Key('correction-entry-status'),
-                child: StatusPill(label: statusLabel(entry.status), kind: pillKind(entry.status)),
-              ),
-              if (entry.isReactivation) const KeyedSubtree(key: Key('correction-reactivation-tag'), child: ReactivationTag()),
-            ],
+      title: activity.title,
+      badges: [
+        if (activity.marked) const MarkedTag(),
+        KeyedSubtree(
+          key: const Key('correction-entry-status'),
+          child: StatusPill(label: statusLabel(entry.status), kind: pillKind(entry.status)),
+        ),
+        if (entry.isReactivation) const KeyedSubtree(key: Key('correction-reactivation-tag'), child: ReactivationTag()),
+      ],
+      details: [
+        Text(
+          'Fecha laboral: ${formatShortDate(entry.date)}',
+          key: const Key('correction-date'),
+          style: const TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w800, color: AppColors.ink),
+        ),
+        ContextFact('Registrado ${formatDateTime(entry.createdAt)}'),
+        if (entry.corrected)
+          Text(
+            'Última corrección ${formatDateTime(entry.modifiedAt!)}',
+            key: const Key('correction-last'),
+            style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 18,
-            runSpacing: 4,
-            children: [
-              Text(
-                'Fecha laboral: ${formatShortDate(entry.date)}',
-                key: const Key('correction-date'),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-              ),
-              Text(
-                'Registrado ${formatDateTime(entry.createdAt)}',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSoft),
-              ),
-              if (entry.corrected)
-                Text(
-                  'Última corrección ${formatDateTime(entry.modifiedAt!)}',
-                  key: const Key('correction-last'),
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSoft),
-                ),
-            ],
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -437,32 +372,11 @@ class _ClosedDayNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: const Key('correction-closed-notice'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F6),
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFF3D3D0)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
-            child: Icon(Icons.lock_outline, size: 15, color: AppColors.blockedText),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'La jornada del ${formatShortDate(date)} está cerrada, así que este avance no se puede corregir. '
-              'Reábrela desde Mi bitácora indicando un motivo y vuelve a intentarlo.',
-              style: const TextStyle(fontSize: 12, height: 1.55, color: AppColors.blockedText),
-            ),
-          ),
-        ],
-      ),
+    return ClosedDayBox(
+      boxKey: const Key('correction-closed-notice'),
+      text:
+          'La jornada del ${formatShortDate(date)} está cerrada, así que este avance no se puede corregir. '
+          'Reábrela desde Mi bitácora indicando un motivo y vuelve a intentarlo.',
     );
   }
 }

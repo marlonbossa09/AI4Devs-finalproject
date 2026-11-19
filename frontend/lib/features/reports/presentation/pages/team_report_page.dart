@@ -3,16 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/buttons.dart';
-import '../../../../core/widgets/fields.dart';
 import '../../../../core/widgets/text_blocks.dart';
 import '../../../auth/domain/entities/session.dart';
 import '../../../auth/presentation/providers/auth.dart';
 import '../../domain/entities/report_entities.dart';
 import '../../domain/rules/report_range_rules.dart';
 import '../providers/report_generation.dart';
+import '../widgets/report_form.dart';
 import '../widgets/report_status_widgets.dart';
 import '../widgets/report_widgets.dart';
 
@@ -36,7 +37,6 @@ class _TeamReportPageState extends ConsumerState<TeamReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
     final session = ref.watch(authProvider).value;
     final today = session?.today ?? dateOnly(DateTime.now());
     _to ??= today;
@@ -44,94 +44,50 @@ class _TeamReportPageState extends ConsumerState<TeamReportPage> {
     final state = ref.watch(teamReportControllerProvider);
     final busy = state.isGenerating;
 
-    Widget body;
+    final List<Widget> body;
     if (session != null && session.role != Role.supervisor) {
-      body = const EmptyState('Esta vista es solo para la supervisión del equipo.', key: Key('team-report-not-available'));
+      body = const [AppCard(child: EmptyState('Esta vista es solo para la supervisión del equipo.', key: Key('team-report-not-available')))];
     } else {
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // While a generation runs the form cannot be changed
-          IgnorePointer(ignoring: busy, child: _form(busy)),
-          const SizedBox(height: 18),
-          _result(state),
-        ],
-      );
+      body = [
+        ReportForm(
+          fromKey: const Key('team-report-from'),
+          toKey: const Key('team-report-to'),
+          from: _from!,
+          to: _to!,
+          onFromChanged: (date) => setState(() {
+            _from = date;
+            _rangeError = null;
+            ref.read(teamReportControllerProvider.notifier).clear();
+          }),
+          onToChanged: (date) => setState(() {
+            _to = date;
+            _rangeError = null;
+            ref.read(teamReportControllerProvider.notifier).clear();
+          }),
+          hint:
+              'El período abarca como máximo $maxReportRangeDays días y el informe, un máximo de registros. Generarlo hace una redacción por persona y puede tardar '
+              'desde decenas de segundos hasta varios minutos.',
+          hintKey: const Key('team-report-hint'),
+          submitKey: const Key('team-report-submit'),
+          submitLabel: 'Generar informe del equipo',
+          busy: busy,
+          onSubmit: _submit,
+          rangeError: _rangeError,
+        ),
+        SizedBox(height: reportGap(context)),
+        _result(state),
+      ];
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const PageHeader(
           eyebrow: 'Informes',
           title: 'Informe del equipo',
           subtitle: 'Un resumen del trabajo registrado por tu equipo en un período, con las cifras del equipo y de cada persona.',
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 940),
-            child: AppCard(padding: EdgeInsets.all(mobile ? 18 : 24), child: body),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _form(bool busy) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          children: [
-            SizedBox(
-              width: 220,
-              child: DateField(
-                fieldKey: const Key('team-report-from'),
-                label: 'Desde',
-                date: _from!,
-                onChanged: (date) => setState(() {
-                  _from = date;
-                  _rangeError = null;
-                  ref.read(teamReportControllerProvider.notifier).clear();
-                }),
-              ),
-            ),
-            SizedBox(
-              width: 220,
-              child: DateField(
-                fieldKey: const Key('team-report-to'),
-                label: 'Hasta',
-                date: _to!,
-                errorText: _rangeError,
-                onChanged: (date) => setState(() {
-                  _to = date;
-                  _rangeError = null;
-                  ref.read(teamReportControllerProvider.notifier).clear();
-                }),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'El período abarca como máximo $maxReportRangeDays días y el informe, un máximo de registros. Generarlo hace una redacción por persona y puede tardar '
-          'desde decenas de segundos hasta varios minutos.',
-          key: Key('team-report-hint'),
-          style: TextStyle(fontSize: 11, height: 1.5, color: AppColors.textFaint),
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: PrimaryButton(
-            key: const Key('team-report-submit'),
-            label: busy ? 'Generando…' : 'Generar informe del equipo',
-            loading: busy,
-            onPressed: busy ? null : _submit,
-          ),
-        ),
+        ...body,
       ],
     );
   }
@@ -151,7 +107,7 @@ class _TeamReportPageState extends ConsumerState<TeamReportPage> {
   Widget _result(ReportState<TeamReport> state) {
     switch (state.phase) {
       case ReportPhase.idle:
-        return const EmptyState('Elige un período y genera el informe del equipo.', key: Key('team-report-none'));
+        return const AppCard(child: EmptyState('Elige un período y genera el informe del equipo.', key: Key('team-report-none')));
       case ReportPhase.generating:
         return const ReportGenerating();
       case ReportPhase.failed:
@@ -170,47 +126,91 @@ class _TeamReportView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = report.teamMetrics;
+    final gap = reportGap(context);
     return Column(
       key: const Key('team-report-result'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ReportHeader(title: 'Informe del equipo', period: report.period, generatedAt: report.generatedAt),
-        const SizedBox(height: 12),
-        ReportBaseNotice(report.baseStatement, key: const Key('team-report-base')),
-        const SizedBox(height: 16),
+        ReportHeader(
+          title: 'Informe del equipo',
+          period: report.period,
+          generatedAt: report.generatedAt,
+          aside: ReportBaseNotice(report.baseStatement, key: const Key('team-report-base')),
+        ),
+        SizedBox(height: gap),
         if (report.noData)
-          const EmptyState('No hay registros de tu equipo en ese período.', key: Key('team-report-no-data'))
+          const AppCard(child: EmptyState('No hay registros de tu equipo en ese período.', key: Key('team-report-no-data')))
         else ...[
-          if (metrics != null) ReportMetricsView(metrics: metrics, prefix: 'team', title: 'Cifras del equipo'),
-          const SizedBox(height: 22),
-          Text(
-            'Personas con registros en el período (${report.people.length})',
-            key: const Key('team-report-people-title'),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textStrong),
+          if (metrics != null) ...[ReportMetricsView(metrics: metrics, prefix: 'team', title: 'Cifras del equipo'), SizedBox(height: gap + AppSpace.xs)],
+          Semantics(
+            header: true,
+            child: Text(
+              'Personas con registros en el período (${report.people.length})',
+              key: const Key('team-report-people-title'),
+              style: context.heading(AppType.cardTitle, color: AppColors.textStrong, height: 1.3),
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xs),
           const Text(
             'Solo aparecen las personas con al menos un registro autorizado. El orden es alfabético; no es una clasificación.',
-            style: TextStyle(fontSize: 11, color: AppColors.textFaint),
+            style: TextStyle(fontSize: AppType.caption, height: 1.4, color: AppColors.textSoft),
           ),
-          const SizedBox(height: 12),
-          for (var i = 0; i < report.people.length; i++)
-            Container(
-              key: Key('team-report-person-$i'),
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(report.people[i].person.name, key: Key('team-report-person-$i-name'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textStrong)),
-                  const SizedBox(height: 10),
-                  ReportBodyView(body: report.people[i].body, prefix: 'team-person-$i'),
-                ],
-              ),
-            ),
+          const SizedBox(height: AppSpace.md),
+          for (var i = 0; i < report.people.length; i++) ...[
+            if (i > 0) SizedBox(height: gap),
+            _PersonBlock(index: i, person: report.people[i]),
+          ],
         ],
       ],
+    );
+  }
+}
+
+/// One person of the team report: their name and, under it, the same blocks as the individual report. The group is a soft panel so
+/// that the white blocks of one person are not mixed up with those of the next. Nothing here compares or orders people.
+class _PersonBlock extends StatelessWidget {
+  const _PersonBlock({required this.index, required this.person});
+
+  final int index;
+  final TeamReportPerson person;
+
+  @override
+  Widget build(BuildContext context) {
+    final mobile = ScreenSize.ofContext(context).isMobile;
+    return Container(
+      key: Key('team-report-person-$index'),
+      padding: EdgeInsets.all(mobile ? AppSpace.md : AppSpace.lg),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.panel),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              ExcludeSemantics(
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(color: AppColors.white, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(AppRadius.control)),
+                  child: const Icon(Icons.person_outline, size: 18, color: AppColors.textSecondary),
+                ),
+              ),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(person.person.name, key: Key('team-report-person-$index-name'), style: context.heading(AppType.cardTitle, color: AppColors.textStrong, height: 1.3)),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: reportGap(context)),
+          ReportBodyView(body: person.body, prefix: 'team-person-$index'),
+        ],
+      ),
     );
   }
 }

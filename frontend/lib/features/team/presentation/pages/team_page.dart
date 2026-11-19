@@ -4,8 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/layout/screen_size.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/brand.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../../../core/widgets/segmented_control.dart';
@@ -16,11 +20,24 @@ import '../../domain/rules/history_range_rules.dart';
 import '../providers/team_data.dart';
 import '../widgets/history_list.dart';
 import '../widgets/peer_logbook_view.dart';
+import '../widgets/team_member_list.dart';
 
 enum _Mode { logbook, history }
 
+/// Width of the list of people when it sits beside the detail (a desktop).
+const double _masterWidth = 320;
+
+/// Width from which the fields and the action of a query sit on one line.
+const double _wideQueryMinWidth = 620;
+
+String _roleLabel(TeamRole role) => role == TeamRole.supervisor ? 'Supervisor' : 'Colaborador';
+
 /// What the user is reading is a query the server decides: this page only asks and shows (M4-01, M4-02, M4-05). It
 /// has no way to write anything and it never decides who may see what.
+///
+/// Reading order: the two things the page does (a colleague's logbook, or the history), the list of the people of the
+/// team, and the detail of what was chosen. On a desktop the list is beside the detail; on a tablet or a phone the detail
+/// goes under the list. Nothing is asked of the server for a person until the user asks for it.
 ///
 /// Limitation (D-M4-02): the colleague list has the CURRENT members only. Records of someone who already left remain
 /// readable in the history without a person filter; there is no picker of former members and no search by name.
@@ -50,7 +67,7 @@ class _TeamPageState extends ConsumerState<TeamPage> {
 
   @override
   Widget build(BuildContext context) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
+    final size = ScreenSize.ofContext(context);
     final session = ref.watch(authProvider).value;
     final today = session?.today ?? dateOnly(DateTime.now());
     _date ??= today;
@@ -61,53 +78,42 @@ class _TeamPageState extends ConsumerState<TeamPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const PageHeader(
+        PageHeader(
           eyebrow: 'Equipo',
           title: 'Mi equipo',
           subtitle: 'Lee, solo en lectura, la bitácora de un compañero o el histórico que puedes consultar.',
-        ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 790),
-            child: AppCard(
-              padding: EdgeInsets.all(mobile ? 18 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: SegmentedControl<_Mode>(
-                      key: const Key('team-mode'),
-                      options: const {_Mode.logbook: 'Bitácora de un compañero', _Mode.history: 'Histórico'},
-                      selected: _mode,
-                      onChanged: (mode) => setState(() => _mode = mode),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _body(members, session?.user.id, mobile),
-                ],
-              ),
-            ),
+          action: SegmentedControl<_Mode>(
+            key: const Key('team-mode'),
+            wrap: size.isMobile,
+            options: const {_Mode.logbook: 'Bitácora de un compañero', _Mode.history: 'Histórico'},
+            selected: _mode,
+            onChanged: (mode) => setState(() => _mode = mode),
           ),
         ),
+        _body(members, session?.user.id, size),
       ],
     );
   }
 
-  Widget _body(AsyncValue<List<TeamMember>> members, String? myId, bool mobile) {
+  Widget _body(AsyncValue<List<TeamMember>> members, String? myId, ScreenSize size) {
+    final pad = size.isMobile ? AppSpace.lg : AppSpace.xl;
     if (members.isLoading) {
-      return const Padding(
-        key: Key('team-loading'),
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
+      return AppCard(
+        child: Padding(
+          key: const Key('team-loading'),
+          padding: const EdgeInsets.all(AppSpace.xxl + AppSpace.sm),
+          child: const Center(child: CircularProgressIndicator(semanticsLabel: 'Cargando tu equipo')),
+        ),
       );
     }
     if (members.hasError) {
       final error = members.error;
-      return ErrorBox(
-        message: error is ApiError ? errorMessage(error) : 'No se pudo cargar tu equipo.',
-        onRetry: () => ref.invalidate(teamMembersProvider),
+      return AppCard(
+        padding: EdgeInsets.symmetric(horizontal: pad),
+        child: ErrorBox(
+          message: error is ApiError ? errorMessage(error) : 'No se pudo cargar tu equipo.',
+          onRetry: () => ref.invalidate(teamMembersProvider),
+        ),
       );
     }
     final list = members.value ?? const <TeamMember>[];
@@ -120,56 +126,129 @@ class _TeamPageState extends ConsumerState<TeamPage> {
       return 'Persona que ya no está en tu equipo';
     }
 
-    return _mode == _Mode.logbook ? _logbookTab(list, myId, nameOf) : _historyTab(list, myId, nameOf);
+    final colleagues = [for (final m in list) if (m.id != myId) m];
+    if (_mode == _Mode.logbook && colleagues.isEmpty) {
+      return AppCard(
+        padding: EdgeInsets.all(pad),
+        child: const EmptyState('Todavía no hay otros integrantes en tu equipo.', key: Key('team-no-colleagues')),
+      );
+    }
+
+    final Widget master;
+    final Widget detail;
+    if (_mode == _Mode.logbook) {
+      master = TeamMemberList(
+        key: const Key('team-master'),
+        listKey: const Key('peer-select'),
+        title: 'Compañeros',
+        subtitle: 'Elige a quién quieres leer',
+        entries: [for (final m in colleagues) TeamListEntry(id: m.id, name: m.name, caption: _roleLabel(m.role))],
+        selectedId: _personId,
+        maxHeight: size.isDesktop ? 520 : 320,
+        // Choosing a colleague asks for their logbook right away (nothing is asked before that)
+        onSelect: (id) {
+          setState(() => _personId = id);
+          _submitLogbook();
+        },
+      );
+      detail = _logbookDetail(colleagues, nameOf, pad);
+    } else {
+      master = TeamMemberList(
+        key: const Key('team-master'),
+        listKey: const Key('history-person'),
+        title: 'Personas',
+        subtitle: 'Opcional: limita el histórico a una persona',
+        entries: [
+          const TeamListEntry(id: _allPeople, name: 'Todas las personas que puedo consultar', everybody: true),
+          for (final m in list)
+            TeamListEntry(
+              id: m.id,
+              name: m.name,
+              caption: m.id == myId ? 'Tú · ${_roleLabel(m.role)}' : _roleLabel(m.role),
+            ),
+        ],
+        selectedId: _historyPerson,
+        maxHeight: size.isDesktop ? 520 : 320,
+        onSelect: (id) => setState(() {
+          _historyPerson = id;
+          _historyQuery = null;
+        }),
+      );
+      detail = _historyDetail(list, nameOf, pad);
+    }
+
+    if (size.isDesktop) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: _masterWidth, child: master),
+          const SizedBox(width: AppSpace.xl),
+          Expanded(child: detail),
+        ],
+      );
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [master, const SizedBox(height: AppSpace.lg), detail]);
   }
 
   // ------------------------------------------------------------------------------------------ Bitácora de un compañero
 
-  Widget _logbookTab(List<TeamMember> members, String? myId, String Function(String) nameOf) {
-    final colleagues = [for (final m in members) if (m.id != myId) m];
-    if (colleagues.isEmpty) {
-      return const EmptyState('Todavía no hay otros integrantes en tu equipo.', key: Key('team-no-colleagues'));
+  Widget _logbookDetail(List<TeamMember> colleagues, String Function(String) nameOf, double pad) {
+    TeamMember? chosen;
+    for (final m in colleagues) {
+      if (m.id == _personId) chosen = m;
     }
     final query = _logbookQuery;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SelectField<String>(
-          key: const Key('peer-select'),
-          label: 'Compañero',
-          hint: 'Elige a un compañero',
-          options: {for (final m in colleagues) m.id: m.role == TeamRole.supervisor ? '${m.name} (supervisión)' : m.name},
-          value: _personId,
-          onChanged: (id) => setState(() {
-            _personId = id;
-            _logbookQuery = null;
-          }),
-        ),
-        const SizedBox(height: 14),
-        DateField(
-          fieldKey: const Key('peer-date'),
-          label: 'Fecha laboral',
-          date: _date!,
-          onChanged: (date) => setState(() {
-            _date = date;
-            _logbookQuery = null;
-          }),
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: PrimaryButton(
-            key: const Key('peer-submit'),
-            label: 'Ver bitácora',
-            onPressed: _personId == null ? null : _submitLogbook,
+    return AppCard(
+      key: const Key('team-detail'),
+      padding: EdgeInsets.all(pad),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _DetailHeader(
+            person: chosen?.name,
+            fallbackIcon: Icons.menu_book_outlined,
+            title: chosen?.name ?? 'Bitácora de un compañero',
+            subtitle: chosen == null ? 'Solo lectura' : '${_roleLabel(chosen.role)} · bitácora en solo lectura',
           ),
-        ),
-        const SizedBox(height: 18),
-        if (query == null)
-          const EmptyState('Elige a un compañero y una fecha para leer su bitácora.', key: Key('peer-none'))
-        else
-          _PeerLogbookResult(personId: query.personId, date: query.date, ownerName: nameOf(query.personId)),
-      ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 480;
+              final dateField = DateField(
+                fieldKey: const Key('peer-date'),
+                label: 'Fecha laboral',
+                date: _date!,
+                onChanged: (date) {
+                  setState(() => _date = date);
+                  // With a colleague chosen, another day is asked for at once; without one there is nothing to ask
+                  if (_personId == null) {
+                    setState(() => _logbookQuery = null);
+                  } else {
+                    _submitLogbook();
+                  }
+                },
+              );
+              final submit = PrimaryButton(
+                key: const Key('peer-submit'),
+                label: 'Ver bitácora',
+                expand: narrow,
+                onPressed: _personId == null ? null : _submitLogbook,
+              );
+              if (narrow) {
+                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [dateField, const SizedBox(height: AppSpace.md), submit]);
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [SizedBox(width: 220, child: dateField), const SizedBox(width: AppSpace.md), submit],
+              );
+            },
+          ),
+          const _Rule(),
+          if (query == null)
+            const EmptyState('Elige a un compañero y una fecha para leer su bitácora.', key: Key('peer-none'))
+          else
+            _PeerLogbookResult(personId: query.personId, date: query.date, ownerName: nameOf(query.personId)),
+        ],
+      ),
     );
   }
 
@@ -182,18 +261,24 @@ class _TeamPageState extends ConsumerState<TeamPage> {
 
   // ------------------------------------------------------------------------------------------ Histórico
 
-  Widget _historyTab(List<TeamMember> members, String? myId, String Function(String) nameOf) {
+  Widget _historyDetail(List<TeamMember> members, String Function(String) nameOf, double pad) {
     final query = _historyQuery;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          children: [
-            SizedBox(
-              width: 220,
-              child: DateField(
+    final who = _historyPerson == _allPeople ? 'todas las que puedes consultar' : nameOf(_historyPerson);
+    return AppCard(
+      key: const Key('team-detail'),
+      padding: EdgeInsets.all(pad),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _DetailHeader(
+            fallbackIcon: Icons.history,
+            title: 'Histórico',
+            subtitle: 'Persona: $who',
+          ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= _wideQueryMinWidth;
+              final from = DateField(
                 fieldKey: const Key('history-from'),
                 label: 'Desde',
                 date: _from!,
@@ -202,11 +287,8 @@ class _TeamPageState extends ConsumerState<TeamPage> {
                   _rangeError = null;
                   _historyQuery = null;
                 }),
-              ),
-            ),
-            SizedBox(
-              width: 220,
-              child: DateField(
+              );
+              final to = DateField(
                 fieldKey: const Key('history-to'),
                 label: 'Hasta',
                 date: _to!,
@@ -216,46 +298,52 @@ class _TeamPageState extends ConsumerState<TeamPage> {
                   _rangeError = null;
                   _historyQuery = null;
                 }),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        SelectField<String>(
-          key: const Key('history-person'),
-          label: 'Persona (opcional)',
-          options: {
-            _allPeople: 'Todas las personas que puedo consultar',
-            for (final m in members) m.id: m.id == myId ? '${m.name} (tú)' : m.name,
-          },
-          value: _historyPerson,
-          onChanged: (id) => setState(() {
-            _historyPerson = id ?? _allPeople;
-            _historyQuery = null;
-          }),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'El rango es obligatorio y abarca como máximo $maxHistoryRangeDays días. '
-          'Sin elegir persona se incluyen también registros de quienes ya salieron del equipo, si puedes consultarlos.',
-          key: const Key('history-hint'),
-          style: const TextStyle(fontSize: 11, height: 1.5, color: Color(0xFF9BA6B4)),
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: PrimaryButton(
-            key: const Key('history-submit'),
-            label: 'Consultar histórico',
-            onPressed: _submitHistory,
+              );
+              final submit = PrimaryButton(
+                key: const Key('history-submit'),
+                label: 'Consultar histórico',
+                expand: !wide,
+                onPressed: _submitHistory,
+              );
+              if (!wide) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [Expanded(child: from), const SizedBox(width: AppSpace.md), Expanded(child: to)],
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    submit,
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: 200, child: from),
+                  const SizedBox(width: AppSpace.md),
+                  SizedBox(width: 200, child: to),
+                  const SizedBox(width: AppSpace.md),
+                  _BesideFields(child: submit),
+                ],
+              );
+            },
           ),
-        ),
-        const SizedBox(height: 18),
-        if (query == null)
-          const EmptyState('Elige un rango de fechas para ver el histórico.', key: Key('history-none'))
-        else
-          _HistoryResult(from: query.from, to: query.to, personId: query.personId, nameOf: nameOf),
-      ],
+          const SizedBox(height: AppSpace.sm),
+          Text(
+            'El rango es obligatorio y abarca como máximo $maxHistoryRangeDays días. '
+            'Sin elegir persona se incluyen también registros de quienes ya salieron del equipo, si puedes consultarlos.',
+            key: const Key('history-hint'),
+            style: const TextStyle(fontSize: AppType.caption, height: 1.5, color: AppColors.textSoft),
+          ),
+          const _Rule(),
+          if (query == null)
+            const EmptyState('Elige un rango de fechas para ver el histórico.', key: Key('history-none'))
+          else
+            _HistoryResult(from: query.from, to: query.to, personId: query.personId, nameOf: nameOf),
+        ],
+      ),
     );
   }
 
@@ -278,6 +366,90 @@ class _TeamPageState extends ConsumerState<TeamPage> {
   }
 }
 
+/// Who or what the detail is about: the person's initials (or an icon when no one is chosen), the name or the title, and one
+/// line under it. The title is read as a heading.
+class _DetailHeader extends StatelessWidget {
+  const _DetailHeader({this.person, required this.fallbackIcon, required this.title, required this.subtitle});
+
+  final String? person;
+  final IconData fallbackIcon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.lg),
+      child: Row(
+        children: [
+          ExcludeSemantics(
+            child: person != null
+                ? Avatar(name: person!, size: 40)
+                : Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(AppRadius.card)),
+                    child: Icon(fallbackIcon, size: 22, color: AppColors.primary),
+                  ),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(header: true, child: Text(title, style: context.heading(AppType.cardTitle, height: 1.3))),
+                const SizedBox(height: 2),
+                Text(subtitle, style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Puts an action on the same baseline as the fields beside it: it reserves the height of a field label above the action.
+class _BesideFields extends StatelessWidget {
+  const _BesideFields({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Visibility(visible: false, maintainSize: true, maintainAnimation: true, maintainState: true, child: FieldLabel('Desde')),
+        child,
+      ],
+    );
+  }
+}
+
+/// Thin line that separates what the user asks from what comes back.
+class _Rule extends StatelessWidget {
+  const _Rule();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: AppSpace.lg),
+    child: Divider(height: 1, thickness: 1, color: AppColors.divider),
+  );
+}
+
+class _Loading extends StatelessWidget {
+  const _Loading({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(AppSpace.xxl),
+    child: Center(child: CircularProgressIndicator(semanticsLabel: label)),
+  );
+}
+
 class _PeerLogbookResult extends ConsumerWidget {
   const _PeerLogbookResult({required this.personId, required this.date, required this.ownerName});
 
@@ -289,11 +461,7 @@ class _PeerLogbookResult extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final result = ref.watch(peerLogbookProvider(personId, date));
     if (result.isLoading) {
-      return const Padding(
-        key: Key('peer-loading'),
-        padding: EdgeInsets.all(28),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const _Loading(key: Key('peer-loading'), label: 'Cargando la bitácora');
     }
     if (result.hasError) {
       final error = result.error;
@@ -326,11 +494,7 @@ class _HistoryResult extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final result = ref.watch(historyViewProvider(from, to, personId));
     if (result.isLoading) {
-      return const Padding(
-        key: Key('history-loading'),
-        padding: EdgeInsets.all(28),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const _Loading(key: Key('history-loading'), label: 'Cargando el histórico');
     }
     if (result.hasError) {
       final error = result.error;

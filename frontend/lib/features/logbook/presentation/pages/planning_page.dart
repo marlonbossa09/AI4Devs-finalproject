@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_tokens.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/text_blocks.dart';
 import '../providers/side_panel.dart';
+import '../widgets/form_parts.dart';
 import '../widgets/new_activity_panel.dart';
 
 /// "Planificación": where a person goes to plan what they intend to do (M2-03).
@@ -45,8 +44,7 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
             onPressed: () => openNewActivity(context),
           ),
         ),
-        const AppCard(
-          padding: EdgeInsets.all(AppSpace.xl),
+        const FormColumn(
           child: Notice(
             title: 'Una planificación no es un avance',
             text:

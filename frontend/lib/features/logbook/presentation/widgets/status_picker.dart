@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/widgets/fields.dart';
 import '../../domain/entities/logbook_entities.dart';
 import 'activity_tile.dart';
+import 'form_parts.dart';
 import 'status_choice.dart';
 
 /// The four activity states as selectable options. They wrap onto several lines on narrow screens,
@@ -41,8 +42,8 @@ class StatusPicker extends StatelessWidget {
       children: [
         FieldLabel(label),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: AppSpace.sm,
+          runSpacing: AppSpace.sm,
           children: [
             for (final status in statuses)
               StatusChoice(
@@ -54,10 +55,7 @@ class StatusPicker extends StatelessWidget {
               ),
           ],
         ),
-        if (errorText != null) ...[
-          const SizedBox(height: 6),
-          Text(errorText!, style: const TextStyle(fontSize: 12, color: AppColors.error)),
-        ],
+        if (errorText != null) ...[const SizedBox(height: AppSpace.sm), FormErrorText(errorText!)],
       ],
     );
   }
