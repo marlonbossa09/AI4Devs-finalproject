@@ -16,6 +16,8 @@ class SidePanelRequest {
     this.subtitle,
     this.icon = Icons.add,
     this.actionsBuilder,
+    this.isBusy,
+    this.hasUnsaved,
   });
 
   final String title;
@@ -25,6 +27,13 @@ class SidePanelRequest {
 
   /// Strip pinned under the body (for example Cancel and Save). Optional.
   final WidgetBuilder? actionsBuilder;
+
+  /// True while the panel is sending something. A busy panel cannot be closed or replaced: closing it would leave the person without
+  /// knowing whether it was saved.
+  final bool Function()? isBusy;
+
+  /// Whether the panel holds text that was typed and not saved. Closing or replacing it asks first only when this is true.
+  final bool Function()? hasUnsaved;
 }
 
 /// The panel that is open (null = none). It is closed by a new session, like the page.
@@ -40,17 +49,18 @@ class SidePanelNotifier extends Notifier<SidePanelRequest?> {
 
   /// Opens [request]. If another panel is open with unsaved text, the user is asked first.
   void open(SidePanelRequest request) {
+    if (state?.isBusy?.call() ?? false) return;
     if (state == null) {
       state = request;
       return;
     }
-    ref.read(leaveRequestProvider.notifier).request(() => state = request);
+    ref.read(leaveRequestProvider.notifier).requestWhen(() => state?.hasUnsaved?.call() ?? false, () => state = request);
   }
 
   /// The user asked to close the panel (X, Escape, tap outside, Cancel): it waits for their decision if it would lose text.
   void requestClose() {
-    if (state == null) return;
-    ref.read(leaveRequestProvider.notifier).request(() => state = null);
+    if (state == null || (state!.isBusy?.call() ?? false)) return;
+    ref.read(leaveRequestProvider.notifier).requestWhen(() => state?.hasUnsaved?.call() ?? false, () => state = null);
   }
 
   /// Closes the panel at once, with no question. Only for what has already been decided (the user confirmed leaving, a save succeeded).

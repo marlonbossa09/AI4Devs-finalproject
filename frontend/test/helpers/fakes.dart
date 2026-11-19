@@ -85,6 +85,9 @@ class FakeLogbookRepository implements LogbookRepository {
 
   /// Errors to throw, one per call to `createActivity`, in order (null = succeed).
   final List<ApiError?> createErrors = [];
+
+  /// When set, `createActivity` waits for it: lets a test look at the screen while the request is in flight.
+  Completer<void>? createGate;
   ApiError? getError;
   int _sequence = 0;
 
@@ -166,6 +169,8 @@ class FakeLogbookRepository implements LogbookRepository {
   }) async {
     calls.add('create ${formatDate(date)} "$title"');
     keys.add(key);
+    final gate = createGate;
+    if (gate != null) await gate.future;
     if (createErrors.isNotEmpty) {
       final error = createErrors.removeAt(0);
       if (error != null) throw error;

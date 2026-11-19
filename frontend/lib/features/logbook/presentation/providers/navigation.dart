@@ -17,7 +17,6 @@ enum AppPage {
   progress,
   activities,
   activityDetail,
-  unplanned,
   continuation,
   reactivation,
   correction,

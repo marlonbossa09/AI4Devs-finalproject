@@ -5,7 +5,8 @@ import '../../../../core/widgets/confirm_dialog.dart';
 import '../providers/unsaved_changes.dart';
 
 /// Shows the confirmation when the user tries to leave with unsaved text (a page change, a date
-/// change or signing out), and tells the pending request what they chose.
+/// change, signing out, or closing or replacing a side panel), and tells the pending request what they chose. It is ONE question,
+/// whatever editor holds the text (the daily summary, a side-panel form...).
 ///
 /// - "Seguir editando" (also Escape or tapping outside) keeps everything as it is.
 /// - "Descartar cambios" lets the held action go ahead, and the text is lost.
@@ -26,7 +27,7 @@ class _UnsavedChangesHostState extends ConsumerState<UnsavedChangesHost> {
     final discard = await showConfirmDialog(
       context,
       title: 'Tienes cambios sin guardar',
-      message: 'El resumen de la jornada tiene texto que todavía no se ha guardado. Si continúas, ese texto se perderá.',
+      message: 'Hay información escrita que todavía no se ha guardado. Si continúas, se perderá.',
       confirmLabel: 'Descartar cambios',
       cancelLabel: 'Seguir editando',
     );

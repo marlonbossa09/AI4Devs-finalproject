@@ -20,6 +20,7 @@ import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
 import '../widgets/activity_tile.dart';
 import '../widgets/mini_calendar.dart';
+import '../widgets/new_activity_panel.dart';
 
 enum _Filter { all, pending }
 
@@ -109,22 +110,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           title: 'Buen día, $firstName',
           titleTrailing: const Icon(Icons.wb_sunny_outlined, size: 24, color: Color(0xFFE0A526)),
           subtitle: 'Revisa lo que tienes planeado y registra tus avances con claridad.',
-          action: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              SecondaryButton(
-                key: const Key('dashboard-new-unplanned'),
-                label: 'Actividad no planificada',
-                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.unplanned),
-              ),
-              PrimaryButton(
-                key: const Key('dashboard-new-planning'),
-                label: 'Nueva planificación',
-                icon: Icons.add,
-                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.planning),
-              ),
-            ],
+          action: PrimaryButton(
+            key: const Key('dashboard-new-activity'),
+            label: 'Nueva actividad',
+            icon: Icons.add,
+            onPressed: () => openNewActivity(context),
           ),
         ),
         stats,

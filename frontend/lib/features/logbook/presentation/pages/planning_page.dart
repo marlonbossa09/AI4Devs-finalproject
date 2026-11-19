@@ -1,25 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/errors/api_error.dart';
-import '../../../../core/errors/error_messages.dart';
-import '../../../../core/layout/screen_size.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/keys.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
-import '../../../../core/widgets/fields.dart';
 import '../../../../core/widgets/text_blocks.dart';
-import '../../../../core/widgets/toast.dart';
-import '../providers/logbook_notifier.dart';
-import '../providers/navigation.dart';
-import '../providers/selected_date.dart';
-import '../widgets/closed_date_notice.dart';
+import '../providers/side_panel.dart';
+import '../widgets/new_activity_panel.dart';
 
-/// Form to plan a new activity (M2-03).
+/// "Planificación": where a person goes to plan what they intend to do (M2-03).
 ///
-/// The idempotency key identifies ONE intention: it is reused when retrying the same one (for
-/// instance after a network error) and renewed only after the server accepts it.
+/// The form itself is the "Nueva actividad" side panel (UX-T3), the same one every screen opens. Arriving here opens it with the
+/// PLANNED kind chosen, so the entry of the menu does what its name says without a second form to maintain; closing it leaves this
+/// short page with a button to open it again. A planning is not a progress entry: it starts as Pendiente and registers no progress.
 class PlanningPage extends ConsumerStatefulWidget {
   const PlanningPage({super.key});
 
@@ -28,185 +21,38 @@ class PlanningPage extends ConsumerStatefulWidget {
 }
 
 class _PlanningPageState extends ConsumerState<PlanningPage> {
-  final _title = TextEditingController();
-  final _description = TextEditingController();
-  late DateTime _date = ref.read(selectedDateProvider);
-  String _key = newKey();
-  bool _saving = false;
-  String? _titleError;
-  String? _error;
-
   @override
-  void dispose() {
-    _title.dispose();
-    _description.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (_saving) return;
-    final title = _title.text.trim();
-    if (title.isEmpty) {
-      // The server also validates it; this only avoids a useless round trip.
-      setState(() {
-        _titleError = 'El título es obligatorio.';
-        _error = null;
-      });
-      return;
-    }
-    setState(() {
-      _saving = true;
-      _titleError = null;
-      _error = null;
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && ref.read(sidePanelProvider) == null) openNewActivity(context);
     });
-    final description = _description.text.trim();
-    final provider = logbookProvider(_date);
-    // Keeps the notifier alive while the request runs, even if nothing else is watching it.
-    final keepAlive = ref.listenManual(provider, (previous, next) {});
-    try {
-      await ref
-          .read(provider.notifier)
-          .createActivity(
-            title: title,
-            description: description.isEmpty ? null : description,
-            key: _key,
-          );
-      if (!mounted) return;
-      _title.clear();
-      _description.clear();
-      _key = newKey(); // the next one is a new intention
-      setState(() => _saving = false);
-      showToast(context, 'Actividad planificada.');
-      ref.read(selectedDateProvider.notifier).select(_date);
-      ref.read(currentPageProvider.notifier).go(AppPage.logbook);
-    } on ApiError catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _error = errorMessage(error);
-      });
-    } finally {
-      keepAlive.close();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final mobile = ScreenSize.ofContext(context).isMobile;
-    final titleField = LabeledField(
-      fieldKey: const Key('plan-title'),
-      label: 'Título de la actividad *',
-      hint: 'Ej. Revisar requerimientos del módulo',
-      controller: _title,
-      errorText: _titleError,
-      textInputAction: TextInputAction.next,
-    );
-    final dateField = DateField(
-      fieldKey: const Key('plan-date'),
-      label: 'Fecha de planificación *',
-      date: _date,
-      onChanged: (value) => setState(() => _date = value),
-    );
-    const statusField = LabeledField(
-      label: 'Estado inicial',
-      hint: 'Pendiente',
-      enabled: false,
-      hintBelow: 'Una planificación nueva inicia como pendiente.',
-    );
-    final descriptionField = LabeledField(
-      fieldKey: const Key('plan-description'),
-      label: 'Descripción',
-      hint: '¿Qué tienes previsto realizar?',
-      controller: _description,
-      minLines: 4,
-      maxLines: 6,
-    );
-
-    final cancelButton = SecondaryButton(
-      key: const Key('plan-cancel'),
-      label: 'Cancelar',
-      onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.dashboard),
-    );
-    // A closed day takes no new content: the chosen date is looked up and, if closed, nothing is offered
-    final closedDate = ref.watch(logbookProvider(_date)).value?.logbook.closed ?? false;
-    final saveButton = PrimaryButton(
-      key: const Key('plan-submit'),
-      label: 'Guardar planificación',
-      icon: Icons.add,
-      loading: _saving,
-      expand: mobile,
-      onPressed: closedDate ? null : _save,
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const PageHeader(
+        PageHeader(
           eyebrow: 'Organiza tu jornada',
-          title: 'Nueva planificación',
+          title: 'Planificación',
           subtitle: 'Registra lo que tienes previsto hacer, sin alterar el estado de ejecución.',
+          action: PrimaryButton(
+            key: const Key('planning-new-activity'),
+            label: 'Nueva actividad',
+            icon: Icons.add,
+            onPressed: () => openNewActivity(context),
+          ),
         ),
-        Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 790),
-            child: AppCard(
-              padding: EdgeInsets.all(mobile ? 18 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const PanelHeader(
-                    title: 'Detalles de la actividad',
-                    subtitle: 'Completa la información de tu nueva planificación',
-                  ),
-                  titleField,
-                  const SizedBox(height: 14),
-                  if (mobile) ...[
-                    dateField,
-                    const SizedBox(height: 14),
-                    statusField,
-                  ] else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: dateField),
-                        const SizedBox(width: 14),
-                        const Expanded(child: statusField),
-                      ],
-                    ),
-                  const SizedBox(height: 14),
-                  descriptionField,
-                  if (closedDate) ...[const SizedBox(height: 14), ClosedDateNotice(date: _date)],
-                  if (_error != null) ...[
-                    const SizedBox(height: 14),
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        _error!,
-                        key: const Key('plan-error'),
-                        style: const TextStyle(fontSize: 12, color: AppColors.error),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 17),
-                  if (mobile)
-                    // Narrow screens: stacked and full width, the main action first.
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        saveButton,
-                        const SizedBox(height: 10),
-                        SizedBox(width: double.infinity, child: cancelButton),
-                      ],
-                    )
-                  else
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [cancelButton, const SizedBox(width: 10), saveButton],
-                    ),
-                ],
-              ),
-            ),
+        const AppCard(
+          padding: EdgeInsets.all(AppSpace.xl),
+          child: Notice(
+            title: 'Una planificación no es un avance',
+            text:
+                'Planificar una actividad la crea como Pendiente y conserva lo previsto; no registra avances ni cambia su estado. '
+                'Los avances se registran después, cuando el trabajo se hace.',
+            icon: Icons.info_outline,
           ),
         ),
       ],

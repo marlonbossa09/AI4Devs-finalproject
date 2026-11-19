@@ -229,13 +229,16 @@ void main() {
       expect(find.text('Octubre de 2026'), findsOneWidget);
     });
 
-    testWidgets('the main action and the footer link go to their pages', (tester) async {
+    testWidgets('the main action opens the panel and the footer link goes to its page', (tester) async {
       await pumpApp(tester, auth: signedIn());
-      await tester.tap(find.byKey(const Key('dashboard-new-planning')));
+      await tester.tap(find.byKey(const Key('dashboard-new-activity')));
       await tester.pumpAndSettle();
-      expect(find.text('Nueva planificación'), findsWidgets);
+      expect(find.text('Nueva actividad'), findsWidgets);
       expect(find.byKey(const Key('plan-title')), findsOneWidget);
-      await go(tester, 'dashboard');
+      expect(find.text('Ver bitácora →'), findsOneWidget); // the dashboard is still behind the panel
+      await tester.tap(find.byKey(const Key('plan-cancel')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('plan-title')), findsNothing);
       await tester.tap(find.text('Ver bitácora →'));
       await tester.pumpAndSettle();
       expect(find.text('Mi bitácora'), findsWidgets);
@@ -328,10 +331,6 @@ void main() {
       await pumpApp(tester, auth: signedIn(), logbook: logbook);
       await go(tester, 'logbook');
       logbook.getError = const ApiError(code: ApiError.network, message: 'x');
-      await tester.tap(find.byKey(const Key('cal-day-6')).evaluate().isEmpty
-          ? find.byKey(const Key('logbook-new-planning'))
-          : find.byKey(const Key('cal-day-6')));
-      await tester.pumpAndSettle();
       await go(tester, 'dashboard');
       await tester.tap(find.byKey(const Key('cal-day-8')));
       await tester.pumpAndSettle();
@@ -353,12 +352,14 @@ void main() {
       expect(logbook.keys, isEmpty);
     });
 
-    testWidgets('the initial status is pending and cannot be edited', (tester) async {
+    testWidgets('the initial status is pending, told as text, with no state selector and no progress', (tester) async {
       await pumpApp(tester, auth: signedIn());
       await go(tester, 'planning');
-      expect(find.text('Una planificación nueva inicia como pendiente.'), findsOneWidget);
-      final fields = tester.widgetList<TextField>(find.byType(TextField)).where((f) => f.enabled == false);
-      expect(fields, hasLength(1));
+      expect(find.text('Estado inicial: Pendiente'), findsOneWidget);
+      expect(find.text('Guardar una planificación no registra avances.'), findsOneWidget);
+      expect(find.byKey(const Key('unplanned-status-completed')), findsNothing); // no state to pick
+      expect(tester.widgetList<TextField>(find.byType(TextField)).where((f) => f.enabled == false), isEmpty); // nothing disabled to explain
+      expect(find.textContaining('%'), findsNothing); // no percentages
     });
 
     testWidgets('creating an activity reloads from the server and shows it as planned, not as progress', (tester) async {
@@ -370,13 +371,17 @@ void main() {
       expect(logbook.keys, hasLength(1));
       expect(RegExp(r'^[0-9a-f]{32}$').hasMatch(logbook.keys.single), isTrue);
       expect(logbook.calls.last, 'get 2026-11-06'); // after saving the screen consulted the server again
-      // It lands on the logbook of that date, which shows what is persisted
+      // The panel closes, the person stays on Planificación, and the confirmation says what was saved
+      expect(find.byKey(const Key('plan-submit')), findsNothing);
+      expect(find.byKey(const Key('planning-new-activity')), findsOneWidget);
+      expect(find.text('Actividad planificada.'), findsOneWidget);
+      // Mi bitácora of that date shows what is persisted
+      await go(tester, 'logbook');
       expect(find.text('Preparar informe'), findsOneWidget);
       expect(find.text('Revisar cifras'), findsOneWidget);
       expect(find.text('Pendiente'), findsOneWidget);
       expect(find.textContaining('Planificada'), findsOneWidget);
       expect(find.byKey(const Key('no-logbook')), findsNothing); // the logbook was created implicitly
-      expect(find.text('Actividad planificada.'), findsOneWidget);
     });
 
     testWidgets('each new intention uses a different idempotency key', (tester) async {
@@ -384,9 +389,11 @@ void main() {
       await pumpApp(tester, auth: signedIn(), logbook: logbook);
       await go(tester, 'planning');
       await planFromScreen(tester, title: 'Una');
-      await go(tester, 'planning');
+      await tester.tap(find.byKey(const Key('planning-new-activity')));
+      await tester.pumpAndSettle();
       await planFromScreen(tester, title: 'Otra');
       expect(logbook.keys.toSet(), hasLength(2));
+      await go(tester, 'logbook');
       expect(find.text('Una'), findsOneWidget);
       expect(find.text('Otra'), findsOneWidget);
     });
@@ -406,7 +413,8 @@ void main() {
       await submitPlanning(tester);
       expect(logbook.keys, hasLength(2));
       expect(logbook.keys[0], logbook.keys[1]);
-      expect(find.text('Preparar informe'), findsOneWidget);
+      expect(logbook.days.values.expand((d) => d.activities), hasLength(1));
+      expect(find.text('Actividad planificada.'), findsOneWidget);
     });
 
     testWidgets('a rejected date shows its own message', (tester) async {
@@ -434,13 +442,14 @@ void main() {
       expect(find.byKey(const Key('no-logbook')), findsOneWidget);
     });
 
-    testWidgets('cancel goes back to the dashboard without saving', (tester) async {
+    testWidgets('cancel closes the panel, leaves Planificación with its button and saves nothing', (tester) async {
       final logbook = FakeLogbookRepository();
       await pumpApp(tester, auth: signedIn(), logbook: logbook);
       await go(tester, 'planning');
       await tester.tap(find.byKey(const Key('plan-cancel')));
       await tester.pumpAndSettle();
-      expect(find.text('Buen día, Carlos'), findsOneWidget);
+      expect(find.byKey(const Key('plan-submit')), findsNothing);
+      expect(find.byKey(const Key('planning-new-activity')), findsOneWidget);
       expect(logbook.keys, isEmpty);
     });
 

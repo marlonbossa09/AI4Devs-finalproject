@@ -608,7 +608,7 @@ void main() {
       expect(find.byKey(const Key('detail-planning-original')), findsOneWidget);
       expect(find.text('← Mi bitácora'), findsOneWidget);
       await tapKey(tester, 'detail-back');
-      expect(find.byKey(const Key('logbook-new-planning')), findsOneWidget);
+      expect(find.byKey(const Key('logbook-new-activity')), findsOneWidget);
     });
 
     testWidgets('"Ver detalle" in the dashboard opens the detail and goes back to the dashboard', (tester) async {
@@ -618,13 +618,13 @@ void main() {
       await tapKey(tester, 'activity-open-${activity.id}');
       expect(find.text('← Panel principal'), findsOneWidget);
       await tapKey(tester, 'detail-back');
-      expect(find.byKey(const Key('dashboard-new-planning')), findsOneWidget);
+      expect(find.byKey(const Key('dashboard-new-activity')), findsOneWidget);
     });
 
-    testWidgets('"Planificar actividad" in the list goes to the planning form', (tester) async {
+    testWidgets('"Nueva actividad" in the list opens the panel on the planned kind', (tester) async {
       await pumpApp(tester, logbook: FakeLogbookRepository());
       await openList(tester);
-      await tapKey(tester, 'activities-new-planning');
+      await tapKey(tester, 'activities-new-activity');
       expect(find.byKey(const Key('plan-submit')), findsOneWidget);
     });
 

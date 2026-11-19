@@ -211,7 +211,7 @@ void main() {
       await tapKey(tester, 'nav-dashboard');
       await tapKey(tester, 'confirm-discard');
       expect(containerOf(tester).read(currentPageProvider), AppPage.dashboard);
-      expect(find.byKey(const Key('dashboard-new-planning')), findsOneWidget);
+      expect(find.byKey(const Key('dashboard-new-activity')), findsOneWidget);
       expect(repo.summaryRequests, isEmpty);
       // Back in Mi bitácora the editor is closed and the saved text is there
       await openLogbook(tester);
@@ -219,12 +219,10 @@ void main() {
       expect(find.byKey(const Key('summary-field')), findsNothing);
     });
 
-    testWidgets('the buttons of the page ask too: new planning, unplanned activity, progress, detail', (tester) async {
+    testWidgets('the buttons of the page that LEAVE it ask too: progress, continuation, detail', (tester) async {
       final repo = await editingWith(tester);
       final id = repo.days[formatDate(today)]!.activities.single.id;
       for (final (key, page) in [
-        ('logbook-new-planning', AppPage.planning),
-        ('logbook-new-unplanned', AppPage.unplanned),
         ('progress-action-$id', AppPage.progress),
         ('continuation-action-$id', AppPage.continuation),
         ('activity-open-$id', AppPage.activityDetail),

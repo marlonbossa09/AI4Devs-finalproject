@@ -48,8 +48,12 @@ class LeaveRequest extends _$LeaveRequest {
     return null;
   }
 
-  void request(VoidCallback proceed) {
-    if (!ref.read(unsavedGuardProvider).hasUnsaved) {
+  void request(VoidCallback proceed) => requestWhen(() => ref.read(unsavedGuardProvider).hasUnsaved, proceed);
+
+  /// Like [request], but asking only when [wouldLose] says that THIS action would lose text. Closing a side panel loses only what the
+  /// panel holds, not text that sits in an editor of the page behind it, so it must not ask because of that other editor.
+  void requestWhen(bool Function() wouldLose, VoidCallback proceed) {
+    if (!wouldLose()) {
       proceed();
       return;
     }

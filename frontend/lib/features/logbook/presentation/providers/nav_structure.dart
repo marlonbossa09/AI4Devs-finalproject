@@ -31,7 +31,6 @@ const pageNames = <AppPage, String>{
   AppPage.progress: 'Registrar avance',
   AppPage.activities: 'Actividades',
   AppPage.activityDetail: 'Detalle de actividad',
-  AppPage.unplanned: 'Actividad no planificada',
   AppPage.continuation: 'Planificar continuación',
   AppPage.reactivation: 'Reactivar actividad',
   AppPage.correction: 'Corregir avance',
@@ -50,8 +49,6 @@ AppPage? parentOf(AppPage page, {AppPage? back}) {
   return switch (page) {
     // Every detail of a supervised activity belongs to the supervision
     AppPage.supervisionActivity => AppPage.supervision,
-    // Recording an unplanned activity is part of the logbook (it is what the person lands on after saving it)
-    AppPage.unplanned => back ?? AppPage.logbook,
     // Everything else about an activity goes back to where the person came from; without a hint, to the activities area
     AppPage.activityDetail => back ?? AppPage.activities,
     _ => back ?? AppPage.activities,

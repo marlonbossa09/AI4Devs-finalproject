@@ -17,6 +17,7 @@ import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
 import '../providers/unsaved_changes.dart';
+import '../widgets/new_activity_panel.dart';
 import '../widgets/activity_tile.dart';
 import '../widgets/daily_summary.dart';
 import '../widgets/day_closure.dart';
@@ -218,22 +219,11 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
           eyebrow: 'Registro personal',
           title: 'Mi bitácora',
           subtitle: 'Consulta y organiza tus actividades por fecha laboral.',
-          action: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              SecondaryButton(
-                key: const Key('logbook-new-unplanned'),
-                label: 'Actividad no planificada',
-                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.unplanned),
-              ),
-              PrimaryButton(
-                key: const Key('logbook-new-planning'),
-                label: 'Planificar actividad',
-                icon: Icons.add,
-                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.planning),
-              ),
-            ],
+          action: PrimaryButton(
+            key: const Key('logbook-new-activity'),
+            label: 'Nueva actividad',
+            icon: Icons.add,
+            onPressed: () => openNewActivity(context),
           ),
         ),
         AppCard(
@@ -258,8 +248,9 @@ class _LogbookPageState extends ConsumerState<LogbookPage> {
               PanelFooter(
                 text: 'La planificación es distinta de un avance de ejecución.',
                 action: LinkButton(
-                  label: 'Nueva planificación →',
-                  onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.planning),
+                  key: const Key('logbook-footer-new-activity'),
+                  label: 'Nueva actividad →',
+                  onPressed: () => openNewActivity(context),
                 ),
               ),
             ],

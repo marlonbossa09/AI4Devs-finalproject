@@ -267,7 +267,7 @@ void main() {
 
       // Success: toast, back to Mi bitácora, new status and the entry, all from the "server"
       expect(find.text('Avance registrado.'), findsOneWidget);
-      expect(find.byKey(const Key('logbook-new-planning')), findsOneWidget);
+      expect(find.byKey(const Key('logbook-new-activity')), findsOneWidget);
       expect(statusPill(s.activity, 'En progreso'), findsOneWidget);
       expect(find.textContaining('Avance · En progreso: Avancé con el informe'), findsOneWidget);
       expect(s.repo.progressStored(s.activity.id), hasLength(1));

@@ -12,6 +12,7 @@ import '../../../../core/widgets/text_blocks.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../providers/activity_list.dart';
 import '../providers/navigation.dart';
+import '../widgets/new_activity_panel.dart';
 import '../widgets/activity_tile.dart';
 import '../widgets/origin_tag.dart';
 import '../widgets/status_choice.dart';
@@ -120,22 +121,11 @@ class ActivitiesPage extends ConsumerWidget {
           eyebrow: 'Seguimiento de actividades',
           title: 'Mis actividades',
           subtitle: 'Todas tus actividades, sin importar la jornada en que las creaste.',
-          action: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              SecondaryButton(
-                key: const Key('activities-new-unplanned'),
-                label: 'Actividad no planificada',
-                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.unplanned),
-              ),
-              PrimaryButton(
-                key: const Key('activities-new-planning'),
-                label: 'Planificar actividad',
-                icon: Icons.add,
-                onPressed: () => ref.read(currentPageProvider.notifier).go(AppPage.planning),
-              ),
-            ],
+          action: PrimaryButton(
+            key: const Key('activities-new-activity'),
+            label: 'Nueva actividad',
+            icon: Icons.add,
+            onPressed: () => openNewActivity(context),
           ),
         ),
         AppCard(

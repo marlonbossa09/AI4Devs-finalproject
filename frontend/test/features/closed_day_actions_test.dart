@@ -60,7 +60,8 @@ void main() {
       s.repo.closeDay(today);
       await c.pumpApp(tester, logbook: s.repo);
       await c.openLogbook(tester);
-      await c.tapKey(tester, 'logbook-new-unplanned');
+      await c.tapKey(tester, 'logbook-new-activity');
+      await c.tapKey(tester, 'new-activity-type-unplanned');
       expect(find.byKey(const Key('closed-date-notice')), findsOneWidget);
       expect(enabled(tester, 'unplanned-submit'), isFalse);
       await pickDay(tester, 'unplanned-date', '5'); // yesterday: no logbook

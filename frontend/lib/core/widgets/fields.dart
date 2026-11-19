@@ -40,6 +40,7 @@ class LabeledField extends StatelessWidget {
     this.onChanged,
     this.fieldKey,
     this.suffix,
+    this.focusNode,
   });
 
   final String label;
@@ -61,6 +62,9 @@ class LabeledField extends StatelessWidget {
   /// Key of the inner text field, so tests and automation can find it.
   final Key? fieldKey;
 
+  /// Focus node of the inner text field, for a form that decides where the focus starts.
+  final FocusNode? focusNode;
+
   /// Widget at the end of the input (for example the show/hide button of a password).
   final Widget? suffix;
 
@@ -73,6 +77,7 @@ class LabeledField extends StatelessWidget {
         TextField(
           key: fieldKey,
           controller: controller,
+          focusNode: focusNode,
           enabled: enabled,
           obscureText: obscure,
           minLines: minLines,

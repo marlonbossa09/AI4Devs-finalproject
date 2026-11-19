@@ -56,7 +56,9 @@ class LogbookNotifier extends _$LogbookNotifier {
         key: key,
       ),
     );
-    await _reload();
+    // The new activity also shows in the activity list and in any open detail, and the person may stay on one of those screens (the
+    // side panel does not navigate), so everything cached is reloaded from the server, as for every other write that adds an activity.
+    await _reloadEverything();
     return result;
   }
 

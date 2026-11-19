@@ -77,6 +77,9 @@ Future<void> tapKey(WidgetTester tester, String key) async {
 }
 
 /// A field that registers its unsaved text with the same guard as every other editor of the app.
+/// Whether the test panel's field holds text: what the panel reports as its own unsaved text.
+bool testPanelHasText = false;
+
 class _DirtyField extends ConsumerStatefulWidget {
   const _DirtyField();
 
@@ -95,11 +98,14 @@ class _DirtyFieldState extends ConsumerState<_DirtyField> {
     super.initState();
     _guard = ref.read(unsavedGuardProvider);
     _guard.register(_dirty);
+    testPanelHasText = false;
+    _controller.addListener(() => testPanelHasText = _controller.text.isNotEmpty);
   }
 
   @override
   void dispose() {
     _guard.unregister(_dirty);
+    testPanelHasText = false;
     _controller.dispose();
     super.dispose();
   }
@@ -112,6 +118,7 @@ SidePanelRequest testPanel({bool withActions = true}) => SidePanelRequest(
   title: 'Panel de prueba',
   subtitle: 'Solo infraestructura',
   icon: Icons.add,
+  hasUnsaved: () => testPanelHasText,
   bodyBuilder: (context) => const Column(children: [_DirtyField(), SizedBox(height: 1800), Text('final del contenido', key: Key('panel-last'))]),
   actionsBuilder: withActions ? (context) => Row(children: [SecondaryButton(key: const Key('panel-cancel'), label: 'Cancelar', onPressed: () {})]) : null,
 );
@@ -269,7 +276,7 @@ void main() {
       expect(crumb('Detalle de actividad'), findsOneWidget);
       await tester.tap(crumb('Actividades')); // the parent is a link to where you came from
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('activities-new-planning')), findsOneWidget);
+      expect(find.byKey(const Key('activities-new-activity')), findsOneWidget);
       expect(isSelected(tester, 'activities'), isTrue);
       handle.dispose();
     });
@@ -282,16 +289,6 @@ void main() {
       expect(isSelected(tester, 'activities'), isFalse);
       expect(crumb('Panel principal'), findsOneWidget);
       expect(crumb('Detalle de actividad'), findsOneWidget);
-      handle.dispose();
-    });
-
-    testWidgets('recording an unplanned activity belongs to Mi bitácora', (tester) async {
-      final handle = tester.ensureSemantics();
-      await pumpApp(tester);
-      await tapKey(tester, 'dashboard-new-unplanned');
-      expect(isSelected(tester, 'logbook'), isTrue);
-      expect(crumb('Mi bitácora'), findsOneWidget);
-      expect(crumb('Actividad no planificada'), findsOneWidget);
       handle.dispose();
     });
 
@@ -327,7 +324,6 @@ void main() {
       expect(navItemFor(AppPage.correction, back), AppPage.logbook);
       expect(navItemFor(AppPage.activityDetail, (_) => null), AppPage.activities);
       expect(navItemFor(AppPage.supervisionActivity, (_) => null), AppPage.supervision);
-      expect(navItemFor(AppPage.unplanned, (_) => null), AppPage.logbook);
       expect(navItemFor(AppPage.team, (_) => null), AppPage.team);
     });
 

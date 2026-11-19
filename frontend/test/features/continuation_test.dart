@@ -271,7 +271,7 @@ void main() {
 
       // Success: toast, back to Mi bitácora on the day it was planned for, read from the "server"
       expect(find.text('Continuación planificada.'), findsOneWidget);
-      expect(find.byKey(const Key('logbook-new-planning')), findsOneWidget);
+      expect(find.byKey(const Key('logbook-new-activity')), findsOneWidget);
       expect(find.text(formatShortDate(tomorrow)), findsWidgets);
       expect(find.byKey(Key('continuation-line-${s.repo.days['2026-11-07']!.plannings.single.id}')), findsOneWidget);
       expect(find.text('Cerrar las cifras'), findsOneWidget);

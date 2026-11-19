@@ -21,7 +21,6 @@ import 'progress_page.dart';
 import 'audit_page.dart';
 import 'correction_page.dart';
 import 'reactivation_page.dart';
-import 'unplanned_page.dart';
 import '../../../supervision/presentation/pages/supervision_activity_page.dart';
 import '../../../supervision/presentation/pages/supervision_page.dart';
 import '../../../team/presentation/pages/team_page.dart';
@@ -138,7 +137,6 @@ class HomePage extends ConsumerWidget {
           AppPage.progress => const ProgressPage(),
           AppPage.activities => const ActivitiesPage(),
           AppPage.activityDetail => const ActivityDetailPage(),
-          AppPage.unplanned => const UnplannedPage(),
           AppPage.continuation => const ContinuationPage(),
           AppPage.reactivation => const ReactivationPage(),
           AppPage.correction => const CorrectionPage(),

@@ -54,8 +54,14 @@ Future<void> tapKey(WidgetTester tester, String key) async {
   await tester.pumpAndSettle();
 }
 
+/// Opens the "Nueva actividad" panel from [entry] and chooses the UNPLANNED kind (the panel opens on the planned one).
+Future<void> openUnplanned(WidgetTester tester, String entry) async {
+  await tapKey(tester, entry);
+  await tapKey(tester, 'new-activity-type-unplanned');
+}
+
 /// Opens the unplanned form from the dashboard (its action is visible at any width).
-Future<void> openForm(WidgetTester tester) => tapKey(tester, 'dashboard-new-unplanned');
+Future<void> openForm(WidgetTester tester) => openUnplanned(tester, 'dashboard-new-activity');
 
 Future<void> fill(WidgetTester tester, {String title = 'Atender incidente', String description = 'Revisé los registros'}) async {
   await tester.enterText(find.byKey(const Key('unplanned-title')), title);
@@ -81,6 +87,9 @@ Future<void> register(
 StatCard stat(WidgetTester tester, String label) =>
     tester.widget<StatCard>(find.byWidgetPredicate((w) => w is StatCard && w.label == label));
 
+/// A day number inside the date picker (the mini calendar behind the panel shows the same numbers).
+Finder inPicker(String day) => find.descendant(of: find.byType(DatePickerDialog), matching: find.text(day));
+
 Finder pill(String key, String label) => find.descendant(of: find.byKey(Key(key)), matching: find.text(label));
 
 Finder tagOf(String key) => find.descendant(of: find.byKey(Key(key)), matching: find.text('No planificada'));
@@ -98,36 +107,32 @@ void main() {
   setUpAll(loadTestFonts);
 
   group('the action', () {
-    testWidgets('is visible in the dashboard, in Mi bitácora and in the activity list', (tester) async {
+    testWidgets('is one "Nueva actividad" button in the dashboard, in Mi bitácora and in the activity list', (tester) async {
       await pumpApp(tester, logbook: FakeLogbookRepository());
-      expect(find.byKey(const Key('dashboard-new-unplanned')), findsOneWidget);
+      expect(find.byKey(const Key('dashboard-new-activity')), findsOneWidget);
       await tapKey(tester, 'nav-logbook');
-      expect(find.byKey(const Key('logbook-new-unplanned')), findsOneWidget);
+      expect(find.byKey(const Key('logbook-new-activity')), findsOneWidget);
       await tapKey(tester, 'nav-activities');
-      expect(find.byKey(const Key('activities-new-unplanned')), findsOneWidget);
+      expect(find.byKey(const Key('activities-new-activity')), findsOneWidget);
     });
 
     for (final (from, key) in [
-      ('the dashboard', 'dashboard-new-unplanned'),
-      ('Mi bitácora', 'logbook-new-unplanned'),
-      ('the activity list', 'activities-new-unplanned'),
+      ('the dashboard', 'dashboard-new-activity'),
+      ('Mi bitácora', 'logbook-new-activity'),
+      ('the activity list', 'activities-new-activity'),
     ]) {
-      testWidgets('opens the form from $from', (tester) async {
+      testWidgets('opens the panel from $from, on the planned kind, and the unplanned one is one tap away', (tester) async {
         await pumpApp(tester, logbook: FakeLogbookRepository());
         if (key.startsWith('logbook')) await tapKey(tester, 'nav-logbook');
         if (key.startsWith('activities')) await tapKey(tester, 'nav-activities');
         await tapKey(tester, key);
+        expect(find.byKey(const Key('plan-submit')), findsOneWidget);
+        expect(find.byKey(const Key('unplanned-submit')), findsNothing);
+        await tapKey(tester, 'new-activity-type-unplanned');
         expect(find.byKey(const Key('unplanned-submit')), findsOneWidget);
-        expect(find.text('ACTIVIDAD NO PLANIFICADA'), findsNothing); // the heading is not the tag
-        expect(find.text('Actividad no planificada'), findsWidgets);
+        expect(find.byKey(const Key('plan-submit')), findsNothing);
       });
     }
-
-    testWidgets('both header actions are still reachable and the planning one is unchanged', (tester) async {
-      await pumpApp(tester, logbook: FakeLogbookRepository());
-      await tapKey(tester, 'dashboard-new-planning');
-      expect(find.byKey(const Key('plan-submit')), findsOneWidget);
-    });
   });
 
   group('the form', () {
@@ -235,7 +240,7 @@ void main() {
       await pumpApp(tester, logbook: FakeLogbookRepository());
       await openForm(tester);
       await tapKey(tester, 'unplanned-date');
-      await tester.tap(find.text('7')); // tomorrow: disabled
+      await tester.tap(inPicker('7')); // tomorrow: disabled
       await tester.pumpAndSettle();
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
@@ -243,12 +248,13 @@ void main() {
       expect(find.text(formatShortDate(tomorrow)), findsNothing);
     });
 
-    testWidgets('cancelling goes back to the dashboard without sending anything', (tester) async {
+    testWidgets('cancelling closes the panel, leaves the person where they were and sends nothing', (tester) async {
       final repo = FakeLogbookRepository();
       await pumpApp(tester, logbook: repo);
       await openForm(tester);
       await tapKey(tester, 'unplanned-cancel');
-      expect(find.byKey(const Key('dashboard-new-planning')), findsOneWidget);
+      expect(find.byKey(const Key('unplanned-submit')), findsNothing);
+      expect(find.byKey(const Key('dashboard-new-activity')), findsOneWidget);
       expect(repo.unplannedRequests, isEmpty);
     });
   });
@@ -265,9 +271,11 @@ void main() {
       expect(request['status'], ActivityStatus.inProgress);
       expect(request['description'], 'Revisé los registros');
       expect((request['key'] as String).length, 32);
-      // Success: toast, back to Mi bitácora, and the activity as the server holds it
+      // Success: toast and the panel closes; the person is still on the dashboard, and Mi bitácora holds the activity as the server has it
       expect(find.text('Actividad no planificada registrada.'), findsOneWidget);
-      expect(find.byKey(const Key('logbook-new-planning')), findsOneWidget);
+      expect(find.byKey(const Key('unplanned-submit')), findsNothing);
+      expect(find.byKey(const Key('dashboard-new-activity')), findsOneWidget);
+      await tapKey(tester, 'nav-logbook');
       final activity = activityOf(repo, 'Atender incidente');
       expect(pill('status-${activity.id}', 'En progreso'), findsOneWidget);
       expect(find.textContaining('Avance · En progreso: Revisé los registros'), findsOneWidget);
@@ -372,16 +380,17 @@ void main() {
       await pumpApp(tester, logbook: repo);
       await openForm(tester);
       await tapKey(tester, 'unplanned-date');
-      await tester.tap(find.text('5'));
+      await tester.tap(inPicker('5'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
       expect(find.text(formatShortDate(yesterday)), findsOneWidget);
       await register(tester, title: 'Del jueves');
       expect(repo.unplannedRequests.single['date'], '2026-11-05');
-      // It lands on the day it belongs to, which becomes the one shown
-      expect(find.text(formatShortDate(yesterday)), findsWidgets);
-      expect(find.text('Del jueves'), findsOneWidget);
+      // It is saved on the day it belongs to; the person stays on the day they were looking at and the confirmation names the other day
+      expect(find.text('Actividad no planificada registrada el ${formatShortDate(yesterday)}.'), findsOneWidget);
+      expect(containerOf(tester).read(selectedDateProvider), today);
+      expect(find.text('Del jueves'), findsNothing);
     });
 
     testWidgets('the form starts empty for the next entry', (tester) async {
@@ -389,7 +398,7 @@ void main() {
       await pumpApp(tester, logbook: repo);
       await openForm(tester);
       await register(tester);
-      await tapKey(tester, 'logbook-new-unplanned');
+      await openUnplanned(tester, 'dashboard-new-activity');
       expect(tester.widget<TextField>(find.byKey(const Key('unplanned-title'))).controller!.text, isEmpty);
       expect(tester.widget<TextField>(find.byKey(const Key('unplanned-description'))).controller!.text, isEmpty);
       expect(find.text('Elige un estado.'), findsNothing);
@@ -523,7 +532,7 @@ void main() {
       await pumpApp(tester, logbook: repo);
       await openForm(tester);
       await register(tester, title: 'Igual');
-      await tapKey(tester, 'logbook-new-unplanned');
+      await openUnplanned(tester, 'dashboard-new-activity');
       await register(tester, title: 'Igual');
       final keys = [for (final r in repo.unplannedRequests) r['key']];
       expect(keys, hasLength(2));
