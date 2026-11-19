@@ -18,9 +18,9 @@ import '../../domain/entities/report_entities.dart';
 /// The app shows the generated text as PLAIN TEXT (it is untrusted content: never HTML, never a link), keeps no ranking,
 /// score or comparison of people anywhere, and never completes, corrects or recomputes what the server sent.
 
-const _tagCalculated = KindTag('Calculado', icon: Icons.calculate_outlined, color: Color(0xFF276A67), background: Color(0xFFE5F7F3));
-const _tagRecorded = KindTag('Registrado', icon: Icons.fact_check_outlined, color: Color(0xFF3976B3), background: Color(0xFFEAF3FE));
-const _tagGenerated = KindTag('Redactado con IA', icon: Icons.auto_awesome, color: UnplannedColors.foreground, background: UnplannedColors.background);
+const _tagCalculated = KindTag('Calculado', icon: Icons.calculate_outlined, color: AppColors.calculatedText, background: AppColors.calculatedBackground);
+const _tagRecorded = KindTag('Registrado', icon: Icons.fact_check_outlined, color: AppColors.recordedText, background: AppColors.recordedBackground);
+const _tagGenerated = KindTag('Redactado con IA', icon: Icons.auto_awesome, color: AppColors.generatedText, background: AppColors.generatedBackground);
 
 /// What a person reads as the name of an activity: its title, or the fixed neutral label when the activity was started in
 /// another team (the server sends no title for it and the app never asks for one).
@@ -278,7 +278,7 @@ class ReportNarrativeView extends StatelessWidget {
       key: Key('$prefix-narrative'),
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: UnplannedColors.background.withValues(alpha: 0.45), border: Border.all(color: UnplannedColors.background), borderRadius: BorderRadius.circular(11)),
+      decoration: BoxDecoration(color: AppColors.generatedBackground.withValues(alpha: 0.45), border: Border.all(color: AppColors.generatedBackground), borderRadius: BorderRadius.circular(11)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

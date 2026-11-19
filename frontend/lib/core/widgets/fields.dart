@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_tokens.dart';
 import '../utils/dates.dart';
+import 'focus_ring.dart';
 
 /// Label above an input (`.field label`).
 class FieldLabel extends StatelessWidget {
@@ -11,10 +13,10 @@ class FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.only(bottom: AppSpace.xs + 2),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textLabel),
+      style: const TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w700, color: AppColors.textLabel),
     ),
   );
 }
@@ -79,17 +81,17 @@ class LabeledField extends StatelessWidget {
           textInputAction: textInputAction,
           onSubmitted: onSubmitted,
           onChanged: onChanged,
-          style: const TextStyle(fontSize: 13, color: AppColors.fieldText),
+          style: TextStyle(fontSize: AppType.body, color: enabled ? AppColors.fieldText : AppColors.textSecondary),
           decoration: InputDecoration(
             hintText: hint,
             errorText: errorText,
             suffixIcon: suffix,
-            fillColor: enabled ? AppColors.white : const Color(0xFFF3F6FA),
+            fillColor: enabled ? AppColors.white : AppColors.fieldDisabledBackground,
           ),
         ),
         if (hintBelow != null) ...[
-          const SizedBox(height: 8),
-          Text(hintBelow!, style: const TextStyle(fontSize: 11, color: Color(0xFF7E8DA1))),
+          const SizedBox(height: AppSpace.sm),
+          Text(hintBelow!, style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
         ],
       ],
     );
@@ -145,35 +147,34 @@ class DateField extends StatelessWidget {
         Semantics(
           button: true,
           label: '$label ${formatShortDate(date)}',
-          child: InkWell(
-            key: fieldKey,
-            borderRadius: BorderRadius.circular(10),
+          child: FocusRingInk(
+            inkKey: fieldKey,
             onTap: () => _pick(context),
             child: Container(
-              height: 46,
-              padding: const EdgeInsets.symmetric(horizontal: 13),
+              height: AppSize.control(context),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               decoration: BoxDecoration(
                 color: AppColors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.fieldBorder),
+                borderRadius: BorderRadius.circular(AppRadius.control),
+                border: Border.all(color: errorText != null ? AppColors.error : AppColors.fieldBorder),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       formatShortDate(date),
-                      style: const TextStyle(fontSize: 13, color: AppColors.fieldText),
+                      style: const TextStyle(fontSize: AppType.body, color: AppColors.fieldText),
                     ),
                   ),
-                  const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF728097)),
+                  const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.muted),
                 ],
               ),
             ),
           ),
         ),
         if (errorText != null) ...[
-          const SizedBox(height: 6),
-          Text(errorText!, style: const TextStyle(fontSize: 12, color: AppColors.error)),
+          const SizedBox(height: AppSpace.xs + 2),
+          Text(errorText!, style: const TextStyle(fontSize: AppType.caption, color: AppColors.error)),
         ],
       ],
     );
@@ -213,19 +214,20 @@ class SelectField<T> extends StatelessWidget {
           isEmpty: value == null,
           decoration: InputDecoration(
             errorText: errorText,
-            fillColor: enabled ? AppColors.white : const Color(0xFFF3F6FA),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 2),
+            fillColor: enabled ? AppColors.white : AppColors.fieldDisabledBackground,
+            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<T>(
               value: value,
               isExpanded: true,
+              isDense: true,
               hint: hint == null
                   ? null
-                  : Text(hint!, style: const TextStyle(fontSize: 13, color: AppColors.textFaint)),
-              icon: const Icon(Icons.expand_more, size: 18, color: Color(0xFF728097)),
-              style: const TextStyle(fontSize: 13, color: AppColors.fieldText),
-              borderRadius: BorderRadius.circular(10),
+                  : Text(hint!, style: const TextStyle(fontSize: AppType.body, color: AppColors.textFaint)),
+              icon: const Icon(Icons.expand_more, size: 18, color: AppColors.muted),
+              style: const TextStyle(fontSize: AppType.body, color: AppColors.fieldText),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               items: [
                 for (final entry in options.entries)
                   DropdownMenuItem<T>(

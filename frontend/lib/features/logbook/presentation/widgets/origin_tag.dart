@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/logbook_entities.dart';
 
 /// Colors used to tell an UNPLANNED activity apart from a planned one. They are deliberately not
@@ -7,8 +9,8 @@ import '../../domain/entities/logbook_entities.dart';
 class UnplannedColors {
   const UnplannedColors._();
 
-  static const background = Color(0xFFF1EEFB);
-  static const foreground = Color(0xFF6B5BB0);
+  static const background = AppColors.unplannedBackground;
+  static const foreground = AppColors.unplannedText;
 }
 
 /// Small tag "No planificada". It is shown only for activities registered without a prior planning;
@@ -22,16 +24,16 @@ class OriginTag extends StatelessWidget {
   Widget build(BuildContext context) {
     if (origin != ActivityOrigin.unplanned) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: UnplannedColors.background, borderRadius: BorderRadius.circular(6)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs - 1),
+      decoration: BoxDecoration(color: UnplannedColors.background, borderRadius: BorderRadius.circular(AppRadius.control - 2)),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.bolt, size: 11, color: UnplannedColors.foreground),
-          SizedBox(width: 3),
+          Icon(Icons.bolt, size: 14, color: UnplannedColors.foreground),
+          SizedBox(width: AppSpace.xs - 1),
           Text(
             'No planificada',
-            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: UnplannedColors.foreground),
+            style: TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w800, color: UnplannedColors.foreground),
           ),
         ],
       ),

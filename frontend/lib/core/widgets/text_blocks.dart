@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../layout/screen_size.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_tokens.dart';
 
 /// Small uppercase label above a title (`.eyebrow`).
 class Eyebrow extends StatelessWidget {
-  const Eyebrow(this.text, {super.key, this.color = AppColors.teal, this.bottom = 8});
+  const Eyebrow(this.text, {super.key, this.color = AppColors.teal, this.bottom = AppSpace.xs});
 
   final String text;
   final Color color;
@@ -18,13 +19,13 @@ class Eyebrow extends StatelessWidget {
       padding: EdgeInsets.only(bottom: bottom),
       child: Text(
         text.toUpperCase(),
-        style: TextStyle(fontSize: 11, letterSpacing: 1.7, fontWeight: FontWeight.w800, color: color),
+        style: TextStyle(fontSize: AppType.caption, letterSpacing: 1.2, fontWeight: FontWeight.w800, color: color),
       ),
     );
   }
 }
 
-/// Eyebrow, title, subtitle and an optional main action (`.header-line`).
+/// Eyebrow, title (20 px), subtitle and an optional main action (`.header-line`). Compact: about 70 px before the content.
 class PageHeader extends StatelessWidget {
   const PageHeader({
     super.key,
@@ -52,16 +53,16 @@ class PageHeader extends StatelessWidget {
       children: [
         Row(
           children: [
-            Flexible(child: Text(title, style: context.heading(mobile ? 23 : 28, height: 1.3))),
+            Flexible(child: Text(title, style: context.heading(AppType.pageTitle, height: 1.3))),
             if (titleTrailing != null) ...[const SizedBox(width: 8), titleTrailing!],
           ],
         ),
-        const SizedBox(height: 7),
-        Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.muted)),
+        const SizedBox(height: AppSpace.xs),
+        Text(subtitle, style: const TextStyle(fontSize: AppType.body, color: AppColors.muted)),
       ],
     );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 29),
+      padding: const EdgeInsets.only(bottom: AppSpace.xl),
       // The action goes beside the title only when there is room for both; with less than
       // [_sideBySideMinWidth] (a tablet with the sidebar open, or a phone) it goes under it.
       child: LayoutBuilder(
@@ -76,12 +77,17 @@ class PageHeader extends StatelessWidget {
               else if (stacked)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [heading, const SizedBox(height: 16), action!],
+                  children: [heading, const SizedBox(height: AppSpace.md), action!],
                 )
               else
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [Expanded(child: heading), const SizedBox(width: 15), action!],
+                  // The action takes the room it needs but never more than 3/5 of the line: a row of buttons wraps instead of overflowing.
+                  children: [
+                    Expanded(flex: 2, child: heading),
+                    const SizedBox(width: AppSpace.lg),
+                    Flexible(flex: 3, child: Align(alignment: Alignment.centerRight, child: action!)),
+                  ],
                 ),
             ],
           );
@@ -100,19 +106,19 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 35, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxl, horizontal: AppSpace.sm),
       child: Center(
         child: Text(
           message,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF8292A2)),
+          style: const TextStyle(fontSize: AppType.body, color: AppColors.textSecondary),
         ),
       ),
     );
   }
 }
 
-/// Message with a soft teal background (`.notice`).
+/// Informative message with a soft blue background (`.notice`). Information is blue; teal stays for interaction.
 class Notice extends StatelessWidget {
   const Notice({super.key, required this.title, required this.text, this.icon});
 
@@ -124,28 +130,28 @@ class Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.md + 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFEBF7F4),
-        border: Border.all(color: const Color(0xFFDAEEE9)),
-        borderRadius: BorderRadius.circular(11),
+        color: AppColors.infoBackground,
+        border: Border.all(color: AppColors.infoBorder),
+        borderRadius: BorderRadius.circular(AppRadius.control + 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (icon != null) ...[Icon(icon, size: 14, color: const Color(0xFF276A67)), const SizedBox(width: 6)],
+              if (icon != null) ...[Icon(icon, size: 16, color: AppColors.infoText), const SizedBox(width: AppSpace.sm - 1)],
               Flexible(
                 child: Text(
                   title,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF276A67)),
+                  style: const TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w700, color: AppColors.infoText),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 3),
-          Text(text, style: const TextStyle(fontSize: 11, height: 1.65, color: Color(0xFF276A67))),
+          const SizedBox(height: AppSpace.xs),
+          Text(text, style: const TextStyle(fontSize: AppType.caption, height: 1.5, color: AppColors.infoText)),
         ],
       ),
     );
@@ -169,12 +175,12 @@ class ErrorBox extends StatelessWidget {
             message,
             key: const Key('load-error'),
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.error),
+            style: const TextStyle(fontSize: AppType.body, color: AppColors.error),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.sm),
           TextButton(
             onPressed: onRetry,
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF14998F)),
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary, minimumSize: const Size(AppSize.minTouch, AppSize.minTouch)),
             child: const Text('Reintentar'),
           ),
         ],
