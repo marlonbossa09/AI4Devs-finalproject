@@ -15,6 +15,8 @@ Este documento registra cómo se usó la IA para construir SMARTWORK: qué herra
 8. [Decisiones humanas y errores de la IA](#8-decisiones-humanas-y-errores-de-la-ia)
 9. [Uso de IA por fase: realizado y planificado](#9-uso-de-ia-por-fase-realizado-y-planificado)
 10. [Entrega 2: implementación asistida por IA](#10-entrega-2-implementación-asistida-por-ia)
+11. [Cierre del MVP: M4, M5 y preparación de la entrega](#11-cierre-del-mvp-m4-m5-y-preparación-de-la-entrega)
+12. [Límites del uso de IA generativa en este proyecto](#12-límites-del-uso-de-ia-generativa-en-este-proyecto)
 
 ---
 
@@ -28,17 +30,29 @@ Este documento registra cómo se usó la IA para construir SMARTWORK: qué herra
 
 ### Convención de este registro
 
-Los prompts de las secciones 1 a 6 y 10 son **resúmenes** del mensaje original, no transcripciones literales; así se indica en cada uno («resumen fiel»). Ninguno es una transcripción literal. Los mensajes completos y las respuestas están en el historial local de Claude Code, que no forma parte del repositorio.
+Los prompts de las secciones 1 a 6, 10 y 11 son **resúmenes** del mensaje original, no transcripciones literales; así se indica en cada uno («resumen fiel»). Ninguno es una transcripción literal. Los mensajes completos y las respuestas están en el historial local de Claude Code, que no forma parte del repositorio.
+
+**Clasificación de cada entrada según la evidencia** (se aplica a las entradas de la sección 11; las de las secciones 1 a 10 son todas «reconstrucción documental»):
+
+- **PROMPT ORIGINAL:** el texto exacto está disponible y se cita entre comillas.
+- **RECONSTRUCCIÓN DOCUMENTAL:** resumen fiel del objetivo y de las instrucciones del mensaje, escrito a partir del propio mensaje en el historial local y de los commits y documentos del repositorio. **No es el prompt original** ni una transcripción.
+- **NO RECUPERABLE:** no hay texto ni evidencia suficiente para describir el mensaje; se declara la ausencia.
+
+**Fragmentos literales.** En las entradas de la sección 11, la línea «Cita literal» reproduce **solo fragmentos exactos** (el título y la frase de autorización) de un mensaje más largo: **no constituye el prompt completo**. Únicamente dos entradas llevan texto literal más extenso: el Prompt 20 (mensaje íntegro) y el Prompt 22 (párrafo literal incluido en un mensaje mayor; es un fragmento, no un prompt completo).
+
+Cuando una entrada enlaza un commit o un documento, la trazabilidad es la del propio repositorio; no se afirma que un mensaje produjo un cambio si no hay esa trazabilidad.
 
 ### Herramientas y modelos
 
 | Herramienta | Modelo | Uso real |
 |---|---|---|
-| **Claude Code** (extensión para VS Code) | `claude-sonnet-5-5` (la inmensa mayoría de los mensajes de la sesión) y `claude-opus-5-5` (4 mensajes; la transcripción no registra para qué tarea) | Entrega 1: alcance, requisitos, historias, arquitectura, modelo de datos, contratos de la API, tickets, README y este registro. Entrega 2: código del backend y del frontend, migraciones, pruebas y actualización del README |
+| **Claude Code** (extensión para VS Code) | `claude-sonnet-5-5` (la inmensa mayoría de los mensajes de la sesión) y `claude-opus-5-5` (4 mensajes; la transcripción no registra para qué tarea) | Entrega 1: alcance, requisitos, historias, arquitectura, modelo de datos, contratos de la API, tickets, README y este registro. Entrega 2: código del backend y del frontend, migraciones, pruebas y actualización del README. Cierre del MVP (sección 11): M4, M5, auditoría de preparación y actualización del README. Los modelos de cada sesión constan en el historial local; la sesión de M5-T6 a FINAL-T3 usó `claude-sonnet-5-5` |
 | Agentes de lectura web de Claude Code y búsqueda web | Los de la propia herramienta | Contrastar datos externos (precios, retención y regiones del proveedor de IA candidato, valores de seguridad de NIST y OWASP) para los ADR |
 | Conector de Google Drive de Claude | — | Búsqueda de documentación de apoyo; no aportó contenido utilizable y no se incorporó nada al repositorio |
 | Scripts de Python escritos por la IA, ejecutados en la sesión | — | Verificar la documentación (formato de los criterios, trazabilidad, coherencia entre documentos). No forman parte del repositorio |
 | Extensión **Claude en Chrome**, dentro de la misma sesión | `claude-sonnet-5-5` | Entrega 2: validar en un Chrome real las cookies, el CSRF, el origen y el flujo completo, y capturar la evidencia de `docs/evidencia/` |
+| Subagentes de Claude Code (lectura) | Los de la propia herramienta | Cierre del MVP: en FINAL-T3 dos subagentes de solo lectura recuperaron del repositorio y del historial local la evidencia de los prompts de M4-T5 a M4-T9 y de M5 a FINAL-T2; la redacción de este registro es de una sola sesión principal, revisada por la persona responsable |
+| **Ollama** (`qwen2.5:3b-instruct`, `qwen3:8b`) | Modelos locales de terceros | **No son una herramienta de desarrollo**: son el proveedor experimental de generación de narrativa de M5, evaluado con datos ficticios (sección 11, M5-T5 y M5-T7). Sin datos reales |
 | **ChatGPT** (complementaria) | No registrado | Análisis de propuestas, contraste de decisiones y revisión de aspectos del proyecto. Sin registro de modelo ni de prompts; no se reconstruyen |
 
 ### Contexto avanzado
@@ -121,7 +135,7 @@ El modelo de datos y los contratos de la API se elaboraron en un mismo flujo de 
 
 ## 7. Pull Requests
 
-Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entrega-1-eq` y el de la Entrega 2 en `feature/entrega-2-eq`, creada desde la anterior sin modificarla. Ningún commit ni push se hizo sin autorización expresa de la persona responsable.
+No hay pull requests abiertos ni documentados. El trabajo de la primera entrega está en `feature/entrega-1-eq`, el de la segunda en `feature/entrega-2-eq` y el del cierre del MVP (M4 y M5, auditoría y documentación final) en `final-project-eq`, creada desde el último commit consolidado de la anterior sin modificarla. Ningún commit ni push se hizo sin autorización expresa de la persona responsable; a la fecha de esta revisión, los commits de `final-project-eq` posteriores al 2026-11-17 son locales y no se han publicado.
 
 ---
 
@@ -150,6 +164,19 @@ Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entr
 | Retirar solo el archivo accidental sin seguimiento y no hacer limpiezas generales | Árbol limpio sin tocar nada más |
 | Mantener la identidad de git configurada sin atribuir los commits a otra persona | Autoría tal cual consta en la configuración |
 
+**Decisiones humanas del cierre del MVP (M1, M4 y M5)**
+
+| Decisión | Efecto |
+|---|---|
+| Provisión por la CLI del servidor, sin endpoints administrativos, y rol de PostgreSQL separado (M1) | No hay superficie HTTP de administración |
+| Evaluar la política de contraseña antes que el código (M1-T8.3) | La validez de un código no se revela |
+| Elegir Pwned Passwords tras verificar su documentación y no instalar ~81 GB en desarrollo (M1-T8.6) | Mecanismo implementado, comprobación inactiva hasta instalarlo |
+| D-M4-10: una referencia neutral no es visibilidad completa para escribir; 404 salvo recurso visible | Criterio uniforme de 403 y 404 |
+| Visibilidad efectiva y no «perteneció alguna vez» (P-9, M5-T1); 403 frente a 404 (D-M5-02) | Los informes no revelan relaciones históricas |
+| D-M5-06: 31 días, 400 hechos en total por solicitud, 0 reintentos y generación desactivada por defecto; el resto, abierto | Límites confirmados; los demás siguen abiertos |
+| Aplazar Amazon Bedrock y AWS Lambda y continuar con Ollama local (M5-T5) | Proveedor local solo para desarrollo, con reservas |
+| Detener la evaluación de Ollama y no ampliar la muestra (M5-T7); cerrar M5 técnicamente con reservas (M5-T8) | Evidencia exploratoria declarada como tal |
+
 **Errores de la IA, detectados y corregidos**
 
 - Afirmó que todos los criterios cumplían el formato sin comprobar el `CUANDO` (sección 5).
@@ -160,6 +187,7 @@ Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entr
 - **Entrega 2.** Al cancelar una tarea en segundo plano se cayó el clúster de PostgreSQL de desarrollo que colgaba de ella. Se retiró un proceso huérfano suyo (sin tocar el servicio de PostgreSQL del equipo) y se relanzó desacoplado de la sesión.
 - **Entrega 2.** Un fallo aparente de inicio de sesión en el navegador no era de la aplicación: Chrome autocompletaba la contraseña guardada y la automatización escribía detrás. Se diagnosticó leyendo el campo (48 caracteres en lugar de 24) y comprobando que `curl` y `fetch` entraban.
 - **Entrega 2.** Para dar por buenas las pruebas, se rompió el código a propósito en tres puntos y se comprobó que fallaban; no se aceptó que pasaran a la primera sin esa comprobación.
+- **Cierre del MVP.** Implementé la visibilidad de M5 con «perteneció alguna vez al equipo» (revelaba relaciones históricas) y la persona la rechazó (M5-T1); tras un 403, tres pantallas de M4 conservaban datos anteriores (M4-T9); la narrativa de M5 no se exponía a las tecnologías de apoyo con `SelectableText` (M5-T6); la prueba de evaluación de Ollama compartía variable con la prueba real (M5-T7). Se corrigieron al verificar.
 
 ---
 
@@ -173,10 +201,10 @@ Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entr
 | Arquitectura | **Realizado** | ADR, diagramas, riesgos, contraste de datos externos |
 | Modelo de datos y contratos | **Realizado** | Modelo, 35 contratos, comprobaciones de coherencia |
 | Tickets y documentación | **Realizado** | 34 tickets, README, este registro |
-| Implementación | **Realizado en parte (Entrega 2)** | Claude Code con los tickets, los contratos y los criterios como contexto: backend, migraciones, semilla, frontend y su integración; solo el subconjunto del primer recorrido. El resto, planificado |
-| Pruebas | **Realizado en parte (Entrega 2)** | 242 pruebas de backend sobre PostgreSQL real (incluidas 24 de aislamiento, 12 de salud y 28 de creación de cuentas) y 64 de frontend, comprobación del código con fallos provocados y verificación en Chrome real. Planificado: matriz de permisos completa, pruebas de seguridad de ADR-002 y prueba automatizada de la interfaz |
+| Implementación | **Realizado (M1 a M5)** | Claude Code con los tickets, los contratos y los criterios como contexto: backend, migraciones, semilla, frontend y su integración, ticket a ticket con aprobación humana. M1 a M4 y el núcleo, la API y la interfaz de M5 están implementados; la generación con un modelo real de M5 es experimental y está desactivada por defecto (secciones 11 y 12) |
+| Pruebas | **Realizado** | Pruebas de backend sobre PostgreSQL real desechable y de Flutter, matrices de trazabilidad M1 a M5 y recorridos reales en Chrome (cifras actuales en el [README](readme.md#26-tests)). Pendiente: prueba automatizada de la interfaz en un navegador dentro del repositorio y pruebas de penetración |
 | Revisión de código | **Planificado** | Revisión asistida de cada pull request |
-| Producto (M5) | **Planificado, condicionado** | Informes con un servicio de IA, solo tras decidir proveedor, retención, región y marco legal (ADR-003) |
+| Producto (M5) | **Realizado con reservas** | Núcleo determinista, API e interfaz de informes; generador simulado para pruebas y Ollama local como proveedor experimental de desarrollo. Amazon Bedrock y AWS Lambda siguen como arquitectura futura aplazada y no evaluada; datos laborales reales con un LLM no autorizados (ADR-003 y [matriz de M5](docs/evidencia/matriz-trazabilidad-m5.md)) |
 
 ---
 
@@ -292,3 +320,239 @@ Todavía no hay pull requests. El trabajo de la Entrega 1 está en `feature/entr
 - **Verificación:** 16, 34, 25 y 21 pruebas nuevas en T1 a T4 sobre PostgreSQL real; regresiones focalizadas (668 tras T2; 1157 y 998 tras T3) y recorridos HTTP reales con uvicorn en cada ticket; validación de la migración 0018 con 157.191 bitácoras (consulta sin filtro de 338 ms a 2,6 ms; reversible). Sin mutaciones ni suite completa.
 - **Decisiones humanas:** aprobar la migración 0018 solo con evidencia y con la condición de detenerse si el peor caso la contradecía; separar el núcleo de la supervisión (T3) de la herencia entre equipos (T4); que el 403 sea por rol y no revele registros; que la referencia mínima no entre en los totales; no avanzar de ticket sin aprobación; y mantener la autoría del repositorio sin trailers añadidos.
 - **Errores de la IA, corregidos:** (1) mi primera consulta de supervisión partía de todas las actividades de la organización y tardaba **64 s** con 31 mil actividades; se detectó al medir con datos representativos, se reescribió para partir del equipo (unos 100 ms) y se documentó; (2) el guion de validación del índice dejó una transacción abierta que bloqueó el `DROP INDEX` del downgrade durante 23 minutos: era un fallo del guion, no del producto; (3) varios guiones de evidencia tenían expectativas mal calculadas (por ejemplo, un período sin avances del traslado o el número de elementos por página) y se corrigieron sin cambiar el código; (4) los archivos compartidos mezclaban cambios de T2 y T3 y el commit de T2 se construyó solo con lo suyo, verificándolo sobre el árbol exacto exportado del índice; (5) el comportamiento provisional de T3 ocultaba la actividad entera ante lo no autorizado y T4 lo sustituyó por las formas definitivas.
+
+---
+
+## 11. Cierre del MVP: M4, M5 y preparación de la entrega
+
+Continúa la numeración de la sección 10 y cubre, en orden cronológico, M1 (correspondencia por ticket), M4-T5 a M4-T9, M5-T0 a M5-T8, la auditoría FINAL-T1, la actualización FINAL-T2 y este registro (FINAL-T3). M4 y M5 se desarrollaron en la rama `final-project-eq`; M1 en `feature/entrega-2-eq`. Cada mensaje de la persona responsable aprobaba el ticket anterior, fijaba decisiones y ordenaba **solo** el siguiente; los commits de cada ticket se enlazan por su hash. La clasificación de cada entrada (PROMPT ORIGINAL, RECONSTRUCCIÓN DOCUMENTAL o NO RECUPERABLE) está definida en la sección 0. **Todas las entradas de esta sección son «reconstrucción documental» salvo las dos marcadas como PROMPT ORIGINAL**; en todas, el texto íntegro del mensaje existe en el historial local de Claude Code y aquí solo se cita lo que se indica entre comillas.
+
+### Prompt 19 — M1: trazabilidad por ticket y consolidación en commits
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL para cada mensaje de la tabla (el texto íntegro de todos existe en el historial local; aquí se resume). El mensaje de M1-T8.5 se transcribe **íntegro** más abajo como PROMPT ORIGINAL. **Herramienta:** Claude Code · **Rama:** `feature/entrega-2-eq`
+- **Relación con los Prompts 15 a 17:** estos tres ya resumen M1 por grupos de tickets. Esta entrada **no los sustituye**: añade la correspondencia ticket por ticket y la consolidación. Todos los mensajes siguen el mismo patrón: aprobar el ticket anterior, fijar decisiones y ordenar solo el siguiente, con las restricciones repetidas (rama única, sin push ni merge, sin tocar `smartwork_app` ni el PostgreSQL 5432, pruebas solo sobre bases desechables).
+- **Commits:** M1 **no tiene commits por ticket**. Se consolidó el 2026-11-17 con autorización expresa en cuatro commits: `870ecf1` (backend y migraciones, M1-T0 a M1-T8.6), `4ab5c96` (pruebas del backend), `55db05e` (pantallas Flutter) y `5b6405d` (cierre técnico, contratos, ADR-002 y evidencias).
+
+| Ticket | Fecha | Qué ordenó el mensaje (resumen fiel) | Resultado documentado |
+|---|---|---|---|
+| Diagnóstico de M1 | 2026-11-11 | Tras cerrar M3, diagnosticar el estado real de M1 y proponer un plan incremental sin código | [Plan de M1](docs/backlog/tickets/m1-plan-implementacion.md) |
+| M1-T0 | 2026-11-11 | Aprobar el plan T0 a T9 con nueve decisiones (provisión por CLI sin endpoints, persona operadora con credencial propia, rol de PostgreSQL separado, IR-32, nombre único de equipo, no inventar parámetros de ADR-002) e implementar solo la respuesta 405 con `Allow` (PA-30) | 405 con `Allow` (`convenciones.md`) |
+| M1-T1 | 2026-11-11 | Equipo en una fecha con intervalos semiabiertos y política interna de visibilidad (RA-01 a RA-12), separando la decisión interna de la respuesta HTTP | `compartido/pertenencias.py` y `visibilidad.py`; sin migración |
+| M1-T2 | 2026-11-11 | Provisión de equipos y personas por la CLI; nombre de equipo único por organización sin distinguir mayúsculas ni espacios exteriores; sin inventar credenciales | Órdenes `crear-primer-operador`, `crear-equipo` y `crear-persona`; migración 0009 |
+| M1-T3 | 2026-11-11 | Traslado y cambio de rol; **antes**, revisar el script del rol de provisión (sin contraseñas en argumentos, sin tocar roles ajenos ni `smartwork_app`) | `registrar-traslado`; migración 0010 |
+| M1-T4 | 2026-11-11 | Finalizar pertenencias y cancelar o sustituir operaciones programadas; PA-31 (no ampliar M1-05) | `finalizar-pertenencia` y `cancelar-operacion-programada`; migración 0011 |
+| M1-T5 | 2026-11-11 | Validar un traslado real de extremo a extremo y cerrar CA-212 a CA-214 sin simular por SQL | CA-212 a CA-214 probados con uvicorn y Chrome |
+| M1-T6 | 2026-11-17 | Desactivación del acceso (M1-08) con la decisión DM-09: advertencia estructurada si el equipo queda sin supervisión efectiva | `desactivar-acceso`; migración 0012 |
+| M1-T7 | 2026-11-17 | Primero un informe de preparación y, aprobado el diseño, la protección frente a intentos fallidos (cinco libres, esperas de 30 s a 1 h, límites por origen, HMAC con `AUTH_PEPPER`, sin el tope de 100) | Migración 0013, 429 con `Retry-After` y cuenta atrás en el login |
+| M1-T8.1 a T8.6 | 2026-11-17 | Primer acceso y recuperación con código por subpasos con autorización individual (modelo y política de contraseñas, emisión por CLI, canje por API, pantallas Flutter, endurecimiento); aquí nace la **metodología de pruebas ligera** | Migraciones 0014 a 0017; Pwned Passwords local (`docs/operacion/pwned-passwords.md`) |
+| M1-T9 | 2026-11-17 | Cierre integral: clasificar los criterios sin declarar ninguno sin evidencia, regresión general y recorrido real | [Matriz de M1](docs/evidencia/matriz-trazabilidad-m1.md): 65 criterios (48 implementados y probados, 15 parciales, 2 bloqueados por otro módulo) |
+| Consolidación | 2026-11-17 | Cuatro commits locales por áreas, con staging explícito, sin tocar la configuración de Git | Los cuatro commits citados arriba |
+
+- **Decisiones humanas a destacar:** el cambio de A5 (la verificación de identidad queda fuera de banda y trazable); que la política de contraseña se evalúe **antes** que el código, porque la política es pública y la validez de un código es información sensible; que una contraseña correcta solo reinicie la penalización si el acceso está habilitado y hay pertenencia vigente (corrección de una interpretación mía en M1-T7); la elección de Pwned Passwords como fuente tras verificar la persona responsable su documentación oficial (en M1-T8.6 no pude verificar las licencias y no incorporé ningún dato); y no descargar el conjunto de unos 81 GB en desarrollo.
+- **Errores de la IA corregidos:** ver los Prompts 15 a 17, que ya los detallan (script del rol de provisión con la contraseña como argumento, defecto de carrera en M1-T6, comprobaciones vacuas de «transacción abierta», registro del hash Argon2 en un error de base de datos, entre otros).
+- **Límite de evidencia:** varias cifras de pruebas y mutaciones de M1-T0 constan solo en el informe que di en la sesión, no en un documento ni en un commit; no se reproducen aquí.
+
+### Prompt 20 — M1-T8.5: pantallas Flutter de primer acceso y recuperación (PROMPT ORIGINAL, íntegro)
+
+- **Clasificación:** PROMPT ORIGINAL (texto íntegro, 1546 caracteres, sin secretos). **Fecha:** 2026-11-17 · **Herramienta:** Claude Code
+- **Texto literal:**
+
+  > M1-T8.4 ya fue revisado y aprobado. No repitas su implementación.
+  >
+  > Continúa exclusivamente con SMARTWORK M1-T8.5: pantallas Flutter de primer acceso y recuperación de contraseña.
+  >
+  > Utiliza los endpoints existentes:
+  > - POST /api/v1/acceso/primer-acceso
+  > - POST /api/v1/acceso/recuperacion
+  >
+  > Implementa formularios para identificador de acceso, código, contraseña nueva y confirmación.
+  >
+  > Incluye mostrar/ocultar contraseña, validaciones básicas, mensajes uniformes, manejo del 429 y Retry-After, carga, prevención de solicitudes duplicadas y navegación al inicio de sesión después del éxito.
+  >
+  > No crees sesiones automáticamente ni almacenes códigos o contraseñas de forma persistente.
+  >
+  > La recuperación sigue siendo administrada por una operadora; no implementes envío automático de códigos, correo ni SMS.
+  >
+  > Reutiliza componentes y arquitectura existentes. Mantén el diseño responsive y accesible.
+  >
+  > Realiza únicamente pruebas focalizadas de ambos flujos, ejecuta flutter analyze y comprueba un recorrido representativo en Chrome si el entorno está disponible. No ejecutes mutaciones ni suites completas innecesarias.
+  >
+  > No modifiques código del backend salvo que exista un defecto contractual que debas reportar primero.
+  >
+  > Trabaja exclusivamente en feature/entrega-2-eq. No modifiques smartwork_app ni el PostgreSQL local 5432.
+  >
+  > No hagas commits, pushes ni merges.
+  >
+  > Actualiza la documentación correspondiente e informa resultados, archivos modificados y riesgos.
+  >
+  > No avances a M1-T8.6 sin mi aprobación.
+
+- **Resultado:** pantallas de primer acceso y de recuperación enlazadas desde el inicio de sesión, sin cambios de backend, con pruebas focalizadas y `flutter analyze` limpio; el recorrido en Chrome se hizo con el árbol de semántica, no con lectores de pantalla reales. Se consolidó en `55db05e`.
+
+### Prompt 21 — M4-T5: historial de una actividad del equipo (M4-04)
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Autorizo: 1. Consolidar M4-T4 en un commit local. 2. Implementar M4-T5: historial de una actividad del equipo.»
+- **Prompt (resumen fiel):** cerrar M4-T4 con precisiones (una actividad heredada con planificaciones o avances autorizados se presenta en forma neutral; el detalle de los avances se consulta en T5; la fecha del último avance y el estado actual solo si están autorizados; `sin_estado_al_corte` como contador separado; no renombrar campos de los contratos) e implementar el historial de una actividad con proyecciones seguras, sin tocar Flutter. El mismo mensaje incluyó la decisión sobre AWS (Prompt 22).
+- **Resultado:** `eea40bc` (`feat(m4): historial autorizado de actividades del equipo (M4-T5) - EQ`): `GET /api/v1/equipo/actividades/{actividad_id}`, sin migración y sin cambios en la política de M1; 13 pruebas nuevas y una regresión focalizada de 821 superadas y 1 omitida (plan de M4).
+- **Corrección humana a la IA:** el estado actual rellenaba un campo cuando no había estado al corte; se corrigió siguiendo la indicación. En el cierre, la persona pidió revisar `registrado_en`, `modificado_en`, `es_reactivacion` e identificadores antes de exponerlos: los avances solo llevan fecha laboral, estado, descripción y motivo de bloqueo.
+
+### Prompt 22 — Decisión de integración futura con AWS Bedrock y Lambda (PROMPT ORIGINAL, fragmento)
+
+- **Clasificación:** PROMPT ORIGINAL (fragmento literal). **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Texto literal** (párrafo incluido en el mensaje de cierre de M4-T4): «Decisión futura para M5: la IA utilizará Amazon Bedrock y AWS Lambda. Registra esta decisión como confirmada para planificación futura, sin implementar ni configurar AWS todavía. No selecciones modelo, región ni servicios adicionales sin la revisión SDD de M5.» Un mensaje posterior (cierre de M4-T5) la ratificó: Amazon Bedrock como servicio de modelos, AWS Lambda para la integración y AWS como plataforma de infraestructura relacionada, con modelo, región, retención y servicios adicionales **abiertos**, y pidió un commit documental independiente.
+- **Resultado:** commit `6fbb1fb` (`CLAUDE.md`, ADR-003 y `alcance-mvp.md`). Estado: **CONFIRMADO** solo para planificación futura; **ABIERTO** el resto (PA-09 resuelto en parte).
+- **Después:** el 2026-11-18 la persona responsable aplazó esta arquitectura con el ajuste de M5-T5 (Prompt 32); ADR-003, sección 20, lo registra. No se implementó ni configuró nada de AWS.
+
+### Prompt 23 — M4-T6: 403 sobre registros visibles ajenos y auditoría del supervisor
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Apruebo técnicamente M4-T5 según el informe entregado, con las precisiones indicadas.» · «Implementar exclusivamente M4-T6.»
+- **Prompt (resumen fiel):** consolidar M4-T5, consolidar por separado las decisiones documentales de M5 (solo `CLAUDE.md`, ADR-003 y `alcance-mvp.md`, sin implementar AWS) e implementar el 403 uniforme sobre registros visibles ajenos en las operaciones de escritura de M2 y M3, y la consulta de auditoría para el supervisor (CA-111), con el mismo 404 para lo no visible o inexistente.
+- **Resultado:** `0df881d` (`feat(m4): permisos de escritura y auditoria del supervisor (M4-T6) - EQ`): seis operaciones de M2 y M3 modificadas y M3-07 ampliada; 8 pruebas nuevas, 7 antiguas actualizadas a propósito (fijaban el 404 provisional) sin debilitar aserciones, y una regresión focalizada de 1370 superadas.
+- **Alerta de la IA, resuelta por la persona:** los contratos de M3-03 a M3-06 solo decían «Propietaria» pero listaban `OPERACION_NO_PERMITIDA`; apliqué el 403 según las convenciones y lo documenté. La persona pidió distinguir la visibilidad neutral de una referencia de la autorización para identificar un recurso de escritura y no cambiar la respuesta sin fundamento contractual (resuelto en M4-T7 como D-M4-10).
+
+### Prompt 24 — M4-T7: lectura entre compañeros e histórico en Flutter, con el contrato M4-05
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «M4-T6 queda aprobado técnicamente según el informe, sujeto a las comprobaciones contractuales indicadas.»
+- **Prompt (resumen fiel):** consolidar M4-T6, completar el contrato y el backend mínimo M4-05 (listado de integrantes vigentes, solo identificador, nombre y rol, reutilizando la política de M1) como prerrequisito, e implementar en Flutter la lectura de la bitácora de un compañero y el histórico por fechas, sin política de permisos en el cliente, con estado solo en memoria y pruebas.
+- **Resultado:** `5b703b9` (`feat(m4): listado de integrantes y consultas historicas en Flutter (M4-T7) - EQ`): M4-05 con 5 pruebas, 25 pruebas nuevas de Flutter, `flutter analyze` limpio y un recorrido real en Chrome de 15 comprobaciones (plan de M4).
+- **Decisión humana (cierre):** D-M4-10 confirmada: una referencia neutral o mínima no es visibilidad completa del recurso de una escritura, así que se mantiene el 404, y el 403 solo si el recurso es visible según la política; no declarar completo CA-193 sin evidencia y conservar la limitación del selector (no incluye a quienes salieron del equipo).
+
+### Prompt 25 — M4-T8: supervisión del equipo en Flutter
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Implementar exclusivamente M4-T8 — Flutter: supervisión del equipo.»
+- **Prompt (resumen fiel):** consolidar M4-05 y M4-T7 y registrar D-M4-10; implementar la vista del supervisor (estado al corte frente al actual, motivo de inclusión, totales y contador aparte, formas completa, neutral y referencia mínima, historial de una actividad y auditoría), sin rankings ni puntuaciones, sin nueva política de permisos en Flutter, sin rutas nuevas de backend y sin ampliar M4-05.
+- **Resultado:** `28408e2` (`feat(m4): pantallas de supervision historial y auditoria Flutter (M4-T8) - EQ`): sin cambios de backend ni de contratos; 24 pruebas nuevas de Flutter y un recorrido real en Chrome de 28 comprobaciones con personas trasladadas en ambos sentidos (plan de M4).
+- **Decisión humana:** no implementar política de permisos en el cliente; si el servidor omite el estado al corte, la tarjeta muestra «No disponible» y el cliente no lo infiere.
+
+### Prompt 26 — M4-T9: validación integral y cierre técnico de M4
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL (dos mensajes: encargo y aprobación). **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Ejecutar M4-T9: validación integral y cierre técnico del módulo M4.» · «Apruebo M4-T9 con reservas documentadas.»
+- **Prompt (resumen fiel):** consolidar M4-T8; reconciliar la matriz de trazabilidad con los criterios relacionados; una regresión general única (por ser cierre de módulo), un recorrido real integral y revisión de accesibilidad, rendimiento, migraciones y seguridad, sin mutaciones masivas y **sin reescribir requisitos aprobados para que coincidan con la implementación**.
+- **Resultado:** `192fe17` (`fix(m4): limpiar datos al perder autorizacion y ampliar evidencia (M4-T9) - EQ`) y `2c45ba5` (`docs(m4): cierre tecnico matriz y evidencias (M4-T9) - EQ`): [matriz de M4](docs/evidencia/matriz-trazabilidad-m4.md) con 61 criterios (59 implementados y probados y 2 parciales, CA-19 y CA-20, por los informes de M5), regresión de backend de 2987 superadas y 1 omitida, 706 de Flutter y recorrido real de 25 comprobaciones. **M4 cerrado con reservas.**
+- **Error de la IA, corregido (defecto real):** tras un 403 o un acceso desactivado al repetir una consulta idéntica, tres pantallas conservaban los datos cargados antes; se corrigió con pruebas escritas antes de la corrección. Otros fallos del recorrido eran de mis guiones.
+- **Decisión humana:** aprobó el cierre con reservas, confirmó la corrección de pérdida de autorización y ordenó los dos commits con staging explícito.
+
+### Prompt 27 — M5-T0: análisis SDD y planificación del módulo de informes con IA
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL (texto íntegro en el historial local; no se reproduce). **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal del título y de la autorización:** «# SMARTWORK — Cierre definitivo de M4 e inicio de M5-T0» · «Apruebo M4-T9 con reservas documentadas» · «No autorizo implementar M5-T1 todavía.»
+- **Prompt (resumen fiel, no el original):** consolidar M4-T9 en dos commits locales y analizar M5 con el método SDD sin implementar nada: fuentes de verdad, alcance funcional, arquitectura AWS propuesta sin configurarla, seguridad y privacidad, plan de tickets y decisiones para aprobar; sin chatbots, RAG ni rankings, sin convertir en requisito las decisiones abiertas (modelo, región, retención, servicios adicionales) y sin commit del documento de análisis.
+- **Resultado:** M4-T9 en `192fe17` y `2c45ba5`. El análisis (38 criterios propios, 11 faltantes de contrato, 13 riesgos, 8 tickets y las decisiones D-M5-01 a D-M5-09) está en el [plan de M5](docs/backlog/tickets/m5-plan-implementacion.md), que entró al repositorio con M5-T1 (`1ad5463`); M5-T0 no tiene commit propio.
+- **Decisiones humanas** (plan, sección 12): aprobadas D-M5-01 (entonces, FastAPI → Lambda síncrona → Bedrock), D-M5-02 (403 frente a 404), D-M5-03 (en principio), D-M5-05, D-M5-07, D-M5-08 (datos reales condicionados) y D-M5-09; D-M5-04 y D-M5-06 quedaron pendientes de detalle.
+
+### Prompt 28 — M5-T1: núcleo determinista del informe individual
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL (dos mensajes: aprobación de M5-T0 con el encargo, y finalización con la corrección de P-9). **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Apruebo el análisis SDD de M5-T0 y autorizo comenzar exclusivamente M5-T1: núcleo determinista del informe individual.»
+- **Prompt (resumen fiel):** precisar primero el contrato, implementar un servicio interno sin rutas, sin generador, sin AWS y sin persistencia, con seis agregaciones deterministas y pruebas proporcionadas sobre PostgreSQL desechable; en el segundo mensaje, cerrar las definiciones, corregir lo señalado y, si pasaban las comprobaciones, consolidar T1 y empezar T2.
+- **Resultado:** `1ad5463` (`feat(m5): nucleo determinista de informe individual (M5-T1) - EQ`): 16 pruebas del individual y 76 de regresión focalizada, según el plan.
+- **Decisiones humanas:** definiciones de las seis métricas; una planificación sin avances no cuenta; P-10 como nueva pregunta.
+- **Error de la IA, corregido por la persona responsable:** implementé la visibilidad con «perteneció alguna vez al equipo vigente» (P-9), lo que revelaba relaciones históricas; la persona lo rechazó y se corrigió a visibilidad efectiva en el período, con 404 uniforme y una prueba de equivalencia con la política de M1.
+
+### Prompt 29 — M5-T2: núcleo determinista del informe consolidado
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL (el encargo está dentro del mensaje de T1; el cierre y las decisiones, en el siguiente). **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Apruebo técnicamente M5-T2 según la evidencia entregada y autorizo consolidarlo en un commit local.»
+- **Prompt (resumen fiel):** núcleo determinista del consolidado del equipo reutilizando la autorización histórica, solo con personas con avances autorizados, sin rankings, sin IA ni AWS.
+- **Resultado:** `a89e9d2` (`feat(m5): nucleo determinista de informe consolidado (M5-T2) - EQ`): 13 pruebas del consolidado y 71 con las de T1 y visibilidad (plan, sección 15).
+- **Decisiones humanas:** P-10 confirmada; C-1 a C-6 (borrador M5-02 0.2, solo personas con avances, orden alfabético con desempate, jornadas del equipo como fechas distintas, trabajo de la supervisora según su pertenencia, rol antes que equipo) y D-M5-04 (catálogo de seis métricas) confirmadas; D-M5-06 sigue abierta.
+
+### Prompt 30 — M5-T3: interfaz interna de generación, validación y fallos
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Después, autorizo comenzar exclusivamente M5-T3: interfaz interna de generación, validación de respuestas y tratamiento de fallos con generador simulado.»
+- **Prompt (resumen fiel):** definir la interfaz interna con el generador, una validación determinista de su salida (estructura, referencias, cifras, fechas, alias y contenido no admitido), la clasificación de los fallos y los límites de contexto, con un generador simulado, sin red ni AWS.
+- **Resultado:** `ac74c5b` (`feat(m5): interfaz interna de generacion y validacion de informes (M5-T3) - EQ`): 25 pruebas de generación y 96 con las anteriores (plan, sección 17); contrato interno en `docs/api/m5-integracion-ia.md`.
+- **Decisiones humanas:** D-M5-06, valores **CONFIRMADOS**: 31 días, 400 hechos como total por solicitud, 0 reintentos de validación y generación desactivada por defecto; tokens, plazo y concurrencia, **ABIERTOS**. P-11 confirmada solo para el contrato interno.
+- **Correcciones a mis propuestas:** propuse 400 hechos «por llamada o por persona» y un reintento; la persona fijó 400 en total por solicitud y cero reintentos.
+
+### Prompt 31 — M5-T4: endpoints y respuestas públicas, y resolución contractual
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL (tres mensajes). **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Autorizo exclusivamente completar M5-T4, cerrar el esquema público y comprobar los endpoints reales con el generador simulado.» · «Apruebo las decisiones pendientes P-6, P-13 y los nombres de los campos del esquema público.»
+- **Prompt (resumen fiel):** exponer `POST /api/v1/informes/individuales` y `/consolidados` con la generación desactivada por defecto y solo el generador simulado en pruebas; resolver primero las diferencias contractuales; cerrar el esquema público, registrar las rutas en la aplicación real y comprobar la evidencia HTTP; no declarar T4 cerrado mientras P-6 siguiera pendiente.
+- **Resultado:** `f88f6b8` (`feat(m5): endpoints y respuestas publicas de informes (M5-T4) - EQ`): contratos M5-01 y M5-02 versión 0.2 aprobados; pruebas HTTP y recorrido real con uvicorn (plan, secciones 19 a 21).
+- **Decisiones humanas:** P-3, P-5, P-11 y P-12 confirmadas; P-6 confirmada como declaración fija de producto («Este informe se basa únicamente en los registros disponibles y autorizados del período y no representa información que nunca fue registrada.»); P-13 y los nombres del esquema confirmados; P-8 sigue parcial.
+- **Hallazgos de la IA:** verifiqué RF-87 y concluí que fija la obligación pero no el texto, por lo que propuse una redacción en lugar de citarlo; en la primera parte detuve la presentación pública en lugar de inventar un esquema provisional, como se pidió.
+
+### Prompt 32 — M5-T5: ajuste a Ollama local (adaptador de generación)
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL (mensaje corto cuyo texto íntegro está en el historial local; la parte relevante se cita). **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Debido a las restricciones actuales de Amazon Bedrock Agents Classic, vamos a continuar el desarrollo de SMARTWORK con Ollama local.» · «La decisión de utilizar Amazon Bedrock y AWS Lambda como arquitectura futura se conserva, pero queda aplazada. No implementar ni configurar AWS en este ticket.»
+- **Prompt (resumen fiel):** implementar un adaptador de generación con Ollama local detrás de la interfaz existente, con solo destinos locales, parámetros explícitos, sin fallback silencioso, sin registrar prompts ni respuestas, generación desactivada por defecto, pruebas con transporte simulado y una prueba real opcional con datos ficticios.
+- **Resultado:** `d411a76` (`feat(m5): adaptador local de generacion con Ollama (M5-T5) - EQ`): 45 pruebas del adaptador y regresión focalizada de 679 superadas y 6 omitidas; Ollama pasa a ser el proveedor confirmado **para el desarrollo local**. Prueba real con datos ficticios: `qwen2.5:3b-instruct`, 1 de 3 individuales aceptado y consolidado rechazado; `qwen3:8b`, 1 intento aceptado en 229 s (plan, sección 22).
+- **Decisiones humanas** (mensaje de cierre de T5): aprobado con reservas de calidad, confiabilidad y rendimiento; no cambiar el modelo predeterminado; no autorizar datos reales; no subir los reintentos; el 1 de 3 es evidencia exploratoria, no una tasa generalizable.
+- **Hallazgos de la IA:** una prueba de importaciones de red de T3 prohibía `urllib`, que usa el validador de destinos; se afinó para permitir solo `http.client` y se repitió la regresión. El texto aceptado con el modelo pequeño citaba una orden maliciosa sin ejecutarla: riesgo residual declarado.
+- **Límite de evidencia:** no hay un mensaje de la persona responsable sobre las restricciones de Bedrock anterior al de este ajuste; el motivo consta solo en su texto y en ADR-003.
+
+### Prompt 33 — M5-T6: interfaz Flutter de informes individuales y consolidados
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-18 · **Herramienta:** Claude Code
+- **Cita literal:** «Implementar exclusivamente M5-T6 — Interfaz Flutter de informes individuales y consolidados.» · «No avances a M5-T7 sin aprobación.»
+- **Prompt (resumen fiel):** reutilizar la arquitectura Flutter existente; informe individual (propio o de una persona autorizada) y consolidado de supervisión; estados de generación sin progreso inventado, sin datos, límites y fallo, con reintento solo manual; sin política de autorización en Flutter, sin almacenamiento persistente, texto generado como texto plano, sin cambiar timeouts globales; pruebas, recorrido real en Chrome con el simulado y documentación de la incompatibilidad del HTTP síncrono para M5-T7.
+- **Resultado:** `827e5dd` (`feat(m5): interfaz Flutter de informes individuales y consolidados (M5-T6) - EQ`): 33 pruebas de informes y 739 en la suite completa de Flutter, `flutter analyze` limpio y recorrido en Chrome con el generador simulado (plan, sección 23).
+- **Decisión humana:** no declarar M5 cerrado; no inventar progreso; documentar límites en lugar de resolverlos.
+- **Hallazgo de la IA, corregido:** con `SelectableText` la narrativa no se exponía a las tecnologías de apoyo de Flutter Web; se sustituyó por `Text` dentro de `SelectionArea`.
+
+### Prompt 34 — M5-T7: evaluación controlada de Ollama local
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL (más tres mensajes breves de la persona responsable durante la ejecución). **Fecha:** 2026-11-18 y 2026-11-19 · **Herramienta:** Claude Code
+- **Cita literal:** «Ejecutar M5-T7 como evaluación controlada de Ollama local.» · durante la ejecución: «dejalo asi, con los que sirven esta bien el test, no quiero mas pruebas».
+- **Prompt (resumen fiel):** evaluar Ollama con datos ficticios por etapas (una verificación inicial por modelo y una ampliación condicionada), midiendo aceptación del validador, tiempos y calidad, sin cambiar contratos, validador, límites confirmados ni configuración; recomendar valores para los parámetros abiertos sin confirmarlos; documentar y no hacer commit.
+- **Resultado:** `638c4a1` (`test(m5): evaluacion parcial de calidad y rendimiento Ollama (M5-T7) - EQ`): solo la etapa A. `qwen2.5:3b-instruct`: 1 de 5 individuales aceptados y consolidado rechazado (14 a 33 s). `qwen3:8b`: 3 de 5 aceptados (155 a 285 s por informe, promedio aproximado de 206 s) y consolidado no ejecutado. Sin etapa B, sin HTTP real con Ollama, sin concurrencia y sin `gpt-oss`. **Muestra exploratoria: no permite extrapolar tasas.** Veredicto: experimental, no apto todavía para uso habitual (plan, sección 24).
+- **Decisiones humanas:** detener la evaluación y no completar lo suspendido; los 1024 tokens, 360 s y concurrencia 1 son propuestas de evaluación, no límites; P-14 aprobada como necesidad, pendiente de esquema; la ejecución asíncrona sigue sin autorizar.
+- **Hallazgos de la IA:** la prueba de evaluación se habilitaba con la misma variable que la real de T5 (corregido con una variable propia); `qwen2.5:3b-instruct` convirtió órdenes maliciosas en hechos y emitió una valoración, sin que el validador lo detectara; `qwen3:8b` inventó un porcentaje y asumió un año (el validador los rechazó); la corrida se interrumpió una vez por el cierre de la sesión y otra porque el PostgreSQL desechable no estaba levantado.
+
+### Prompt 35 — M5-T8: revisión técnica y contractual final de M5
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL (dos mensajes: encargo y aprobación). **Fecha:** 2026-11-19 · **Herramienta:** Claude Code
+- **Cita literal:** «M5-T8 queda aprobado como CIERRE TÉCNICO CON RESERVAS.»
+- **Prompt (resumen fiel):** consolidar T7; revisar M5 separando núcleo determinista, API, interfaz, adaptador y calidad real; matriz de los 38 criterios propios con estados reales y evidencia; reconciliar CA-19, CA-20 y CA-05; distinguir el cierre del desarrollo, el cumplimiento de los criterios del MVP y la habilitación para producción; documentar los controles necesarios para un modelo real; sin nuevas inferencias, sin mutaciones y sin commit de T8 sin aprobación.
+- **Resultado:** `72ceaad` (`docs(m5): cierre tecnico matriz y reservas (M5-T8) - EQ`) y la [matriz de M5](docs/evidencia/matriz-trazabilidad-m5.md): **M5 cerrado técnicamente con reservas**; 34 criterios implementados y probados y 4 parciales (CA-161, CA-163, CA-166 y CA-224). Regresión completa de backend: 3139 superadas y 13 omitidas.
+- **Decisiones humanas:** el veredicto, los estados de los criterios y las reservas; ninguna propuesta se convirtió en confirmada por cerrar el módulo.
+
+### Prompt 36 — FINAL-T1: auditoría de preparación para entrega
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-19 · **Herramienta:** Claude Code
+- **Cita literal:** «Objetivo: realizar una auditoría final del repositorio para determinar si SMARTWORK está listo para su entrega académica.»
+- **Prompt (resumen fiel):** auditar en solo lectura la documentación, la reproducibilidad, las condiciones de entrega y Git, y proponer una demostración con datos ficticios; clasificar los hallazgos en BLOQUEANTE PARA ENTREGA, NECESARIO ANTES DE ENTREGA y MEJORA POSTERIOR; sin modificar archivos, sin commit ni push.
+- **Resultado:** sin commit y sin archivo en el repositorio (el informe se entregó en la sesión). Veredicto: técnicamente listo para demostrarse, pero el repositorio no estaba listo para entregarse: `readme.md` obsoleto, commits locales sin publicar y condiciones oficiales de entrega no verificables.
+- **Decisión humana:** aprobó el informe y autorizó solo FINAL-T2.
+
+### Prompt 37 — FINAL-T2: actualización del README y guía de instalación
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-19 · **Herramienta:** Claude Code
+- **Cita literal:** «Autorizo exclusivamente FINAL-T2: actualizar el README y las instrucciones de instalación y ejecución.»
+- **Prompt (resumen fiel):** reescribir `readme.md` con el estado real de M1 a M5, la instalación verificada por lectura, una sección por módulo, la situación real de la IA (generador simulado, Ollama experimental, AWS aplazado, generación desactivada, datos reales no autorizados) y las cifras documentadas; marcar la plataforma, la rama y la fecha de entrega como pendientes de contraste con el enunciado oficial; sin código, sin ejecutar Ollama y sin instalación limpia.
+- **Resultado:** `9852646` (`docs(final): actualizar README y guia de instalacion (FINAL-T2) - EQ`): solo `readme.md`; 0 enlaces relativos rotos y 0 anclas sin encabezado, verificados con un script; instalación limpia **no** ejecutada y limitación de la provisión de roles para `smartwork_dev` declaradas.
+- **Decisión humana:** aprobó el informe y autorizó el commit y FINAL-T3, conservando las advertencias de reproducibilidad.
+
+### Prompt 38 — FINAL-T3: completar y organizar este registro
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-19 · **Herramienta:** Claude Code y dos subagentes de lectura
+- **Cita literal:** «Ejecutar FINAL-T3 para completar y organizar `prompts.md`.» · «Dejar los cambios de FINAL-T3 sin confirmar.»
+- **Prompt (resumen fiel):** completar la trazabilidad de M4-T5 a M4-T9, M5-T0 a M5-T8, FINAL-T1 y FINAL-T2 sin reconstruir mensajes inventados, clasificando cada entrada por su evidencia; mantener los estados CONFIRMADO, PROPUESTO y ABIERTO; explicar los límites de la IA generativa; sin tocar código ni otros documentos. Después pidió usar dos agentes distintos para recuperar la evidencia.
+- **Resultado:** esta sección. Dos subagentes de solo lectura recuperaron de los commits, los documentos y el historial local la evidencia de M4-T5 a M4-T9 y de M5 a FINAL-T2; yo redacté el documento y lo verifiqué. **Sin commit** (los cambios quedan sin confirmar a la espera de revisión).
+
+---
+
+## 12. Límites del uso de IA generativa en este proyecto
+
+**Cómo se usó Claude Code.** Para analizar (lectura de contratos, criterios y reglas y detección de brechas), proponer (diseños, decisiones con alternativas y recomendación), implementar ticket a ticket, probar (pruebas focalizadas, recorridos reales en Chrome con bases desechables) y documentar (planes, matrices de trazabilidad, README y este registro). El método fue siempre el mismo: una persona responsable aprobaba o rechazaba cada paso por escrito antes de avanzar, y la IA informaba qué hizo, qué verificó y qué no pudo verificar.
+
+**Lo que la IA no decidió.** Ninguna decisión de producto: alcance, reglas de negocio, estados de actividad, permisos, contratos de la API ni límites operativos se confirmaron sin aprobación expresa. Las propuestas se marcaron `[PROPUESTO]` y las dudas `[ABIERTO]`; solo lo aprobado se escribió como `[CONFIRMADO]` (por ejemplo, los 31 días, los 400 hechos por solicitud y los cero reintentos de validación de M5, o la declaración fija de base de los informes). Cerrar un módulo no convirtió en confirmada ninguna propuesta.
+
+**Errores de la IA que la verificación detectó.** Afirmó un cumplimiento que no había comprobado (el formato de los criterios); escribió pruebas vacuas o mal planteadas; propuso reglas de visibilidad que revelaban relaciones históricas (P-9 en M5-T1); expuso un hash en un registro de error (M1-T8.6); dejó pantallas con datos de una consulta anterior tras perder la autorización (M4-T9); y citó nombres de prueba de memoria que no existían. Todo se corrigió al ejecutar las comprobaciones, y no se debilitó ninguna comprobación para que pasara. Hay un detalle por entrada en la sección 8 y en las secciones 10 y 11.
+
+**Límites de este registro.**
+
+- Los prompts son resúmenes fieles y no transcripciones, salvo los dos marcados como PROMPT ORIGINAL; los textos íntegros están en el historial local de Claude Code, que no forma parte del repositorio. No se reconstruyó ningún texto que no pudiera comprobarse.
+- Las cifras de pruebas citadas provienen de los documentos y commits del repositorio; las que constan solo en un informe de la sesión se señalan como tales.
+- ChatGPT se usó de forma complementaria sin registro de modelo ni de prompts: no se reconstruyen.
+
+**Límites de la IA del producto (M5).** Un modelo de lenguaje puede afirmar lo que el registro no dice, valorar a una persona, citar o convertir en hechos las instrucciones escritas en un texto libre y redactar con torpeza; el validador determinista (estructura, referencias, cifras, fechas y contenido no admitido) **no** garantiza fidelidad ni ausencia de valoraciones. En la evaluación parcial con datos ficticios, con `qwen2.5:3b-instruct` 1 de 5 informes individuales fue aceptado y con `qwen3:8b`, 3 de 5, tardando de 155 a 285 segundos cada uno: **muestras exploratorias que no permiten extrapolar tasas de éxito**. Por eso la narrativa de IA es experimental, está desactivada por defecto y no se autoriza el uso de datos laborales reales con un modelo de lenguaje (ver [README](readme.md#15-inteligencia-artificial-en-m5) y [matriz de M5](docs/evidencia/matriz-trazabilidad-m5.md)). El generador simulado no es un modelo de lenguaje, y Amazon Bedrock y AWS Lambda son una arquitectura futura aplazada de la que no se ha configurado nada.
