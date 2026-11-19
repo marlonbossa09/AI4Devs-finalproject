@@ -3,28 +3,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/api_error.dart';
 import '../../../../core/errors/error_messages.dart';
-import '../../../../core/layout/responsive_grid.dart';
 import '../../../../core/layout/screen_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/dates.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/buttons.dart';
 import '../../../../core/widgets/segmented_control.dart';
 import '../../../../core/widgets/stat_card.dart';
+import '../../../../core/widgets/status_pill.dart';
 import '../../../../core/widgets/text_blocks.dart';
 import '../../../auth/domain/entities/session.dart';
 import '../../domain/entities/logbook_entities.dart';
 import '../providers/logbook_notifier.dart';
 import '../providers/navigation.dart';
 import '../providers/selected_date.dart';
-import '../widgets/activity_tile.dart';
+import '../widgets/dashboard_activity_row.dart';
 import '../widgets/mini_calendar.dart';
 import '../widgets/new_activity_panel.dart';
 
 enum _Filter { all, pending }
 
-/// Summary of the selected day: indicators, its activities, a calendar and progress.
+String _plural(int n, String one, String many) => '$n ${n == 1 ? one : many}';
+
+/// The main panel: the selected day at a glance. Everything on it comes from the logbook the server holds for that date
+/// (M2-01a), with nothing computed beyond counting what it returned.
+///
+/// Reading order: what day this is and the one main action, how many activities the day has and in which CURRENT status,
+/// the state of the day itself (open or closed), the activities, and the calendar. On a wide screen the activities are
+/// beside the day and the calendar; on a tablet or a phone everything stacks.
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key, required this.session});
 
@@ -42,43 +50,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final size = ScreenSize.ofContext(context);
     final date = ref.watch(selectedDateProvider);
     final view = ref.watch(logbookProvider(date));
-    final day = view.value;
     final firstName = widget.session.user.name.replaceAll(RegExp(r'\(.*?\)'), '').trim().split(' ').first;
-
-    final stats = ResponsiveGrid(
-      columns: size.isDesktop ? 4 : 2,
-      gap: size.isMobile ? 10 : 16,
-      children: [
-        StatCard(
-          label: 'Actividades registradas',
-          value: day?.operationalActivities.length ?? 0,
-          caption: 'En esta jornada',
-          icon: Icons.grid_view_rounded,
-          compact: size.isMobile,
-        ),
-        StatCard(
-          label: 'Pendientes',
-          value: day?.count(ActivityStatus.pending) ?? 0,
-          caption: 'Por atender',
-          icon: Icons.schedule,
-          compact: size.isMobile,
-        ),
-        StatCard(
-          label: 'En progreso',
-          value: day?.count(ActivityStatus.inProgress) ?? 0,
-          caption: 'Con avances registrados',
-          icon: Icons.trending_up,
-          compact: size.isMobile,
-        ),
-        StatCard(
-          label: 'Completadas',
-          value: day?.count(ActivityStatus.completed) ?? 0,
-          caption: 'Marcadas como finalizadas',
-          icon: Icons.check,
-          compact: size.isMobile,
-        ),
-      ],
-    );
 
     final activities = _ActivitiesPanel(
       view: view,
@@ -100,45 +72,303 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         ref.read(currentPageProvider.notifier).go(AppPage.activityDetail);
       },
     );
-    final side = _SidePanel(day: day, today: widget.session.today);
+    final journey = _JourneyCard(view: view, date: date);
+    final calendar = _CalendarCard(today: widget.session.today);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PageHeader(
-          eyebrow: 'Resumen de mi trabajo',
-          title: 'Buen día, $firstName',
-          titleTrailing: const Icon(Icons.wb_sunny_outlined, size: 24, color: Color(0xFFE0A526)),
-          subtitle: 'Revisa lo que tienes planeado y registra tus avances con claridad.',
-          action: PrimaryButton(
-            key: const Key('dashboard-new-activity'),
-            label: 'Nueva actividad',
-            icon: Icons.add,
-            onPressed: () => openNewActivity(context),
-          ),
-        ),
-        stats,
-        const SizedBox(height: 22),
+        _DashboardHeader(firstName: firstName, date: date, today: widget.session.today),
+        _Indicators(view: view, date: date),
+        SizedBox(height: size.isMobile ? AppSpace.lg : AppSpace.xl),
         LayoutBuilder(
           builder: (context, constraints) {
-            if (size == ScreenSize.desktop) {
-              final total = constraints.maxWidth - 18;
+            if (size.isDesktop) {
+              final total = constraints.maxWidth - AppSpace.xl;
               final right = (total * 0.85 / 2.57).clamp(295.0, total);
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: activities),
-                  const SizedBox(width: 18),
-                  SizedBox(width: right, child: side),
+                  const SizedBox(width: AppSpace.xl),
+                  SizedBox(
+                    width: right,
+                    child: Column(children: [journey, const SizedBox(height: AppSpace.lg), calendar]),
+                  ),
                 ],
               );
             }
-            return Column(children: [activities, SizedBox(height: size.isMobile ? 13 : 18), side]);
+            final gap = SizedBox(height: size.isMobile ? AppSpace.md : AppSpace.lg);
+            return Column(children: [journey, gap, activities, gap, calendar]);
           },
         ),
       ],
     );
   }
+}
+
+/// Title, one line of subtitle, the day the panel is about and the ONE main action.
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({required this.firstName, required this.date, required this.today});
+
+  final String firstName;
+  final DateTime date;
+  final DateTime today;
+
+  /// Content width from which the date and the action fit beside the title.
+  static const double _sideBySideMinWidth = 860;
+
+  @override
+  Widget build(BuildContext context) {
+    final mobile = ScreenSize.ofContext(context).isMobile;
+    final title = Row(
+      children: [
+        ExcludeSemantics(
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(AppRadius.card)),
+            child: const Icon(Icons.today_outlined, size: 22, color: AppColors.primary),
+          ),
+        ),
+        const SizedBox(width: AppSpace.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(header: true, child: Text('Mi jornada', style: context.heading(AppType.pageTitle, height: 1.3))),
+              const SizedBox(height: 2),
+              Text(
+                'Hola, $firstName. Revisa tus actividades y registra tus avances.',
+                style: const TextStyle(fontSize: AppType.body, color: AppColors.muted),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    final chip = _DateChip(date: date, today: today);
+    final action = PrimaryButton(
+      key: const Key('dashboard-new-activity'),
+      label: 'Nueva actividad',
+      icon: Icons.add,
+      onPressed: () => openNewActivity(context),
+    );
+    return Padding(
+      padding: EdgeInsets.only(bottom: mobile ? AppSpace.lg : AppSpace.xl),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (mobile || constraints.maxWidth < _sideBySideMinWidth) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                title,
+                const SizedBox(height: AppSpace.md),
+                Wrap(spacing: AppSpace.md, runSpacing: AppSpace.sm, crossAxisAlignment: WrapCrossAlignment.center, children: [chip, action]),
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: title),
+              const SizedBox(width: AppSpace.lg),
+              chip,
+              const SizedBox(width: AppSpace.md),
+              action,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The work date the whole panel is showing, with where it stands relative to today. It is information, not a control:
+/// the date is changed from the calendar or from Mi bitácora.
+class _DateChip extends StatelessWidget {
+  const _DateChip({required this.date, required this.today});
+
+  final DateTime date;
+  final DateTime today;
+
+  String get _relation => date == today
+      ? 'Hoy'
+      : date.isBefore(today)
+          ? 'Jornada pasada'
+          : 'Jornada futura';
+
+  @override
+  Widget build(BuildContext context) {
+    final text = formatTopDate(date);
+    return Semantics(
+      container: true,
+      label: 'Fecha laboral: $text, $_relation',
+      excludeSemantics: true,
+      child: Container(
+        key: const Key('dashboard-date'),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.textSecondary),
+            const SizedBox(width: AppSpace.sm),
+            Flexible(
+              child: Text(text, style: const TextStyle(fontSize: AppType.body, fontWeight: FontWeight.w600, color: AppColors.ink)),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Text(_relation, key: const Key('dashboard-date-relation'), style: const TextStyle(fontSize: AppType.caption, color: AppColors.textSoft)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// How many activities the day has and in which CURRENT status. The figures count what the server returned for the date:
+/// the status of an activity is the last one recorded for it, wherever that was recorded. A planned activity with no
+/// progress is Pendiente (that is how the status is derived), and there is no percentage anywhere.
+class _Indicators extends StatelessWidget {
+  const _Indicators({required this.view, required this.date});
+
+  final AsyncValue<LogbookDay?> view;
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = ScreenSize.ofContext(context);
+    final day = view.value;
+    // Without a day yet (loading or failed) there is no figure to show: a dash, never a zero that would read as "nothing".
+    final known = day != null || (!view.isLoading && !view.hasError);
+    int? count(ActivityStatus status) => known ? (day?.count(status) ?? 0) : null;
+    final total = known ? (day?.operationalActivities.length ?? 0) : null;
+
+    final cards = <Widget>[
+      StatCard(
+        label: 'Total de actividades',
+        value: total,
+        caption: 'En esta jornada',
+        icon: Icons.grid_view_rounded,
+        compact: size.isMobile,
+      ),
+      StatCard(
+        label: 'Pendientes',
+        value: count(ActivityStatus.pending),
+        caption: 'Estado actual',
+        showCaption: !size.isMobile,
+        icon: Icons.schedule,
+        iconBackground: AppColors.pendingBackground,
+        iconColor: AppColors.pendingText,
+        compact: size.isMobile,
+      ),
+      StatCard(
+        label: 'En progreso',
+        value: count(ActivityStatus.inProgress),
+        caption: 'Estado actual',
+        showCaption: !size.isMobile,
+        icon: Icons.trending_up,
+        iconBackground: AppColors.progressBackground,
+        iconColor: AppColors.progressText,
+        compact: size.isMobile,
+      ),
+      StatCard(
+        label: 'Bloqueadas',
+        value: count(ActivityStatus.blocked),
+        caption: 'Estado actual',
+        showCaption: !size.isMobile,
+        icon: Icons.block,
+        iconBackground: AppColors.blockedBackground,
+        iconColor: AppColors.blockedText,
+        compact: size.isMobile,
+      ),
+      StatCard(
+        label: 'Completadas',
+        value: count(ActivityStatus.completed),
+        caption: 'Estado actual',
+        showCaption: !size.isMobile,
+        icon: Icons.check_circle_outline,
+        iconBackground: AppColors.doneBackground,
+        iconColor: AppColors.doneText,
+        compact: size.isMobile,
+      ),
+    ];
+
+    final String summary;
+    if (!known) {
+      summary = view.hasError ? 'No se pudieron cargar las actividades de la jornada.' : 'Cargando las actividades de la jornada.';
+    } else {
+      summary = 'Jornada del ${formatLongDate(date)}: ${_plural(total!, 'actividad', 'actividades')}. '
+          '${_plural(count(ActivityStatus.pending)!, 'pendiente', 'pendientes')}, '
+          '${_plural(count(ActivityStatus.inProgress)!, 'en progreso', 'en progreso')}, '
+          '${_plural(count(ActivityStatus.blocked)!, 'bloqueada', 'bloqueadas')}, '
+          '${_plural(count(ActivityStatus.completed)!, 'completada', 'completadas')}.';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // A polite live region: when the figures change (a save, a refresh) a screen reader says what the day holds now.
+        Semantics(
+          liveRegion: true,
+          label: summary,
+          excludeSemantics: true,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+            child: const Text(
+              'Estado actual de las actividades de esta jornada',
+              key: Key('indicators-scope'),
+              style: TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w600, color: AppColors.textSoft),
+            ),
+          ),
+        ),
+        // Five in a row on a desktop, three on a tablet (3 + 2), two on a phone (the last one takes a whole row). The cards of
+        // a row are as tall as the tallest of them, so the row reads as one band.
+        Builder(
+          builder: (context) {
+            final columns = size.isDesktop ? 5 : (size.isMobile ? 2 : 3);
+            final gap = size.isMobile ? AppSpace.sm + 2 : AppSpace.md;
+            final rows = <Widget>[];
+            for (var start = 0; start < cards.length; start += columns) {
+              final chunk = cards.sublist(start, (start + columns).clamp(0, cards.length));
+              // On a phone a lone last card takes the whole row; elsewhere an incomplete row keeps the width of the others
+              final fill = columns == 2 ? 0 : columns - chunk.length;
+              if (rows.isNotEmpty) rows.add(SizedBox(height: gap));
+              rows.add(
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < chunk.length; i++) ...[
+                        if (i > 0) SizedBox(width: gap),
+                        Expanded(child: chunk[i]),
+                      ],
+                      for (var i = 0; i < fill; i++) ...[SizedBox(width: gap), const Expanded(child: SizedBox.shrink())],
+                    ],
+                  ),
+                ),
+              );
+            }
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Why a BLOCKED activity is blocked, as the last progress entry of this day says. Only for an activity whose current
+/// status is Bloqueada, so a reason that was already lifted is never shown as current.
+String? _blockReason(LogbookDay? day, Activity activity) {
+  if (day == null || activity.status != ActivityStatus.blocked) return null;
+  for (final entry in day.progressOf(activity).reversed) {
+    if (entry.status == ActivityStatus.blocked && (entry.blockReason ?? '').isNotEmpty) return entry.blockReason;
+  }
+  return null;
 }
 
 class _ActivitiesPanel extends StatelessWidget {
@@ -168,9 +398,7 @@ class _ActivitiesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final day = view.value;
     final all = day?.operationalActivities ?? const <Activity>[];
-    final shown = filter == _Filter.all
-        ? all
-        : all.where((a) => a.status == ActivityStatus.pending).toList();
+    final shown = filter == _Filter.all ? all : all.where((a) => a.status == ActivityStatus.pending).toList();
     final mobile = ScreenSize.ofContext(context).isMobile;
 
     Widget body;
@@ -182,21 +410,31 @@ class _ActivitiesPanel extends StatelessWidget {
       );
     } else if (view.isLoading && day == null) {
       body = const Padding(
-        padding: EdgeInsets.all(32),
+        padding: EdgeInsets.all(AppSpace.xxl + AppSpace.sm),
         child: Center(child: CircularProgressIndicator()),
       );
     } else if (shown.isEmpty) {
-      body = const EmptyState('No hay actividades para esta selección.');
+      final String message;
+      if (all.isNotEmpty) {
+        message = 'No hay actividades pendientes en esta jornada.';
+      } else if (day == null) {
+        message = 'Todavía no hay bitácora de esta fecha. Se crea al planificar o registrar una actividad.';
+      } else {
+        message = 'Esta jornada todavía no tiene actividades.';
+      }
+      body = EmptyState(message, key: const Key('dashboard-empty'));
     } else {
       body = Column(
         children: [
           for (var i = 0; i < shown.length; i++)
-            ActivityTile(
+            DashboardActivityRow(
               key: Key('activity-${shown[i].id}'),
               activity: shown[i],
               planning: day?.planningOf(shown[i]),
-              continuations: day?.continuationsOf(shown[i]) ?? const [],
-              progress: day?.progressOf(shown[i]) ?? const [],
+              hasContinuation: day?.continuationsOf(shown[i]).isNotEmpty ?? false,
+              hasProgress: day?.progressOf(shown[i]).isNotEmpty ?? false,
+              blockReason: _blockReason(day, shown[i]),
+              // A closed day takes no new progress: it has to be reopened first (RN-108)
               onRegisterProgress: day?.logbook.closed == true ? null : () => onRegisterProgress(shown[i]),
               onReactivate: () => onReactivate(shown[i]),
               onOpen: () => onOpenActivity(shown[i]),
@@ -211,13 +449,13 @@ class _ActivitiesPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: EdgeInsets.all(mobile ? 18 : 24),
+            padding: EdgeInsets.all(mobile ? AppSpace.lg : AppSpace.xxl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 PanelHeader(
-                  title: 'Actividades de mi jornada',
-                  subtitle: 'Un vistazo a lo que estás trabajando · ${formatShortDate(date)}',
+                  title: 'Actividades de la jornada',
+                  subtitle: 'Estado actual de cada una · ${formatShortDate(date)}',
                   trailing: SegmentedControl<_Filter>(
                     options: const {_Filter.all: 'Todas', _Filter.pending: 'Pendientes'},
                     selected: filter,
@@ -229,7 +467,7 @@ class _ActivitiesPanel extends StatelessWidget {
             ),
           ),
           PanelFooter(
-            text: '${shown.length} ${shown.length == 1 ? 'actividad' : 'actividades'} en esta vista',
+            text: '${_plural(shown.length, 'actividad', 'actividades')} en esta vista',
             action: LinkButton(label: 'Ver bitácora →', onPressed: onOpenLogbook),
           ),
         ],
@@ -238,17 +476,90 @@ class _ActivitiesPanel extends StatelessWidget {
   }
 }
 
-class _SidePanel extends ConsumerStatefulWidget {
-  const _SidePanel({required this.day, required this.today});
+/// The state of the day itself: open, closed or not opened yet. It is the logbook's own state, never a progress state.
+/// Closing and reopening stay where they are, in Mi bitácora, with their own conditions.
+class _JourneyCard extends StatelessWidget {
+  const _JourneyCard({required this.view, required this.date});
 
-  final LogbookDay? day;
+  final AsyncValue<LogbookDay?> view;
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final mobile = ScreenSize.ofContext(context).isMobile;
+    final logbook = view.value?.logbook;
+    final loading = view.isLoading && view.value == null;
+    final failed = view.hasError && view.value == null;
+
+    Widget? state;
+    final String text;
+    if (loading) {
+      text = 'Consultando el estado de la jornada…';
+    } else if (failed) {
+      text = 'No se pudo consultar el estado de la jornada.';
+    } else if (logbook == null) {
+      state = const _NoLogbookTag();
+      text = 'Todavía no hay bitácora de esta fecha. Se crea al planificar o registrar una actividad, o puedes abrirla desde Mi bitácora.';
+    } else if (logbook.closed) {
+      state = KeyedSubtree(key: const Key('journey-state'), child: const StatusPill(label: 'Cerrada', kind: PillKind.blocked));
+      final closedAt = logbook.closedAt;
+      text = 'La jornada está cerrada${closedAt == null ? '' : ' desde ${formatDateTime(closedAt)}'}. '
+          'Para registrar avances hay que reabrirla desde Mi bitácora.';
+    } else {
+      state = KeyedSubtree(key: const Key('journey-state'), child: const StatusPill(label: 'Abierta', kind: PillKind.done));
+      text = 'La jornada está abierta. El cierre se hace desde Mi bitácora.';
+    }
+
+    return AppCard(
+      padding: EdgeInsets.all(mobile ? AppSpace.lg : AppSpace.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PanelHeader(
+            title: 'Jornada',
+            subtitle: 'Fecha laboral: ${formatShortDate(date)}',
+            trailing: state,
+            bottom: AppSpace.sm,
+          ),
+          Text(
+            text,
+            key: const Key('journey-text'),
+            style: const TextStyle(fontSize: AppType.caption, height: 1.5, color: AppColors.textSoft),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Sin bitácora": the day has no logbook yet. Neutral on purpose, it is neither open nor closed.
+class _NoLogbookTag extends StatelessWidget {
+  const _NoLogbookTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('journey-state'),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm + 2, vertical: AppSpace.xs),
+      decoration: BoxDecoration(color: AppColors.recordedBackground, borderRadius: BorderRadius.circular(AppRadius.pill)),
+      child: const Text(
+        'Sin bitácora',
+        style: TextStyle(fontSize: AppType.caption, fontWeight: FontWeight.w700, color: AppColors.recordedText),
+      ),
+    );
+  }
+}
+
+class _CalendarCard extends ConsumerStatefulWidget {
+  const _CalendarCard({required this.today});
+
   final DateTime today;
 
   @override
-  ConsumerState<_SidePanel> createState() => _SidePanelState();
+  ConsumerState<_CalendarCard> createState() => _CalendarCardState();
 }
 
-class _SidePanelState extends ConsumerState<_SidePanel> {
+class _CalendarCardState extends ConsumerState<_CalendarCard> {
   late DateTime _month = _firstOf(ref.read(selectedDateProvider));
 
   DateTime _firstOf(DateTime date) => DateTime.utc(date.year, date.month, 1);
@@ -263,100 +574,45 @@ class _SidePanelState extends ConsumerState<_SidePanel> {
         setState(() => _month = _firstOf(next));
       }
     });
-    final day = widget.day;
-    final total = day?.operationalActivities.length ?? 0;
-    final done = day?.count(ActivityStatus.completed) ?? 0;
     final mobile = ScreenSize.ofContext(context).isMobile;
-    final pad = mobile ? 18.0 : 24.0;
+    final pad = mobile ? AppSpace.lg : AppSpace.xl;
 
     return AppCard(
+      padding: EdgeInsets.all(pad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(pad, pad, pad, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          PanelHeader(
+            title: 'Calendario',
+            subtitle: formatMonth(_month),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                PanelHeader(
-                  title: 'Calendario',
-                  subtitle: formatMonth(_month),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        key: const Key('month-previous'),
-                        tooltip: 'Mes anterior',
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.chevron_left, size: 20, color: Color(0xFFA2AEBC)),
-                        onPressed: () => _shift(-1),
-                      ),
-                      IconButton(
-                        key: const Key('month-next'),
-                        tooltip: 'Mes siguiente',
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.chevron_right, size: 20, color: Color(0xFFA2AEBC)),
-                        onPressed: () => _shift(1),
-                      ),
-                    ],
-                  ),
+                IconButton(
+                  key: const Key('month-previous'),
+                  tooltip: 'Mes anterior',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.chevron_left, size: 20, color: AppColors.textSecondary),
+                  onPressed: () => _shift(-1),
                 ),
-                MiniCalendar(
-                  month: _month,
-                  selected: selected,
-                  today: widget.today,
-                  onSelect: (date) {
-                    ref.read(selectedDateProvider.notifier).select(date);
-                    ref.read(currentPageProvider.notifier).go(AppPage.logbook);
-                  },
+                IconButton(
+                  key: const Key('month-next'),
+                  tooltip: 'Mes siguiente',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
+                  onPressed: () => _shift(1),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 22),
-          Container(
-            padding: EdgeInsets.fromLTRB(pad, 20, pad, 0),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Estado de mis actividades', style: context.heading(15)),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Actividades completadas',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF64758B)),
-                    ),
-                    Text(
-                      '$done de $total',
-                      key: const Key('completion'),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64758B)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    key: const Key('progress-bar'),
-                    value: total == 0 ? 0 : done / total,
-                    minHeight: 7,
-                    backgroundColor: const Color(0xFFEDF4F5),
-                    color: const Color(0xFF1EAA9D),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(pad),
-            child: const Notice(
-              icon: Icons.auto_awesome_outlined,
-              title: 'Mantén tu historial al día',
-              text: 'Registra tus planificaciones y avances en cada jornada para conservar un seguimiento claro.',
-            ),
+          MiniCalendar(
+            month: _month,
+            selected: selected,
+            today: widget.today,
+            onSelect: (date) {
+              ref.read(selectedDateProvider.notifier).select(date);
+              ref.read(currentPageProvider.notifier).go(AppPage.logbook);
+            },
           ),
         ],
       ),

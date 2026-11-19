@@ -372,7 +372,7 @@ void main() {
       final done = repo.days[formatDate(today)]!.activities.last;
       repo.markAsError(done.id);
       await pumpApp(tester, logbook: repo);
-      expect(stat(tester, 'Actividades registradas').value, 1);
+      expect(stat(tester, 'Total de actividades').value, 1);
       expect(stat(tester, 'Completadas').value, 0);
       expect(find.text('Hecha'), findsNothing);
       expect(find.text('Se queda'), findsWidgets);
@@ -384,13 +384,13 @@ void main() {
         ..seed(today, 'Dos');
       final first = repo.days[formatDate(today)]!.activities.first;
       await pumpApp(tester, logbook: repo);
-      expect(stat(tester, 'Actividades registradas').value, 2);
+      expect(stat(tester, 'Total de actividades').value, 2);
       await openDetail(tester, first);
       await openMarkDialog(tester);
       await typeReason(tester, 'Duplicada');
       await tapKey(tester, 'mark-submit');
       await tapKey(tester, 'nav-dashboard');
-      expect(stat(tester, 'Actividades registradas').value, 1);
+      expect(stat(tester, 'Total de actividades').value, 1);
       expect(stat(tester, 'Pendientes').value, 1);
     });
   });
@@ -437,7 +437,7 @@ void main() {
       expect(find.byKey(const Key('marked-heading')), findsNothing);
       expect(find.byKey(Key('progress-action-${s.activity.id}')), findsOneWidget);
       await tapKey(tester, 'nav-dashboard');
-      expect(stat(tester, 'Actividades registradas').value, 1);
+      expect(stat(tester, 'Total de actividades').value, 1);
     });
 
     testWidgets('a mark that is no longer in force is explained and the screen is refreshed', (tester) async {

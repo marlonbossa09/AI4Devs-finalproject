@@ -356,12 +356,12 @@ void main() {
     testWidgets('its body scrolls on its own: the page behind does not move', (tester) async {
       await pumpApp(tester);
       await openPanel(tester);
-      final pageTop = tester.getTopLeft(find.text('Buen día, Carlos')).dy;
+      final pageTop = tester.getTopLeft(find.text('Mi jornada')).dy;
       expect(tester.getTopLeft(find.byKey(const Key('panel-last'))).dy, greaterThan(1000)); // below the screen
       await tester.drag(find.byKey(const Key('side-panel-body')), const Offset(0, -2000));
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(find.byKey(const Key('panel-last'))).dy, lessThan(1000));
-      expect(tester.getTopLeft(find.text('Buen día, Carlos')).dy, pageTop);
+      expect(tester.getTopLeft(find.text('Mi jornada')).dy, pageTop);
       // the actions stay pinned
       expect(find.byKey(const Key('panel-cancel')), findsOneWidget);
     });
@@ -451,7 +451,7 @@ void main() {
       await tester.tap(find.byKey(const Key('confirm-keep')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('side-panel')), findsOneWidget);
-      expect(find.text('Buen día, Carlos'), findsOneWidget); // still the dashboard
+      expect(find.text('Mi jornada'), findsOneWidget); // still the dashboard
 
       await tester.tap(nav('logbook'));
       await tester.pumpAndSettle();

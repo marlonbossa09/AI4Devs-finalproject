@@ -117,4 +117,11 @@ void main() {
     expect(find.textContaining('%'), findsNothing);
     expect(tester.getSize(find.byType(StatCard)).height, lessThan(110)); // it was about 143 px
   });
+
+  testWidgets('the indicator card shows a dash, not a zero, when it has no figure, and can hide its note', (tester) async {
+    await tester.pumpWidget(_app(const SizedBox(width: 260, child: StatCard(label: 'Pendientes', value: null, caption: 'Estado actual', icon: Icons.schedule, showCaption: false))));
+    expect(find.text('–'), findsOneWidget);
+    expect(find.text('0'), findsNothing);
+    expect(find.text('Estado actual'), findsNothing);
+  });
 }

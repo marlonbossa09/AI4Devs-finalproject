@@ -162,7 +162,7 @@ void main() {
   group('dashboard', () {
     testWidgets('greets the user by first name and starts on the dashboard', (tester) async {
       await pumpApp(tester, auth: signedIn());
-      expect(find.text('Buen día, Carlos'), findsOneWidget);
+      expect(find.text('Mi jornada'), findsOneWidget);
       expect(find.byKey(const Key('breadcrumb')), findsOneWidget);
       expect(find.textContaining('Panel principal'), findsWidgets);
     });
@@ -174,20 +174,21 @@ void main() {
         ..seed(today, 'Tres', status: ActivityStatus.inProgress)
         ..seed(today, 'Cuatro', status: ActivityStatus.completed);
       await pumpApp(tester, auth: signedIn(), logbook: logbook);
-      expect(stat(tester, 'Actividades registradas').value, 4);
+      expect(stat(tester, 'Total de actividades').value, 4);
       expect(stat(tester, 'Pendientes').value, 2);
       expect(stat(tester, 'En progreso').value, 1);
       expect(stat(tester, 'Completadas').value, 1);
-      expect(textOf(tester, const Key('completion')), '1 de 4');
-      expect(tester.widget<LinearProgressIndicator>(find.byKey(const Key('progress-bar'))).value, 0.25);
+      expect(stat(tester, 'Bloqueadas').value, 0);
+      // There is no percentage and no progress bar anywhere on the panel
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.textContaining('%'), findsNothing);
     });
 
-    testWidgets('with no logbook the indicators are zero and the list is empty', (tester) async {
+    testWidgets('with no logbook the indicators are zero and the list says there is no logbook yet', (tester) async {
       await pumpApp(tester, auth: signedIn());
-      expect(stat(tester, 'Actividades registradas').value, 0);
-      expect(find.text('No hay actividades para esta selección.'), findsOneWidget);
+      expect(stat(tester, 'Total de actividades').value, 0);
+      expect(find.text('Todavía no hay bitácora de esta fecha. Se crea al planificar o registrar una actividad.'), findsOneWidget);
       expect(find.text('0 actividades en esta vista'), findsOneWidget);
-      expect(textOf(tester, const Key('completion')), '0 de 0');
     });
 
     testWidgets('each activity shows its title, description and current status as planned work', (tester) async {
@@ -195,8 +196,9 @@ void main() {
       await pumpApp(tester, auth: signedIn(), logbook: logbook);
       expect(find.text('Preparar informe'), findsOneWidget);
       expect(find.text('Revisar cifras'), findsOneWidget);
-      expect(find.text('Pendiente'), findsWidgets); // the pill (and the indicator label)
-      expect(find.textContaining('Planificada'), findsOneWidget);
+      expect(find.text('Pendiente'), findsWidgets); // the pill
+      expect(find.text('Planificada'), findsOneWidget); // how it started, in words
+      expect(find.textContaining(RegExp(r'\d\d:\d\d')), findsNothing); // no clock time is invented for it
       expect(find.text('1 actividad en esta vista'), findsOneWidget);
     });
 
@@ -253,7 +255,7 @@ void main() {
       await tester.tap(find.text('Reintentar'));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('load-error')), findsNothing);
-      expect(find.text('No hay actividades para esta selección.'), findsOneWidget);
+      expect(find.byKey(const Key('dashboard-empty')), findsOneWidget);
     });
   });
 
@@ -468,24 +470,24 @@ void main() {
     double top(WidgetTester tester, String label) =>
         tester.getTopLeft(find.byWidgetPredicate((w) => w is StatCard && w.label == label)).dy;
 
-    testWidgets('desktop: fixed sidebar, date chip and four indicators in one row', (tester) async {
+    testWidgets('desktop: fixed sidebar, date chip and five indicators in one row', (tester) async {
       await pumpApp(tester, auth: signedIn());
       expect(find.byKey(const Key('nav-dashboard')), findsOneWidget);
       expect(find.byKey(const Key('menu-toggle')), findsNothing);
       expect(find.byKey(const Key('top-date')), findsOneWidget);
-      expect(top(tester, 'Actividades registradas'), top(tester, 'Completadas'));
+      expect(top(tester, 'Total de actividades'), top(tester, 'Completadas'));
       expect(tester.getSize(find.byKey(const Key('nav-dashboard'))).width, closeTo(232 - 24, 1)); // sidebar 232 px, 12 px of padding each side
     });
 
-    testWidgets('tablet: narrower sidebar and two columns of indicators', (tester) async {
+    testWidgets('tablet: narrower sidebar and three columns of indicators', (tester) async {
       await pumpApp(tester, auth: signedIn(), size: tablet);
       expect(find.byKey(const Key('nav-dashboard')), findsOneWidget);
       expect(find.byKey(const Key('menu-toggle')), findsNothing);
       expect(tester.getSize(find.byKey(const Key('nav-dashboard'))).width, closeTo(208 - 24, 1)); // sidebar 208 px
-      expect(top(tester, 'Actividades registradas'), top(tester, 'Pendientes'));
-      expect(top(tester, 'En progreso'), greaterThan(top(tester, 'Pendientes')));
+      expect(top(tester, 'Total de actividades'), top(tester, 'En progreso'));
+      expect(top(tester, 'Bloqueadas'), greaterThan(top(tester, 'En progreso')));
       // The calendar goes below the activities (single column)
-      expect(tester.getTopLeft(find.text('Calendario')).dy, greaterThan(tester.getTopLeft(find.text('Actividades de mi jornada')).dy));
+      expect(tester.getTopLeft(find.text('Calendario')).dy, greaterThan(tester.getTopLeft(find.text('Actividades de la jornada')).dy));
     });
 
     testWidgets('mobile: the sidebar is a drawer opened from the top bar', (tester) async {

@@ -313,11 +313,11 @@ void main() {
     testWidgets('the dashboard indicators follow the new activity', (tester) async {
       final repo = FakeLogbookRepository();
       await pumpApp(tester, logbook: repo);
-      expect(stat(tester, 'Actividades registradas').value, 0);
+      expect(stat(tester, 'Total de actividades').value, 0);
       await openForm(tester);
       await register(tester, status: ActivityStatus.completed);
       await tapKey(tester, 'nav-dashboard');
-      expect(stat(tester, 'Actividades registradas').value, 1);
+      expect(stat(tester, 'Total de actividades').value, 1);
       expect(stat(tester, 'Completadas').value, 1);
       expect(stat(tester, 'Pendientes').value, 0);
     });
@@ -328,7 +328,7 @@ void main() {
       await openForm(tester);
       await register(tester, status: ActivityStatus.inProgress);
       await tapKey(tester, 'nav-dashboard');
-      expect(stat(tester, 'Actividades registradas').value, 2);
+      expect(stat(tester, 'Total de actividades').value, 2);
       expect(stat(tester, 'Pendientes').value, 1);
       expect(stat(tester, 'En progreso').value, 1);
     });
