@@ -107,7 +107,7 @@ class Settings(BaseSettings):
     informe_habilitado: bool = False
     # Qué generador se usa cuando está habilitado. ``ninguno`` (por defecto): no hay generador. ``simulado``: SOLO desarrollo y pruebas (se rechaza fuera de ellos); nunca se elige solo ni como alternativa
     # silenciosa a un proveedor real no configurado. M5-T5 añadirá la integración real; hoy no existe ningún proveedor.
-    informe_generador: Literal["ninguno", "simulado", "ollama"] = "ninguno"
+    informe_generador: Literal["ninguno", "simulado", "ollama", "openrouter"] = "ninguno"
     # Amplitud máxima del período de un informe, en días con AMBOS extremos incluidos: 31. Superarla es INFORME_EXCEDE_LIMITES.
     informe_max_range_days: int = Field(default=31, gt=0)
     # Máximo de hechos (avances autorizados) de UNA SOLICITUD: en el consolidado, de TODAS las personas juntas (no por persona): 400. Superarlo es INFORME_EXCEDE_LIMITES; nada se trunca.
@@ -118,6 +118,11 @@ class Settings(BaseSettings):
     informe_ollama_modelo: str | None = None
     informe_ollama_timeout_segundos: float | None = Field(default=None, gt=0)
     informe_ollama_num_ctx: int | None = Field(default=None, gt=0)
+    # OpenRouter (decisión de la persona responsable, 2026-11-19: modelo gratuito para ver una narrativa real en DESARROLLO, solo con datos FICTICIOS). Con ``INFORME_GENERADOR=openrouter`` los tres son OBLIGATORIOS y
+    # EXPLÍCITOS: clave (secreto del entorno, nunca versionado), modelo y plazo en segundos. El destino es fijo (openrouter.ai) y solo se admite en desarrollo y pruebas. NO confirma los parámetros abiertos de D-M5-06.
+    informe_openrouter_api_key: SecretStr | None = None
+    informe_openrouter_modelo: str | None = None
+    informe_openrouter_timeout_segundos: float | None = Field(default=None, gt=0)
     # Reintentos de la generación tras una validación fallida: 0 inicialmente. Hasta que se implementen (M5-T5) solo se admite 0.
     informe_reintentos_validacion: int = Field(default=0, ge=0, le=0)
 
@@ -137,7 +142,7 @@ class Settings(BaseSettings):
     def _pepper_vacio_es_ausente(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
 
-    @field_validator("informe_ollama_url", "informe_ollama_modelo", "informe_ollama_timeout_segundos", "informe_ollama_num_ctx", mode="before")
+    @field_validator("informe_ollama_url", "informe_ollama_modelo", "informe_ollama_timeout_segundos", "informe_ollama_num_ctx", "informe_openrouter_api_key", "informe_openrouter_modelo", "informe_openrouter_timeout_segundos", mode="before")
     @classmethod
     def _ollama_en_blanco_es_ausente(cls, value):
         return None if isinstance(value, str) and not value.strip() else value
@@ -146,6 +151,13 @@ class Settings(BaseSettings):
     def _validar_generador_de_informes(self) -> "Settings":
         if self.informe_generador == "simulado" and self.app_env not in ("development", "test"):
             raise ValueError("INFORME_GENERADOR=simulado solo se admite en desarrollo y pruebas")
+        if self.informe_generador == "openrouter":
+            if self.app_env not in ("development", "test"):
+                raise ValueError("INFORME_GENERADOR=openrouter solo se admite en desarrollo y pruebas (datos laborales reales con un LLM: no autorizados)")
+            faltan = [nombre for nombre, valor in (("INFORME_OPENROUTER_API_KEY", self.informe_openrouter_api_key), ("INFORME_OPENROUTER_MODELO", self.informe_openrouter_modelo),
+                                                   ("INFORME_OPENROUTER_TIMEOUT_SEGUNDOS", self.informe_openrouter_timeout_segundos)) if valor is None]
+            if faltan:
+                raise ValueError("INFORME_GENERADOR=openrouter exige configurar explícitamente: " + ", ".join(faltan))
         if self.informe_generador == "ollama":
             from app.modulos.informes.destino_local import validar_destino_local
             faltan = [nombre for nombre, valor in (("INFORME_OLLAMA_URL", self.informe_ollama_url), ("INFORME_OLLAMA_MODELO", self.informe_ollama_modelo),

@@ -377,3 +377,7 @@ Valores confirmados en esas fuentes: 15 caracteres mínimos (SMARTWORK adopta 10
 | 0.3 | Se distingue en la sección 7 la fuerza de cada cifra (obligatorio, recomendado u opcional), su alcance y que NIST SP 800-63B-4 y OWASP son referencias y no obligaciones de SMARTWORK. Se añade la sección 14.1 con riesgos, parámetros y dependencias para la implementación |
 | 0.2 | La persona responsable aprueba la arquitectura técnica de referencia (sección 2). Se añaden los parámetros con fuentes de NIST (sección 7), la entrega del código y la verificación de identidad (sección 8), la identificación y autorización de la persona operadora separadas del acceso al servidor (sección 9), la reactivación controlada (sección 11) y la estructura `OPERADOR`. Se actualizan las decisiones pendientes |
 | 0.1 | Primera propuesta |
+
+## 20. Gestión del equipo por el supervisor (decisión del 2026-11-19)
+
+**Estado: `[CONFIRMADO]` por la persona responsable.** Amplía **A2** sin derogarla: la provisión por línea de comandos sigue existiendo y siendo la forma de crear equipos y supervisores. Se añade, por la API, que un **supervisor autenticado** cree colaboradores en su propio equipo, emita su código de primer acceso y finalice su pertenencia (M1-11 a M1-13, [contrato de M1](../../api/m1-acceso-usuarios-equipos.md)). No hay tercer rol ni panel de administración. Las reglas son las de los casos de uso de provisión, que se reutilizan; la API los ejecuta con la conexión del rol de provisión de privilegios mínimos. Queda **abierto** el medio de entrega del código (PA-12).

@@ -33,6 +33,11 @@ CATALOGO: dict[str, tuple[int, str]] = {
     "BITACORA_NO_CERRADA": (409, "La bitácora no está cerrada."),
     "ACTIVIDAD_COMPLETADA": (409, "La actividad está Completada; hay que reactivarla antes de continuarla."),
     "ACTIVIDAD_NO_COMPLETADA": (409, "La actividad no está Completada, así que no hay nada que reactivar."),
+    # Gestión del equipo por el supervisor (M1-11 a M1-13): las reglas son las de la provisión de M1 y sus códigos se conservan.
+    "IDENTIFICADOR_DUPLICADO": (409, "El identificador de acceso ya existe."),
+    "PERTENENCIA_INVALIDA": (409, "La pertenencia no cumple las reglas del equipo."),
+    "ACCESO_DESACTIVADO_ADMINISTRATIVAMENTE": (409, "El acceso de la persona está desactivado: no se emite ningún código."),
+    "FECHA_EFECTIVA_INVALIDA": (422, "La fecha efectiva no es válida."),
     "SECUENCIA_INVALIDA": (409, "El resultado violaría la secuencia de avances de la actividad."),
     "ACTIVIDAD_MARCADA_POR_ERROR": (409, "La actividad está marcada como registrada por error."),
     "CONDICIONES_DE_CIERRE_NO_CUMPLIDAS": (409, "La jornada no cumple las condiciones de cierre."),

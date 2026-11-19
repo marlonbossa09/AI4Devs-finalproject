@@ -24,6 +24,7 @@ import 'reactivation_page.dart';
 import '../../../supervision/presentation/pages/supervision_activity_page.dart';
 import '../../../supervision/presentation/pages/supervision_page.dart';
 import '../../../team/presentation/pages/team_page.dart';
+import '../../../team_admin/presentation/pages/team_management_page.dart';
 import '../../../reports/presentation/pages/individual_report_page.dart';
 import '../../../reports/presentation/pages/team_report_page.dart';
 
@@ -97,6 +98,8 @@ class HomePage extends ConsumerWidget {
               // Only a supervisor is offered the supervision. The server is the authority: a collaborator who reached the
               // page anyway would get a 403 (and the page itself says it is not available).
               if (isSupervisor)
+                const NavItem(id: AppPage.teamManagement, label: 'Gestión del equipo', icon: Icons.person_add_alt_1_outlined, itemKey: Key('nav-team-management')),
+              if (isSupervisor)
                 const NavItem(id: AppPage.supervision, label: 'Supervisión', icon: Icons.fact_check_outlined, itemKey: Key('nav-supervision')),
             ],
           ),
@@ -142,6 +145,7 @@ class HomePage extends ConsumerWidget {
           AppPage.correction => const CorrectionPage(),
           AppPage.audit => const AuditPage(),
           AppPage.team => const TeamPage(),
+          AppPage.teamManagement => const TeamManagementPage(),
           AppPage.supervision => const SupervisionPage(),
           AppPage.supervisionActivity => const SupervisionActivityPage(),
           AppPage.individualReport => const IndividualReportPage(),

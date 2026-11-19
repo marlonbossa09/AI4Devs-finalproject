@@ -22,6 +22,7 @@ enum AppPage {
   correction,
   audit,
   team,
+  teamManagement,
   supervision,
   supervisionActivity,
   individualReport,

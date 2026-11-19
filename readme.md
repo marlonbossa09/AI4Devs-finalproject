@@ -72,7 +72,7 @@ No hay despliegue: el producto no está publicado. Se ejecuta en local siguiendo
 - **Colaborador:** registra y modifica sus propias actividades y consulta, en solo lectura, lo que le corresponde por su equipo. Genera su propio informe.
 - **Supervisor:** pertenece al equipo que supervisa, registra su propia bitácora, dispone de una vista de supervisión de su equipo (sin modificar los registros ajenos) y genera informes individuales de su equipo y el informe consolidado.
 
-La creación de usuarios y equipos se hace mediante una provisión administrativa por línea de órdenes del servidor, sin panel de administración ni tercer rol. SMARTWORK **no** es una herramienta de evaluación del desempeño: no incorpora rankings ni valoraciones de personas. Detalle: [alcance del MVP](docs/producto/alcance-mvp.md) y [PRD](docs/producto/prd.md).
+Los equipos y los supervisores se crean mediante una provisión administrativa por línea de órdenes del servidor; un supervisor puede además crear colaboradores en su equipo y emitir su código de primer acceso desde la aplicación. No hay panel de administración ni tercer rol. SMARTWORK **no** es una herramienta de evaluación del desempeño: no incorpora rankings ni valoraciones de personas. Detalle: [alcance del MVP](docs/producto/alcance-mvp.md) y [PRD](docs/producto/prd.md).
 
 ### **1.2. Módulos y funcionalidades principales:**
 
@@ -147,6 +147,7 @@ flowchart LR
 | Nueva actividad | Todas | Panel lateral con dos tipos: **planificada** (estado inicial Pendiente, sin avances) y **no planificada** (estado, descripción y motivo de bloqueo cuando corresponde). Una sola pregunta al descartar cambios sin guardar |
 | Planificación y Actividades | Todas | Planificación (abre el panel «Nueva actividad»), continuaciones, lista con filtro por estado y detalle de las propias actividades, corregir, reactivar, marcar por error y consultar la auditoría |
 | Mi equipo | Todas | Solo lectura: lista de integrantes vigentes y detalle; la bitácora de un compañero se carga al elegirlo, y el histórico es por fechas |
+| Gestión del equipo | Supervisor | Crear colaboradores en su equipo, emitir su código de primer acceso (se muestra una sola vez) y finalizar su pertenencia. No crea equipos ni supervisores (esa provisión sigue siendo por línea de órdenes) |
 | Supervisión | Supervisor | Actividades del equipo en un período con totales por estado al corte, «Estado al corte» y «Estado actual» por separado en cada fila, historial de cada actividad y su auditoría |
 | Informe individual | Todas (supervisión puede elegir a una persona de su equipo) | Informe con cifras CALCULADO, registros y bloqueos REGISTRADO y narrativa REDACTADO CON IA aparte |
 | Informe del equipo | Supervisor | Cifras del equipo y cada persona con registros autorizados, sin clasificaciones |
@@ -325,6 +326,7 @@ cd ..
 | Interfaz Flutter de informes | Implementada y probada |
 | Generador **simulado** (`INFORME_GENERADOR=simulado`) | Disponible solo para desarrollo y pruebas. **No es un modelo de lenguaje**: escribe plantillas fijas a partir de los hechos |
 | Ollama local (`INFORME_GENERADOR=ollama`) | **Experimental**, solo desarrollo local, con datos ficticios. Calidad **insuficiente para uso habitual** (evaluación parcial con muestras pequeñas: [plan de M5, sección 24](docs/backlog/tickets/m5-plan-implementacion.md)) |
+| OpenRouter (`INFORME_GENERADOR=openrouter`) | **Experimental**, solo desarrollo y **solo datos ficticios**: los datos **salen de la máquina** hacia un tercero. Modelo gratuito, clave en el entorno (nunca versionada). Calidad variable y sin garantías ([ADR-003, sección 21](docs/arquitectura/adr/ADR-003-integracion-de-ia.md)) |
 | Amazon Bedrock y AWS Lambda | **Arquitectura futura aplazada y no evaluada**: no se ha configurado ni usado nada de AWS ([ADR-003](docs/arquitectura/adr/ADR-003-integracion-de-ia.md)) |
 
 **Reglas vigentes.** La generación está **desactivada por defecto** (`INFORME_HABILITADO=false`): sin habilitarla no se envía ningún dato a ningún generador. El rango máximo es de 31 días, hay un máximo de 400 hechos por solicitud y no hay reintentos de validación (`INFORME_MAX_RANGE_DAYS`, `INFORME_MAX_HECHOS` e `INFORME_REINTENTOS_VALIDACION`). **No se autoriza el uso de datos laborales reales con un LLM.** Toda narrativa se valida con comprobaciones deterministas (estructura, referencias, cifras, fechas y contenido no admitido), que **no** garantizan fidelidad, ausencia de valoraciones ni de órdenes citadas del texto libre.
@@ -677,6 +679,7 @@ Flutter Web conserva riesgos conocidos de accesibilidad, carga inicial y pruebas
 | [docs/api/indice.md](docs/api/indice.md) | Contratos de la API (M5: versión 0.2; [contrato interno de IA](docs/api/m5-integracion-ia.md)) |
 | [docs/evidencia/](docs/evidencia/) | Capturas del rediseño (`ux/`) y matrices de trazabilidad M1 a M5 |
 | [docs/operacion/pwned-passwords.md](docs/operacion/pwned-passwords.md) | Instalación local de la comprobación de contraseñas comprometidas |
+| [docs/operacion/despliegue-ec2.md](docs/operacion/despliegue-ec2.md) | Demostración en Amazon EC2 con Docker Compose: contenedores, acceso por túnel SSH, comandos y bloqueos pendientes del HTTPS público |
 | [docs/operacion/guia-de-demostracion.md](docs/operacion/guia-de-demostracion.md) | Guion breve para demostrar M1 a M5 con datos ficticios y el generador simulado |
 | [docs/operacion/resumen-del-proyecto.md](docs/operacion/resumen-del-proyecto.md) | Resumen del estado real: objetivo, arquitectura, módulos, pruebas, limitaciones y requisitos |
 | [backend/](backend/) y [frontend/](frontend/) | Código de la aplicación |

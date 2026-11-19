@@ -19,6 +19,7 @@ from app.db import get_db
 from app.modulos.informes import presentacion, servicio
 from app.modulos.informes.generacion import GeneradorDeTexto, GeneradorDesactivado
 from app.modulos.informes.generador_ollama import GeneradorOllama
+from app.modulos.informes.generador_openrouter import GeneradorOpenRouter
 from app.modulos.informes.generador_simulado import GeneradorSimulado
 
 router = APIRouter(prefix="/informes", tags=["M5 Informes"])
@@ -47,6 +48,8 @@ def obtener_generador(settings: Settings = Depends(get_settings)) -> GeneradorDe
     ``GeneradorDesactivado``, que no genera nada. Si Ollama falla, la solicitud falla: no se usa el simulado ni otro proveedor."""
     if settings.informe_generador == "ollama":
         return GeneradorOllama(settings.informe_ollama_url, settings.informe_ollama_modelo, settings.informe_ollama_timeout_segundos, settings.informe_ollama_num_ctx)
+    if settings.informe_generador == "openrouter":
+        return GeneradorOpenRouter(settings.informe_openrouter_api_key.get_secret_value(), settings.informe_openrouter_modelo, settings.informe_openrouter_timeout_segundos)
     if settings.informe_generador == "simulado":
         return GeneradorSimulado()
     return GeneradorDesactivado()

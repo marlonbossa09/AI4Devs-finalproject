@@ -78,6 +78,14 @@ String errorMessage(ApiError error) {
       return 'Esta solicitud ya se envió con otros datos. Vuelve a intentarlo.';
     case 'OPERACION_EN_CURSO':
       return 'La operación sigue en curso. Espera un momento antes de reintentar.';
+    case 'IDENTIFICADOR_DUPLICADO':
+      return 'Ese identificador de acceso ya existe. Elige otro.';
+    case 'PERTENENCIA_INVALIDA':
+      return 'La pertenencia no cumple las reglas del equipo.';
+    case 'ACCESO_DESACTIVADO_ADMINISTRATIVAMENTE':
+      return 'El acceso de esa persona está desactivado: no se puede emitir un código.';
+    case 'FECHA_EFECTIVA_INVALIDA':
+      return 'La fecha efectiva no es válida.';
     case 'OPERACION_NO_PERMITIDA':
       return 'Esta operación no está permitida para tu rol.';
     case 'SOLICITUD_INVALIDA':

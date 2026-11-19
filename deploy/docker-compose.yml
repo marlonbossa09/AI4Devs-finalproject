@@ -1,0 +1,108 @@
+# SMARTWORK — demostración en una sola máquina (Amazon EC2): PostgreSQL + FastAPI + Caddy (que sirve el cliente Flutter compilado y hace de proxy con HTTPS).
+# Sin Kubernetes, ECS, RDS ni CI/CD. Las variables vienen de `.env` (exclusivo del servidor, no versionado; ver `.env.server.example`).
+name: smartwork
+
+x-registros: &registros
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: smartwork-db
+    restart: unless-stopped
+    logging: *registros
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+      SMARTWORK_DB: ${SMARTWORK_DB}
+      SMARTWORK_OWNER_PASSWORD: ${SMARTWORK_OWNER_PASSWORD}
+      SMARTWORK_APP_PASSWORD: ${SMARTWORK_APP_PASSWORD}
+      SMARTWORK_PROVISION_PASSWORD: ${SMARTWORK_PROVISION_PASSWORD}
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=40", "-c", "work_mem=4MB", "-c", "log_min_messages=warning"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data          # volumen persistente en el disco EBS de la instancia
+      - ./initdb:/docker-entrypoint-initdb.d:ro  # roles y base, solo la primera vez que se crea el volumen
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [interna]
+    # El puerto 5432 NO se publica: solo el backend lo alcanza por la red interna.
+
+  backend:
+    image: smartwork-backend:demo
+    container_name: smartwork-backend
+    restart: unless-stopped
+    logging: *registros
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &entorno
+      APP_ENV: development                      # el producto solo admite development y test; /docs y /openapi.json se bloquean en el proxy
+      DATABASE_URL: postgresql+psycopg://smartwork_app:${SMARTWORK_APP_PASSWORD}@db:5432/${SMARTWORK_DB}
+      MIGRATIONS_DATABASE_URL: postgresql+psycopg://smartwork_owner:${SMARTWORK_OWNER_PASSWORD}@db:5432/${SMARTWORK_DB}
+      PROVISION_DATABASE_URL: postgresql+psycopg://smartwork_provision:${SMARTWORK_PROVISION_PASSWORD}@db:5432/${SMARTWORK_DB}
+      AUTH_PEPPER: ${AUTH_PEPPER}
+      CODE_PEPPER: ${CODE_PEPPER}
+      TRUSTED_PROXIES: 172.30.0.0/24            # solo la red privada de este despliegue (Caddy)
+      # Informes: desactivados por defecto. Para la demostración se activan en el .env del servidor con OpenRouter (modelos gratuitos, SOLO datos ficticios).
+      INFORME_HABILITADO: ${INFORME_HABILITADO:-false}
+      INFORME_GENERADOR: ${INFORME_GENERADOR:-ninguno}
+      INFORME_OPENROUTER_API_KEY: ${INFORME_OPENROUTER_API_KEY:-}
+      INFORME_OPENROUTER_MODELO: ${INFORME_OPENROUTER_MODELO:-}
+      INFORME_OPENROUTER_TIMEOUT_SEGUNDOS: ${INFORME_OPENROUTER_TIMEOUT_SEGUNDOS:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks: [interna]
+
+  # Orden puntual (no arranca con `up`): `docker compose run --rm migrate` aplica las migraciones hasta la 0018.
+  migrate:
+    image: smartwork-backend:demo
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: *entorno
+    command: ["alembic", "upgrade", "head"]
+    networks: [interna]
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: smartwork-caddy
+    restart: unless-stopped
+    logging: *registros
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:8080:8080"                   # solo para el túnel SSH privado (sin TLS; no es accesible desde fuera)
+    environment:
+      SMARTWORK_DOMAIN: ${SMARTWORK_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./web:/srv/web:ro                       # Flutter Web compilado
+      - ./publico:/etc/caddy/publico:ro         # HTTPS público: solo cuando exista dominio.caddy
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [interna]
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  interna:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

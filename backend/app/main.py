@@ -14,6 +14,7 @@ from app.modulos.acceso.router import router as router_acceso
 from app.modulos.auditoria.router import router as router_auditoria
 from app.modulos.bitacoras.router import router as router_bitacoras
 from app.modulos.consulta.router import router as router_consulta
+from app.modulos.gestion.router import router as router_gestion
 from app.modulos.informes.router import router as router_informes
 from app.salud import router as router_salud
 from app.seguridad.codigos import comprobar_configuracion as comprobar_secreto_de_codigos
@@ -76,6 +77,7 @@ def crear_app() -> FastAPI:
     api.include_router(router_bitacoras)
     api.include_router(router_auditoria)
     api.include_router(router_consulta)
+    api.include_router(router_gestion)
     api.include_router(router_informes)
     app.include_router(api)
     # Salud y disponibilidad: en la raíz, sin /api/v1 y sin autenticación; antes del cliente web.

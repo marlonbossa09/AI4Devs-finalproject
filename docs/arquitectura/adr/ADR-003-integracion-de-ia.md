@@ -295,3 +295,20 @@ El proveedor, el modelo, la región, los valores de límites y tiempos, la base 
 - *Calidad:* los modelos pequeños incumplen con frecuencia las reglas del validador (cifras, referencias, fechas) y escriben en español con calidad irregular; pueden resumir o citar una orden escrita en un texto libre aunque no la obedezcan. La validación determinista no lo garantiza detectar; la evaluación por muestras sigue siendo necesaria (D-M5-05).
 - *Ventana de contexto:* Ollama trunca el prompt en silencio si excede `num_ctx`; el adaptador lo previene con una estimación y con el recuento real de Ollama.
 - *Comparabilidad:* los resultados no son extrapolables a Bedrock; la evaluación previa de la sección 13 sigue pendiente para cualquier proveedor que reciba datos reales.
+
+## 21. OpenRouter para ver una narrativa real en desarrollo (decisión del 2026-11-19)
+
+**Estado: `[CONFIRMADO]` solo para desarrollo y datos ficticios**, por instrucción expresa de la persona responsable en la sesión del 2026-11-19 («usa entonces openrouter que es gratuito»). **No cambia** la sección 20 (Ollama sigue siendo el proveedor local ni D-M5-08 (los datos laborales reales con un LLM siguen **no autorizados**) ni el aplazamiento de Amazon Bedrock y AWS Lambda.
+
+| Aspecto | Decisión |
+|---|---|
+| Proveedor | OpenRouter, API compatible con la de chat (`POST https://openrouter.ai/api/v1/chat/completions`), con un modelo gratuito elegido por configuración (`openrouter/free` o uno concreto). Implementado en `generador_openrouter.py` detrás de la misma interfaz `GeneradorDeTexto` |
+| Datos | **Los datos salen de la máquina**, hacia un tercero que puede registrar o reutilizar lo recibido (los modelos gratuitos suelen hacerlo). Por eso: solo datos **ficticios**; el adaptador envía únicamente lo del contrato interno (alias en lugar del nombre, sin identificadores ni datos de acceso) |
+| Entorno | Solo `APP_ENV=development` o `test`; en otro entorno la configuración se rechaza al arrancar |
+| Selección | `INFORME_GENERADOR=openrouter` con clave (`INFORME_OPENROUTER_API_KEY`, secreto del entorno **nunca versionado**), modelo y plazo **explícitos**; la generación sigue **desactivada por defecto**; **sin fallback silencioso** a otro proveedor ni al simulado |
+| Destino | Fijo (`openrouter.ai`, TLS verificado, sin redirecciones). No es configurable |
+| Validación | Igual que con cualquier generador: el dominio vuelve a validar SIEMPRE la salida (cifras, referencias, fechas, sin valoraciones). Un texto aceptado no es por ello un informe de calidad satisfactoria |
+
+**Límites (riesgos, no garantías).** Un modelo gratuito puede cambiar o desaparecer, tener cuotas, responder con lentitud o incumplir las reglas del validador; el router gratuito elige el modelo, así que la calidad varía entre llamadas. Los modelos con razonamiento gastan parte del tope de tokens en pensar: el tope técnico de desarrollo es de 4096 tokens de salida y **no confirma** los parámetros abiertos de D-M5-06. Para usar datos reales sigue haciendo falta lo que exige D-M5-08.
+
+**Lista de modelos y fiabilidad (2026-11-19).** `INFORME_OPENROUTER_MODELO` admite hasta **tres** modelos separados por comas, que OpenRouter prueba en orden si el anterior está limitado o no disponible (sigue siendo un único proveedor; el adaptador no cambia de proveedor ni usa el simulado). El enrutador aleatorio `openrouter/free` resultó menos fiable que una lista fija: en las pruebas con datos ficticios devolvió alguna respuesta sin contenido o con forma inválida, que el validador rechaza. Los límites de uso de los modelos gratuitos son compartidos y pueden agotarse; el informe falla entonces de forma explícita y sin contenido parcial, como con cualquier generador.

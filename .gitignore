@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.server.example
 
 # Datos del servidor PostgreSQL local de desarrollo
 .pgdata/
@@ -27,3 +28,7 @@ frontend/build/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Claves privadas y certificados: nunca se versionan
+*.pem
+*.key

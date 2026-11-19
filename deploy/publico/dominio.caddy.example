@@ -1,0 +1,6 @@
+# Copiar a dominio.caddy (sin .example) y recargar Caddy cuando 80 y 443 estén abiertos en el grupo de seguridad.
+# SMARTWORK_DOMAIN (en .env) debe ser un nombre que resuelva a la IP y para el que Let's Encrypt emita certificados.
+# Los nombres ec2-*.compute-1.amazonaws.com los rechaza Let's Encrypt por política; sirve, por ejemplo, 54-210-163-251.sslip.io o un dominio propio.
+{$SMARTWORK_DOMAIN} {
+	import smartwork
+}

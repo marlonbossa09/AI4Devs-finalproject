@@ -1,0 +1,43 @@
+(smartwork) {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		-Server
+	}
+
+	# Las rutas se evalúan en este orden y solo entra una. La documentación interactiva de la API no se expone en la demostración
+	@documentacion path /docs /docs/* /redoc /redoc/* /openapi.json
+	handle @documentacion {
+		respond 404
+	}
+
+	# API y salud: al backend (red interna). El esquema y el host originales viajan en X-Forwarded-*, que Caddy añade solo.
+	@api path /api/* /health /health/*
+	handle @api {
+		reverse_proxy backend:8000
+	}
+
+	# Cliente Flutter Web compilado
+	handle {
+		root * /srv/web
+		@estatico path /assets/* /canvaskit/* /icons/*
+		header @estatico Cache-Control "public, max-age=86400"
+		@sinCache path / /index.html /flutter_service_worker.js /main.dart.js /flutter_bootstrap.js /version.json
+		header @sinCache Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Acceso privado por túnel SSH (ssh -L 8080:127.0.0.1:8080 ...): HTTP en el puerto 8080, publicado solo en 127.0.0.1 de la instancia.
+# El navegador trata localhost como contexto seguro, así que la cookie __Host- Secure funciona sin desactivar ningún control.
+:8080 {
+	import smartwork
+}
+
+# HTTPS público (Let's Encrypt): se activa copiando publico/dominio.caddy.example a publico/dominio.caddy cuando los puertos 80 y 443 sean accesibles desde Internet.
+# Mientras no exista ese archivo, solo hay acceso por el túnel SSH (no se desactiva ningún control para servir por HTTP público).
+import /etc/caddy/publico/*.caddy
