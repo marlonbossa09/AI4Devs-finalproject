@@ -36,7 +36,6 @@ SMARTWORK sustituye la comunicación informal de las actividades diarias por men
 ### **0.4. URL del proyecto:**
 
 https://54-210-163-251.sslip.io/
-supervisor.demo  HZnrDVvY0CCKdp-qZsY
 
 ### 0.5. URL o archivo comprimido del repositorio
 
