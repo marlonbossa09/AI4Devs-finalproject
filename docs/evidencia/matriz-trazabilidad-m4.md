@@ -39,6 +39,8 @@ Todas las pruebas de backend usan PostgreSQL real (`smartwork_test`, clúster de
 
 Los dos parciales de los 61 son **CA-19 y CA-20**: la parte de consultas está probada, la de informes es de M5 (sección 7 del informe de cierre y sección 5 de este documento). CA-05 es parcial por la misma razón (informes).
 
+**Actualización posterior (M5-T8, 2026-11-19):** la parte de informes de CA-19, CA-20 y CA-05 se reconcilió en `matriz-trazabilidad-m5.md` (sección 4): los tres pasan a implementados y probados (CA-05 con una reserva sobre el texto libre). Esta matriz conserva el estado de M4 en el momento de su cierre.
+
 ## 3. Los 61 criterios
 
 ### 3.1 HU-4.1 — Consultar las bitácoras de mi equipo (M4-01), 7 criterios propios

@@ -1335,3 +1335,41 @@ Ollama **sirve como proveedor de desarrollo** (ya confirmado así) y como banco 
 ### 24.12 Recomendación para M5-T8
 
 No avanzar a M5-T8 hasta que la persona responsable decida: (a) el modelo de ejecución frente al HTTP síncrono (sección 24.7) y, con él, cerrar D-M5-06; (b) P-14; (c) qué proveedor se evalúa a continuación (Bedrock y Lambda siguen aplazados y su evaluación previa exige autorización expresa de AWS); (d) si se acepta una evaluación semántica por muestras con revisión humana sobre un conjunto mayor antes de hablar de calidad. El cierre técnico de M5 debería reflejar el veredicto «experimental» del proveedor local y los criterios que dependen de la calidad de la narrativa (CA-161, CA-163 a CA-167) como **no verificados**.
+
+## 25. M5-T8 — revisión técnica y contractual final de M5 (2026-11-19)
+
+### 25.1 Estado
+
+**M5 — CERRADO TÉCNICAMENTE CON RESERVAS** (aprobado por la persona responsable el 2026-11-19). La evidencia completa, con la matriz de los 38 criterios propios de HU-5.1 a HU-5.5 y la reconciliación de CA-19, CA-20 y CA-05, está en `docs/evidencia/matriz-trazabilidad-m5.md`. No se desarrolló nada: sin cambios de código, contratos, métricas, autorización, validador ni prompt; sin AWS, sin nuevas inferencias con Ollama, sin colas, sin ejecución asíncrona, sin persistencia de informes; las pruebas de Ollama real siguen omitidas por defecto. No se avanzó a despliegue ni a entrega final.
+
+### 25.2 Separación por componentes
+
+| Componente | Estado | Evidencia principal |
+|---|---|---|
+| **A. Núcleo determinista** (M5-T1, M5-T2) | Implementado y probado | `test_informe_individual.py`, `test_informe_consolidado.py` |
+| **B. API de informes** (M5-T3, M5-T4) | Implementado y probado con el generador simulado | `test_generacion_informes.py`, `test_informes_http.py`, `test_informes_http_real.py` |
+| **C. Interfaz Flutter** (M5-T6) | Implementada y probada con el simulado; limitación: no ofrece a quien ya no integra el equipo (CA-224 parcial) | 33 pruebas de informes, suite completa de 739, recorrido en Chrome |
+| **D. Adaptador del proveedor LLM** (M5-T5) | Implementado como proveedor de **desarrollo** local; Bedrock y Lambda aplazados | `test_generador_ollama.py` (45), pruebas reales omitidas por defecto |
+| **E. Calidad y viabilidad de la generación real** (M5-T7) | **Experimental, no apto para uso habitual**; muestras exploratorias | Sección 24 |
+
+### 25.3 Los tres niveles de situación (no son equivalentes)
+
+- **Cierre del desarrollo de M5:** cerrado técnicamente con reservas (aprobado).
+- **Cumplimiento de los criterios del MVP:** 34 de 38 criterios propios implementados y probados con evidencia (S); 4 parciales (CA-161, CA-163, CA-166 por la calidad de la narrativa con un modelo real y CA-224 por la interfaz); CA-19, CA-20 y CA-05 reconciliados como implementados y probados (CA-05 con una reserva). Ningún criterio demostrado de extremo a extremo con un LLM real.
+- **Habilitación para producción:** no. Faltan los controles bloqueantes de la sección 9 de la matriz (privacidad, minimización y detección de datos personales, evaluación semántica, protección contra instrucciones maliciosas, límites efectivos, consumo, monitoreo y evaluación de Bedrock y Lambda).
+
+### 25.4 Decisiones
+
+Se mantienen **CONFIRMADOS** el rango de 31 días, los 400 hechos por solicitud, los 0 reintentos de validación y la generación desactivada por defecto. Siguen **ABIERTOS** los tokens de entrada y de salida, el plazo total y la concurrencia (D-M5-06 parcial): **1024 tokens, 360 s y concurrencia 1 son propuestas de evaluación, no límites operativos**. **P-14** queda aprobada como necesidad funcional y **pendiente de esquema y de contrato de errores**; no se implementa sin una decisión contractual adicional. La **ejecución asíncrona no está autorizada**.
+
+### 25.5 Propuesta de cierre
+
+Cerrar M5 como «núcleo determinista, API e interfaz completos; narrativa de IA experimental y desactivada por defecto», con los cuatro criterios parciales y los controles bloqueantes registrados. Antes de cualquier uso real: decidir el modelo de ejecución y el esquema de P-14, cerrar D-M5-06, resolver PA-09 y D-M5-08, y completar una evaluación semántica por muestras con revisión humana.
+
+### 25.6 Veredicto aprobado y reservas (2026-11-19)
+
+**M5 — CERRADO TÉCNICAMENTE CON RESERVAS.** Núcleo determinista, API M5-01/M5-02 y Flutter de informes: implementados y probados. Adaptador Ollama: implementado y probado técnicamente. Calidad de la generación real: insuficiente para uso habitual. AWS Bedrock y Lambda: aplazados y no evaluados. Generación desactivada por defecto. Datos laborales reales con un LLM: no autorizados. Producción: no habilitada.
+
+**Evidencia conservada:** 38 criterios propios (34 implementados y probados; 4 parciales: CA-161, CA-163, CA-166 y CA-224); CA-19, CA-20 y CA-05 implementados en su alcance probado (CA-05 con la reserva sobre datos personales o credenciales escritos en el texto libre). Backend: 3139 superadas, 13 omitidas, 0 fallos. Flutter: 739 superadas en la ejecución anterior y `flutter analyze` sin incidencias. Ollama: evaluación parcial con muestra exploratoria, sin nuevas inferencias reales y sin mutaciones. Migraciones: última revisión 0018.
+
+**Reservas que se mantienen:** D-M5-06 parcialmente abierta; P-14 pendiente de esquema y de contrato; D-M5-08 y la privacidad sin resolver para datos reales; PA-09 parcialmente resuelto; calidad semántica insuficiente; riesgo de instrucciones maliciosas; riesgo de datos sensibles en el texto libre; ejecución asíncrona no autorizada; sin evaluación de Bedrock y Lambda. **Cerrar el módulo no convierte en confirmada ninguna propuesta** (1024 tokens, 360 s y concurrencia 1 siguen siendo propuestas de evaluación).
