@@ -12,6 +12,8 @@ SMARTWORK es un producto profesional e independiente. Su documentación describe
 
 Stack: Flutter Web, FastAPI (Python) y PostgreSQL, con monolito modular y autorización centralizada en el backend. `[CONFIRMADO]` mediante el ADR-001 (`docs/arquitectura/adr/ADR-001-stack-tecnologico.md`). La arquitectura técnica de referencia de la autenticación está aprobada (ADR-002, que sigue `[PROPUESTO]` en lo operativo); el mecanismo operativo de la provisión de accesos, el despliegue y la parte operativa del servicio de IA (ADR-003, `[PROPUESTO]`: modelo, región, retención y servicios adicionales) siguen sin decidir. Para planificación futura, `[CONFIRMADO]` el 2026-11-18: la IA de M5 usará Amazon Bedrock (modelos de IA) y AWS Lambda (integración), con AWS como plataforma de infraestructura relacionada, sin implementar ni configurar AWS hasta la revisión SDD de M5. Modelo, región, retención de información y servicios adicionales siguen abiertos.
 
+Interfaz: las pantallas de Flutter de M1 a M5 comparten un sistema visual unificado (rediseño UX-T1 a UX-T9: tokens de diseño, componentes compartidos y «Nueva actividad» como panel lateral). Es un cambio visual y de interacción: no modifica requisitos, contratos, reglas de negocio, permisos ni estados.
+
 ## 2. Módulos funcionales
 
 El MVP tiene cinco módulos obligatorios:

@@ -539,6 +539,30 @@ Continúa la numeración de la sección 10 y cubre, en orden cronológico, M1 (c
 - **Prompt (resumen fiel):** completar la trazabilidad de M4-T5 a M4-T9, M5-T0 a M5-T8, FINAL-T1 y FINAL-T2 sin reconstruir mensajes inventados, clasificando cada entrada por su evidencia; mantener los estados CONFIRMADO, PROPUESTO y ABIERTO; explicar los límites de la IA generativa; sin tocar código ni otros documentos. Después pidió usar dos agentes distintos para recuperar la evidencia.
 - **Resultado:** esta sección. Dos subagentes de solo lectura recuperaron de los commits, los documentos y el historial local la evidencia de M4-T5 a M4-T9 y de M5 a FINAL-T2; yo redacté el documento y lo verifiqué. **Sin commit** (los cambios quedan sin confirmar a la espera de revisión).
 
+### Prompt 39 — Rediseño visual UX-T1 a UX-T4
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-19 · **Herramienta:** Claude Code
+- **Cita literal:** «Implementar UX-T3 "panel lateral Nueva actividad" reutilizando `SidePanel`» · «Rediseñar exclusivamente el Panel principal de SMARTWORK.»
+- **Prompt (resumen fiel):** unificar el sistema de diseño, reorganizar la navegación y el panel lateral, implementar «Nueva actividad» como panel lateral (planificada y no planificada, una sola pregunta al descartar cambios, idempotencia, refresco tras guardar) y rediseñar el Panel principal con indicadores por estado actual, sin cambiar backend, contratos, reglas, permisos ni estados.
+- **Resultado:** commits locales `bcc494d` (UX-T1), `987f148` (UX-T2), `6cef7bc` (UX-T3) y `c7c1327` (UX-T4). Verificación: pruebas de widget, `flutter analyze`, 39 comprobaciones HTTP con FastAPI y PostgreSQL desechable y comprobación visual en Chrome con datos ficticios.
+- **Decisión humana:** aprobó cada ticket, resolvió D-UX-11 (el foco permanece en el selector de tipo) y D-UX-12 (la entrada «Planificación» abre el panel en modo planificado).
+
+### Prompt 40 — Rediseño visual UX-T5 a UX-T9
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-19 · **Herramienta:** Claude Code y tres subagentes de implementación (uno por bloque de pantallas)
+- **Cita literal:** «Autorizo consolidar UX-T4 e implementar UX-T5, UX-T6, UX-T7, UX-T8 y UX-T9 de manera consecutiva.»
+- **Prompt (resumen fiel):** rediseñar Mi bitácora, Actividades y planificación, Mi equipo, Supervisión e Informes con el mismo sistema visual y validar de forma integral (una sola regresión completa), conservando contratos, permisos, validaciones, idempotencia, protección de cambios sin guardar y, en M5, las etiquetas CALCULADO, REGISTRADO y REDACTADO CON IA, el informe efímero y la IA desactivada por defecto.
+- **Resultado:** commit local `68602ef`; 1062 pruebas de Flutter superadas y 149 focalizadas posteriores. Los subagentes trabajaron en carpetas disjuntas y su informe se verificó contra el código y las pruebas antes de integrarlo; una desviación (Mi equipo no cargaba al elegir a la persona) se corrigió en la integración.
+- **Decisión humana:** aprobó el resultado reportado y autorizó el cierre.
+
+### Prompt 41 — Cierre del rediseño y preparación final
+
+- **Clasificación:** RECONSTRUCCIÓN DOCUMENTAL. **Fecha:** 2026-11-19 · **Herramienta:** Claude Code
+- **Cita literal:** «Objetivo: consolidar el rediseño, completar la documentación indispensable y preparar SMARTWORK para su publicación final.»
+- **Prompt (resumen fiel):** actualizar solo la documentación necesaria (README, `CLAUDE.md`, matrices, referencia obsoleta a `UnplannedPage`), preparar una guía de demostración con el generador simulado, verificar la instalación en una base desechable y conservar capturas finales, sin push ni datos reales.
+- **Resultado:** commit del rediseño y commit de documentación local; instalación limpia y recorrido real verificados en un clon con PostgreSQL desechable (ver README, sección 1.4). El generador simulado no se presenta como inteligencia artificial.
+- **Decisión humana:** pendiente de revisión; el push y la publicación no están autorizados todavía.
+
 ---
 
 ## 12. Límites del uso de IA generativa en este proyecto

@@ -8,6 +8,8 @@
 | **Fuente de los criterios** | `docs/api/m2-bitacoras.md` y `docs/api/m3-seguimiento-auditoria.md` («Criterios vinculados») y las historias de `docs/backlog/` |
 | **Fuera de alcance** | M4 y M5: sus criterios no se evalúan aquí, salvo los que los contratos de M2 y M3 citan |
 
+> **Nota posterior (2026-11-19, rediseño visual).** Los criterios y las pruebas de backend de esta matriz no cambian. La interfaz se rediseñó sin tocar contratos ni reglas: «Nueva actividad» es un panel lateral que sirve a M2-03 y M2-06 desde Panel principal, Mi bitácora, Actividades y Planificación, y las pantallas de M2 y M3 usan el sistema visual unificado. Los identificadores de pruebas de Flutter citados abajo siguen siendo válidos por nombre de archivo, pero algunos se adaptaron a ese panel (por ejemplo, tras guardar ya no se navega a otra pantalla: el panel se cierra y la persona permanece donde estaba).
+
 ## 1. Cómo leerla
 
 Cada fila es **contrato → criterio → componente → prueba → estado**. El componente (endpoint y pantalla) se indica una vez por contrato.
@@ -112,7 +114,7 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 
 ### M2-03 — Planificar una actividad nueva
 
-**Componente:** `POST /mi/bitacoras/{fecha}/planificaciones` · `PlanningPage`
+**Componente:** `POST /mi/bitacoras/{fecha}/planificaciones` · panel lateral «Nueva actividad», modo planificada (`NewActivityPanel`); la entrada de menú «Planificación» abre ese mismo panel (`PlanningPage`)
 
 | Criterio | Qué exige | Prueba | Estado | Nota |
 |---|---|---|---|---|
@@ -187,7 +189,7 @@ Cada fila es **contrato → criterio → componente → prueba → estado**. El 
 
 ### M2-06 — Registrar una actividad no planificada
 
-**Componente:** `POST /mi/actividades-no-planificadas` · `UnplannedPage`
+**Componente:** `POST /mi/actividades-no-planificadas` · panel lateral «Nueva actividad», modo no planificada (`NewActivityPanel`). La pantalla propia `UnplannedPage` ya no existe: sus pruebas se adaptaron al panel y las reglas del contrato no cambiaron
 
 | Criterio | Qué exige | Prueba | Estado | Nota |
 |---|---|---|---|---|

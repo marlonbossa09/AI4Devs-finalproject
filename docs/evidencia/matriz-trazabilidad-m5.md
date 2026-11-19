@@ -7,6 +7,8 @@
 | **Base** | Rama `final-project-eq`, M5-T1 a M5-T7 consolidados (HEAD `638c4a1`); los documentos de cierre de M5-T8 (este documento, el plan y la nota en la matriz de M4) se consolidan en un único commit documental |
 | **Fuentes** | `docs/backlog/M5-…/HU-5.1` a `HU-5.5`, `docs/api/m5-01-informe-individual-v0.2.md`, `m5-02-informe-consolidado-v0.2.md`, `m5-informes.md`, `m5-integracion-ia.md`, `docs/backlog/tickets/m5-plan-implementacion.md` (secciones 22 a 25), ADR-003, `matriz-trazabilidad-m4.md` y el código y las pruebas reales |
 
+> **Nota posterior (2026-11-19, rediseño visual).** Las pantallas «Informe individual» e «Informe del equipo» se rediseñaron después de este cierre (formulario compacto, cifras CALCULADO, registros y bloqueos REGISTRADO y narrativa REDACTADO CON IA en un bloque aparte). El cambio es solo visual: no modifica los contratos M5-01 y M5-02 versión 0.2, la base obligatoria, el carácter efímero del informe, los criterios parciales ni las reservas sobre la IA, que siguen como se describen en este documento. Las pruebas de widget de informes se ampliaron (`reports_visual_test`) y se comprobaron con el generador simulado, nunca con un modelo real.
+
 ## 1. Método, claves y estados
 
 Cada criterio se clasifica con los **cinco estados** del proyecto: **implementado y probado**, **parcial**, **pendiente**, **bloqueado** y **fuera de alcance aprobado**. Un criterio solo es «implementado y probado» si hay una prueba ejecutada que lo comprueba. **Nada se declara cumplido por inferencia ni porque el generador simulado produzca una respuesta válida.**

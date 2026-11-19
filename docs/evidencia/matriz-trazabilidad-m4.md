@@ -216,6 +216,8 @@ Los traslados en ambos sentidos, la referencia mínima con y sin estado actual y
 
 ## 10. Revisión básica de accesibilidad y experiencia (proporcionada, sin rediseño)
 
+> **Nota posterior (2026-11-19).** Las pantallas de Mi equipo y Supervisión se rediseñaron después de esta revisión (lista de integrantes y detalle, filas densas con «Estado al corte» y «Estado actual» diferenciados), sin cambiar contratos, visibilidad histórica ni permisos. La tabla siguiente describe la revisión original; el diseño adaptable se volvió a comprobar con pruebas de widget a 1400, 900 y 400 px.
+
 | Aspecto | Resultado |
 |---|---|
 | Teclado | Con Tab se llega a los controles de la supervisión y Enter acciona la consulta (comprobado en Chrome). No se recorrieron con teclado todas las pantallas |

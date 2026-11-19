@@ -2,7 +2,7 @@
 
 > Plataforma web para registrar y consultar bitácoras laborales: qué se planea hacer, qué se hizo realmente, qué quedó pendiente y qué bloqueos hubo.
 
-**Estado (2026-11-19).** Los cinco módulos del MVP (M1 a M5) están implementados con **Flutter Web, FastAPI y PostgreSQL** y tienen cierre técnico documentado. **No está habilitado para producción** y no hay despliegue. La generación de narrativa con IA de M5 es **experimental y está desactivada por defecto**; el proveedor local (Ollama) no está validado para uso habitual y no se han autorizado datos laborales reales con un LLM. Las reservas están en la [sección 9](#9-limitaciones-reservas-y-decisiones-pendientes).
+**Estado (2026-11-19).** Los cinco módulos del MVP (M1 a M5) están implementados con **Flutter Web, FastAPI y PostgreSQL** y tienen cierre técnico documentado, y la interfaz usa un sistema visual unificado (rediseño UX-T1 a UX-T9). **No está habilitado para producción** y no hay despliegue. La generación de narrativa con IA de M5 es **experimental y está desactivada por defecto**; el proveedor local (Ollama) no está validado para uso habitual y no se han autorizado datos laborales reales con un LLM. Las reservas están en la [sección 9](#9-limitaciones-reservas-y-decisiones-pendientes).
 
 | Módulo | Estado | Matriz de trazabilidad |
 |---|---|---|
@@ -125,13 +125,13 @@ Las 33 historias y sus 301 criterios de aceptación están en [docs/backlog/](do
 
 ### **1.3. Diseño y experiencia de usuario:**
 
-Interfaz web en Flutter, en español: barra lateral oscura, barra superior con la fecha del servidor, tarjetas, indicadores, calendario y formularios, con tipografías DM Sans y Manrope. Es responsive: escritorio, tableta (hasta 1100 px) y móvil (hasta 700 px, donde la barra lateral pasa a ser un menú desplegable).
+Interfaz web en Flutter, en español: barra lateral oscura, barra superior con la fecha del servidor, tarjetas, indicadores, calendario y formularios, con tipografías DM Sans y Manrope. Es responsive: escritorio, tableta (hasta 1100 px) y móvil (hasta 700 px, donde la barra lateral pasa a ser un menú desplegable). Las pantallas de M1 a M5 comparten un **sistema visual unificado**: tokens de diseño (espaciado, tipografía, color), componentes compartidos, ningún texto informativo menor de 12 px, objetivos táctiles de al menos 40 px y estados dichos siempre con palabras, no solo con color. **«Nueva actividad» es un panel lateral** (pantalla completa en móvil) que se abre desde Panel principal, Mi bitácora, Actividades y Planificación.
 
 ```mermaid
 flowchart LR
     A[Acceso] --> B[Panel principal]
     B --> C[Mi bitácora]
-    B --> D[Nueva planificación]
+    B --> D[Nueva actividad<br/>panel lateral]
     C --> E[Actividades y auditoría]
     B --> F[Mi equipo]
     B --> G[Supervisión]
@@ -142,36 +142,43 @@ flowchart LR
 | Pantalla | Quién | Qué muestra |
 |---|---|---|
 | Acceso | Todas | Formulario de usuario y contraseña; un error de credenciales no dice cuál de los dos falló. Pantallas de primer acceso y recuperación con código |
-| Panel principal | Todas | Saludo, indicadores (registradas, pendientes, en progreso, completadas), actividades de la fecha elegida y calendario |
-| Mi bitácora | Todas | Estado de la bitácora con sus tres fechas, actividades, avances, resumen, cierre y reapertura |
-| Planificación y Actividades | Todas | Planificar actividades y continuaciones, listar y ver el detalle de las propias actividades, corregir, reactivar, marcar por error y consultar la auditoría |
-| Mi equipo | Todas | Solo lectura: la bitácora de un compañero entre los integrantes vigentes y el histórico por fechas |
-| Supervisión | Supervisor | Actividades del equipo en un período con totales por estado al corte, historial de cada actividad y su auditoría |
-| Informe individual | Todas (supervisión puede elegir a una persona de su equipo) | Informe con cifras calculadas, registros, bloqueos y narrativa aparte |
+| Panel principal | Todas | Fecha laboral y «Nueva actividad», cinco indicadores (total, pendientes, en progreso, bloqueadas y completadas; siempre por estado actual y sin porcentajes), actividades de la fecha elegida, estado de la jornada (Abierta, Cerrada o sin bitácora) y calendario |
+| Mi bitácora | Todas | Fecha y estado de la jornada junto al título, actividades con filtro por tipo (planificadas y no planificadas), avances, resumen, cierre y reapertura y acceso a la auditoría |
+| Nueva actividad | Todas | Panel lateral con dos tipos: **planificada** (estado inicial Pendiente, sin avances) y **no planificada** (estado, descripción y motivo de bloqueo cuando corresponde). Una sola pregunta al descartar cambios sin guardar |
+| Planificación y Actividades | Todas | Planificación (abre el panel «Nueva actividad»), continuaciones, lista con filtro por estado y detalle de las propias actividades, corregir, reactivar, marcar por error y consultar la auditoría |
+| Mi equipo | Todas | Solo lectura: lista de integrantes vigentes y detalle; la bitácora de un compañero se carga al elegirlo, y el histórico es por fechas |
+| Supervisión | Supervisor | Actividades del equipo en un período con totales por estado al corte, «Estado al corte» y «Estado actual» por separado en cada fila, historial de cada actividad y su auditoría |
+| Informe individual | Todas (supervisión puede elegir a una persona de su equipo) | Informe con cifras CALCULADO, registros y bloqueos REGISTRADO y narrativa REDACTADO CON IA aparte |
 | Informe del equipo | Supervisor | Cifras del equipo y cada persona con registros autorizados, sin clasificaciones |
 
-Capturas reales con datos ficticios de las primeras pantallas. Las capturas de M4 y M5 todavía no están incorporadas al repositorio:
+Capturas reales del rediseño (clon limpio, FastAPI sirviendo el cliente y PostgreSQL desechable, solo datos ficticios; el informe usa el generador **simulado**, que no es inteligencia artificial):
 
-![Pantalla de acceso](docs/evidencia/01-acceso.jpg)
+![Panel principal](docs/evidencia/ux/01-panel-principal.png)
 
-![Panel principal con una actividad persistida](docs/evidencia/02-panel-principal.jpg)
+![Nueva actividad (panel lateral)](docs/evidencia/ux/02-nueva-actividad.png)
 
-![Nueva planificación](docs/evidencia/03-nueva-planificacion.jpg)
+![Mi bitácora](docs/evidencia/ux/03-mi-bitacora.png)
 
-![Mi bitácora tras guardar la actividad](docs/evidencia/04-mi-bitacora.jpg)
+![Mi equipo](docs/evidencia/ux/04-mi-equipo.png)
 
-Tableta y móvil (el móvil con su menú desplegable):
+![Supervisión](docs/evidencia/ux/05-supervision.png)
 
-![Tableta](docs/evidencia/05-tableta.jpg)
+![Informe individual con el generador simulado](docs/evidencia/ux/06-informe-individual.png)
 
-![Móvil](docs/evidencia/06-movil.jpg)
+![Informe del equipo con el generador simulado](docs/evidencia/ux/07-informe-equipo.png)
 
-![Móvil con el menú abierto](docs/evidencia/07-movil-menu.jpg)
+Móvil (la barra lateral es un menú desplegable):
+
+![Móvil](docs/evidencia/ux/08-movil.png)
+
+Las capturas anteriores al rediseño (`docs/evidencia/01-acceso.jpg` a `07-movil-menu.jpg`) se conservan como histórico y ya no representan la interfaz actual.
 
 **Decisiones de diseño.**
 
 - Los iconos son Material, porque los glifos Unicode se dibujan como cuadrados vacíos en Flutter Web si falta la fuente.
-- Los indicadores y el progreso se calculan sobre la jornada elegida: la API devuelve una fecha por consulta.
+- Los indicadores cuentan las actividades que la API devuelve para la jornada elegida (una fecha por consulta) y muestran su **estado actual**; no hay porcentajes ni barras de progreso, y un valor desconocido se muestra como un guion, nunca como un cero.
+- No se muestran horarios ni duraciones de actividad: no se registran. Solo aparecen momentos reales de registro, cierre o generación.
+- «Nueva actividad» es un único panel lateral reutilizable en lugar de dos pantallas: tras guardar se cierra, se permanece donde se estaba y se refrescan los datos; guardar para otra fecha lo dice en el aviso sin cambiar el día visible.
 - El botón de notificaciones aparece deshabilitado con una explicación, porque no hay notificaciones.
 - Un informe de M5 no tiene porcentaje de avance: el servidor no informa progreso, y la pantalla avisa de que la generación puede tardar.
 - Las tipografías se cargan desde Google Fonts al abrir la aplicación. Es una petición externa de solo fuentes, sin datos de las bitácoras; servirlas desde el propio origen queda como mejora.
@@ -180,7 +187,7 @@ La propuesta visual de partida no está publicada en el repositorio y por eso no
 
 ### **1.4. Instrucciones de instalación y ejecución:**
 
-**Requisitos.** Git, PostgreSQL 16 o superior (probado con 18.4), [uv](https://docs.astral.sh/uv/) (descarga Python 3.13 por su cuenta, así que hace falta conexión a Internet), Flutter 3.35.3 con Dart 3.9.2 y un navegador moderno. Probado en Windows 11 con Git Bash. Las instrucciones se han revisado leyendo los scripts y archivos del repositorio; la instalación completa desde un clon limpio todavía no se ha ejecutado.
+**Requisitos.** Git, PostgreSQL 16 o superior (probado con 18.4), [uv](https://docs.astral.sh/uv/) (descarga Python 3.13 por su cuenta, así que hace falta conexión a Internet), Flutter 3.35.3 con Dart 3.9.2 y un navegador moderno. Probado en Windows 11 con Git Bash. **Verificación (2026-11-19).** Los pasos 1, 2 y 4 a 8 se ejecutaron sobre un clon limpio del repositorio, con un clúster de PostgreSQL 18.4 desechable en otro puerto: roles y bases, `backend/.env`, `uv sync`, migraciones hasta 0018, semilla, compilación de Flutter Web, FastAPI sirviendo el cliente y un recorrido real de ambos roles en Chrome (35 comprobaciones HTTP de M1 a M5 superadas). El paso 3 (rol de provisión) **no se pudo automatizar**: `\password` pide la contraseña por la consola y no acepta una tubería; en la verificación el rol se creó con el propio script y su contraseña se fijó con `ALTER ROLE` en la base desechable. El paso 9 (pruebas) no se repitió en el clon: se ejecutó en el repositorio de trabajo.
 
 **Convenciones.**
 
@@ -281,10 +288,10 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 1. Comprobar el servidor: <http://localhost:8000/health> responde `{"status":"ok"}` y <http://localhost:8000/health/ready> confirma la base de datos.
 2. Abrir <http://localhost:8000> e iniciar sesión con `colaborador1.demo` y la contraseña que mostró la semilla.
-3. En **Panel principal**, **Nueva planificación**: escribir un título y guardar. La aplicación lleva a **Mi bitácora**, que muestra la actividad. Recargar la página: la sesión y la actividad siguen ahí, porque están en PostgreSQL.
-4. En **Mi bitácora**: **Registrar avance** (estado y descripción; **Bloqueada** exige motivo), **Actividad no planificada**, **Escribir resumen**; en **Actividades**, **Ver detalle**. **Cerrar jornada** (pide confirmación) y **Reabrir jornada** (motivo obligatorio, con constancia en la auditoría).
+3. En **Panel principal**, **Nueva actividad**: en el panel lateral, tipo **Planificada**, escribir un título y guardar. El panel se cierra, se permanece en el Panel principal y la actividad aparece como Pendiente. Recargar la página: la sesión y la actividad siguen ahí, porque están en PostgreSQL.
+4. En **Mi bitácora**: **Registrar avance** (estado y descripción; **Bloqueada** exige motivo), **Nueva actividad** con el tipo **No planificada**, **Escribir resumen**; en **Actividades**, **Ver detalle**. **Cerrar jornada** (pide confirmación) y **Reabrir jornada** (motivo obligatorio, con constancia en la auditoría).
 5. Repetir un registro con `colaborador2.demo`. Con `colaborador1.demo`, abrir **Mi equipo** y leer la bitácora de la compañera.
-6. Con `supervisor.demo`: **Supervisión** (actividades del equipo por estado al corte, historial y auditoría), **Informe individual** (elegir a una persona del equipo) e **Informe del equipo**. Sin generador habilitado, un informe **sin datos** se muestra, y uno **con datos** avisa de que no pudo generarse (es el comportamiento por defecto). Para ver una narrativa de demostración, habilitar el generador simulado como se indica en la [sección 1.5](#15-inteligencia-artificial-en-m5).
+6. Con `supervisor.demo`: **Supervisión** (actividades del equipo por estado al corte, historial y auditoría), **Informe individual** (elegir a una persona del equipo) e **Informe del equipo**. Sin generador habilitado, un informe **sin datos** se muestra, y uno **con datos** avisa de que no pudo generarse (es el comportamiento por defecto). Para ver una narrativa de demostración, habilitar el generador simulado como se indica en la [sección 1.5](#15-inteligencia-artificial-en-m5). Hay un guion de unos 15 minutos en la [guía de demostración](docs/operacion/guia-de-demostracion.md).
 
 La documentación interactiva de la API (`/docs`) solo existe en desarrollo (`APP_ENV=development`). Si tras recompilar el cliente el navegador muestra una versión antigua, es la caché del *service worker* de Flutter: borrar los datos del sitio desde las herramientas de desarrollo del navegador (Application → Storage).
 
@@ -463,11 +470,13 @@ Resultados de las **ejecuciones documentadas** (no se repitieron para redactar e
 | Verificación | Resultado | Fecha y origen |
 |---|---|---|
 | Backend (`pytest`, suite completa) | **3139 superadas y 13 omitidas, 0 fallos.** Las omitidas son pruebas de Ollama real (que requieren una variable explícita) y una omisión previa conocida | 2026-11-19, cierre de M5 ([matriz de M5](docs/evidencia/matriz-trazabilidad-m5.md)) |
-| Frontend (`flutter test`) | **739 superadas**, 33 de ellas de informes | 2026-11-18, M5-T6 (última ejecución completa) |
+| Frontend (`flutter test`) | **1062 superadas** (repositorios en memoria) | 2026-11-19, validación del rediseño visual (una sola ejecución completa) |
+| Frontend, ejecución focalizada posterior | **149 superadas** (Mi bitácora, resumen, cierre, Mi equipo y Supervisión, pruebas generales) | 2026-11-19 |
 | `flutter analyze` | Sin incidencias | 2026-11-19 |
+| Instalación limpia y recorrido real | Migraciones hasta 0018, semilla y 35 comprobaciones HTTP de M1 a M5 superadas con FastAPI y PostgreSQL desechable; recorrido en Chrome de ambos roles | 2026-11-19, ver sección 1.4 |
 | Migración actual | **0018** | `alembic heads` |
 
-Las pruebas de backend cubren esquema y restricciones, autenticación, CSRF y origen, M1 a M5 (provisión, acceso, bitácoras, cierre y reapertura, correcciones, auditoría, consulta histórica, supervisión, informes y adaptador local), concurrencia, atomicidad y arranque real con uvicorn. Las de Flutter cubren modelos, cliente HTTP, reglas puras, pantallas con repositorios falsos y diseño responsive.
+Las pruebas de backend cubren esquema y restricciones, autenticación, CSRF y origen, M1 a M5 (provisión, acceso, bitácoras, cierre y reapertura, correcciones, auditoría, consulta histórica, supervisión, informes y adaptador local), concurrencia, atomicidad y arranque real con uvicorn. Las de Flutter cubren modelos, cliente HTTP, reglas puras, pantallas con repositorios falsos y diseño responsive (sin desbordes a 1400, 900 y 400 px, también con texto al 150 %).
 
 **Evidencia de extremo a extremo.** Recorridos reales en Chrome contra FastAPI y PostgreSQL desechable: M2 y M3 (cierre técnico del 2026-11-11), M4 (M4-T7 a M4-T9) y los informes de M5 (M5-T6, con el generador **simulado**, datos ficticios y bases desechables ya eliminadas). Detalle por criterio:
 
@@ -625,6 +634,8 @@ No hay pull requests abiertos ni documentados en este repositorio. El trabajo se
 | **M4** | Lectura entre pares, histórico, supervisión, historial de actividad y auditoría del supervisor. **Cerrado con reservas** | Mejoras no bloqueantes y riesgos de volumen y despliegue de la [matriz de M4](docs/evidencia/matriz-trazabilidad-m4.md) |
 | **M5** | Núcleo determinista, API M5-01 y M5-02, interfaz de informes y adaptador local. **Cerrado técnicamente con reservas** (34 de 38 criterios implementados y probados y 4 parciales) | Calidad de la narrativa real insuficiente; D-M5-06 parcialmente abierta; P-14 pendiente de esquema; sin evaluación de Bedrock y Lambda; datos reales con un LLM no autorizados |
 
+**Interfaz.** Las pantallas de M1 a M5 tienen el sistema visual unificado (UX-T1 a UX-T9) y «Nueva actividad» es un panel lateral; el rediseño no cambió contratos, reglas de negocio, permisos ni estados. Reservas de la interfaz: no se verificó el teclado virtual en móvil ni lectores de pantalla reales, y las capturas de tableta y móvil son parciales.
+
 **Producción: no habilitada.** No hay despliegue, ni HTTPS, ni gestión de secretos, ni observabilidad definida.
 
 ---
@@ -664,8 +675,10 @@ Flutter Web conserva riesgos conocidos de accesibilidad, carga inicial y pruebas
 | [docs/arquitectura/adr/](docs/arquitectura/adr/) | ADR-001 (stack), ADR-002 (autenticación), ADR-003 (IA) |
 | [docs/modelo-datos/modelo-datos.md](docs/modelo-datos/modelo-datos.md) | Modelo de datos y reglas de integridad |
 | [docs/api/indice.md](docs/api/indice.md) | Contratos de la API (M5: versión 0.2; [contrato interno de IA](docs/api/m5-integracion-ia.md)) |
-| [docs/evidencia/](docs/evidencia/) | Capturas y matrices de trazabilidad M1 a M5 |
+| [docs/evidencia/](docs/evidencia/) | Capturas del rediseño (`ux/`) y matrices de trazabilidad M1 a M5 |
 | [docs/operacion/pwned-passwords.md](docs/operacion/pwned-passwords.md) | Instalación local de la comprobación de contraseñas comprometidas |
+| [docs/operacion/guia-de-demostracion.md](docs/operacion/guia-de-demostracion.md) | Guion breve para demostrar M1 a M5 con datos ficticios y el generador simulado |
+| [docs/operacion/resumen-del-proyecto.md](docs/operacion/resumen-del-proyecto.md) | Resumen del estado real: objetivo, arquitectura, módulos, pruebas, limitaciones y requisitos |
 | [backend/](backend/) y [frontend/](frontend/) | Código de la aplicación |
 | [prompts.md](prompts.md) | Registro del uso de IA en el desarrollo |
 | [CLAUDE.md](CLAUDE.md) | Reglas de trabajo para asistentes que colaboran en el repositorio |
